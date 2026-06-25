@@ -17,6 +17,12 @@ from bot.keyboards import (
     get_inline_menu
 )
 
+from bot.handler_modules.subscriptions import (
+    send_status,
+    send_plans,
+    buy_start
+)
+
 async def start(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
