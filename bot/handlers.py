@@ -22,7 +22,8 @@ from bot.handler_modules.subscriptions import (
     send_status,
     buy_start,
     buy_plan_selection,
-    confirm_purchase
+    confirm_purchase,
+    buy_keyboard
 )
 
 from bot.handler_modules.devices import (
@@ -33,8 +34,7 @@ from bot.handler_modules.devices import (
     remove_device_keyboard,
     remove_device_start,
     remove_device_selection,
-    confirm_remove_device,
-    buy_keyboard
+    confirm_remove_device
 )
 
 from telegram import Update
