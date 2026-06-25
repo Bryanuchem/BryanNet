@@ -8,6 +8,19 @@ from bot.keyboards import (
     get_inline_menu
 )
 
+from bot.services.helpers import (
+    get_customer_by_telegram_id
+)
+
+from bot.handler_modules.registration import (
+    REGISTER_NAME,
+    REGISTER_PHONE,
+    register_start,
+    register_name,
+    register_phone,
+    register_cancel
+)
+
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -15,8 +28,6 @@ from telegram import (
     InlineKeyboardMarkup
 )
 
-REGISTER_NAME = 1
-REGISTER_PHONE = 2
 
 REMOVE_DEVICE = 3
 CONFIRM_REMOVE_DEVICE = 4
@@ -173,8 +184,18 @@ async def send_status(
 
         return
 
-    customer = customer_response.json()
+    customer = get_customer_by_telegram_id(
+        telegram_user_id
+    )
 
+    if not customer:
+
+        await message.reply_text(
+            "You are not registered."
+        )
+
+        return
+    
     status_response = requests.get(
         f"{API_BASE_URL}/subscriptions/status/"
         f"{customer['customer_id']}"
@@ -564,16 +585,6 @@ async def buy_start(
 
     return BUY_PLAN
  
-async def register_start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    await update.message.reply_text(
-        "What is your full name?"
-    )
-
-    return REGISTER_NAME
 
 async def buy_plan_selection(
     update: Update,
@@ -739,71 +750,6 @@ async def confirm_purchase(
 
     return ConversationHandler.END
 
-async def register_name(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    context.user_data["full_name"] = (
-        update.message.text
-    )
-
-    await update.message.reply_text(
-        "What is your phone number?"
-    )
-
-    return REGISTER_PHONE
-
-async def register_phone(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    phone_number = (
-        update.message.text
-    )
-
-    full_name = (
-        context.user_data["full_name"]
-    )
-
-    telegram_user_id = (
-        update.effective_user.id
-    )
-
-    response = requests.post(
-        f"{API_BASE_URL}/customers/register",
-        json={
-            "phone_number": phone_number,
-            "full_name": full_name,
-            "telegram_user_id": telegram_user_id
-        }
-    )
-
-    if response.status_code == 200:
-
-        await update.message.reply_text(
-            "Registration successful."
-        )
-
-    else:
-
-        await update.message.reply_text(
-            "Registration failed."
-        )
-
-    return ConversationHandler.END
-
-async def register_cancel(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    await update.message.reply_text(
-        "Registration cancelled."
-    )
-
-    return ConversationHandler.END
 
 async def menu_callback(
     update: Update,
