@@ -25,16 +25,15 @@ from bot.handler_modules.subscriptions import (
     confirm_purchase
 )
 
-from bot.handler_modules.subscriptions import (
-    BUY_PLAN,
-    CONFIRM_PURCHASE,
-    plans,
-    send_plans,
-    status,
-    send_status,
-    buy_start,
-    buy_plan_selection,
-    confirm_purchase,
+from bot.handler_modules.devices import (
+    REMOVE_DEVICE,
+    CONFIRM_REMOVE_DEVICE,
+    devices,
+    send_devices,
+    remove_device_keyboard,
+    remove_device_start,
+    remove_device_selection,
+    confirm_remove_device,
     buy_keyboard
 )
 
