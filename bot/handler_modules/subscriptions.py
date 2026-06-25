@@ -1,9 +1,7 @@
 import requests
 
-from datetime import datetime
-
 from telegram import (
-    Update,
+    Update,    
     InlineKeyboardMarkup,
     InlineKeyboardButton
 )
@@ -15,15 +13,10 @@ from telegram.ext import (
 
 from bot.config import API_BASE_URL
 
-from bot.keyboards import (
-    get_inline_menu
-)
 
 from bot.services.helpers import (
-    format_duration,
-    format_expiry_date,
     get_customer_by_telegram_id,
-    get_all_plans
+    format_expiry_date
 )
 
 BUY_PLAN = 5
@@ -35,7 +28,7 @@ async def plans(
 ):
 
     await send_plans(
-    update.message
+        update.message
 )
     
 async def send_plans(
@@ -99,18 +92,6 @@ async def send_status(
     telegram_user_id
 ):
 
-    customer_response = requests.get(
-        f"{API_BASE_URL}/customers/telegram/{telegram_user_id}"
-    )
-
-    if customer_response.status_code != 200:
-
-        await message.reply_text(
-            "You are not registered. Use /register first."
-        )
-
-        return
-
     customer = get_customer_by_telegram_id(
         telegram_user_id
     )
@@ -150,15 +131,9 @@ async def send_status(
         "expiry_date"
     )
 
-    if expiry_date:
-
-        expiry_date = (
-            datetime.fromisoformat(
-                expiry_date
-            ).strftime(
-                "%d %b %Y %H:%M"
-            )
-        )
+    expiry_date = format_expiry_date(
+        expiry_date
+    )
 
     queued_count = status_data.get(
         "queued_subscriptions",
@@ -300,6 +275,7 @@ async def buy_plan_selection(
 
 
 async def confirm_purchase(
+      
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
@@ -330,11 +306,11 @@ async def confirm_purchase(
         update.effective_user.id
     )
 
-    customer_response = requests.get(
-        f"{API_BASE_URL}/customers/telegram/{telegram_user_id}"
+    customer = get_customer_by_telegram_id(
+        telegram_user_id
     )
 
-    if customer_response.status_code != 200:
+    if not customer:
 
         await update.message.reply_text(
             "Unable to locate your account."
@@ -342,11 +318,10 @@ async def confirm_purchase(
 
         return ConversationHandler.END
 
-    customer = customer_response.json()
-
     selected_plan = context.user_data[
         "selected_plan"
     ]
+
 
     purchase_response = requests.post(
         f"{API_BASE_URL}/subscriptions/purchase",
@@ -396,4 +371,41 @@ async def confirm_purchase(
     )
 
     return ConversationHandler.END
-            
+
+async def buy_keyboard(
+    update: Update
+):
+
+    response = requests.get(
+        f"{API_BASE_URL}/plans"
+    )
+
+    if response.status_code != 200:
+
+        await update.message.reply_text(
+            "Unable to retrieve plans."
+        )
+
+        return
+
+    plans = response.json()
+
+    keyboard = []
+
+    for plan in plans:
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{plan['plan_name']} - ₦{plan['price']}",
+                    callback_data=f"buy_{plan['plan_id']}"
+                )
+            ]
+        )
+
+    await update.message.reply_text(
+        "🌐 Choose a Plan",
+        reply_markup=InlineKeyboardMarkup(
+            keyboard
+        )
+    )

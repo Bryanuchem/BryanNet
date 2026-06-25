@@ -19,8 +19,11 @@ from bot.keyboards import (
 
 from bot.handler_modules.subscriptions import (
     send_status,
-    send_plans,
-    buy_start
+    send_plans
+)
+
+from bot.handler_modules.devices import (
+    send_devices
 )
 
 async def start(
@@ -360,76 +363,74 @@ async def menu_callback(
             reply_markup=get_inline_menu()
         )
 
-
     elif query.data == "remove_device":
 
-        customer_response = requests.get(
-            f"{API_BASE_URL}/customers/telegram/"
-            f"{query.from_user.id}"
-        )
-
-        if customer_response.status_code != 200:
-
-            await query.edit_message_text(
-                "You are not registered."
+            customer_response = requests.get(
+                f"{API_BASE_URL}/customers/telegram/"
+                f"{query.from_user.id}"
             )
 
-            return
+            if customer_response.status_code != 200:
 
-        customer = customer_response.json()
+                await query.edit_message_text(
+                    "You are not registered."
+                )
 
-        devices_response = requests.get(
-            f"{API_BASE_URL}/devices/"
-            f"{customer['customer_id']}"
-        )
+                return
 
-        if devices_response.status_code != 200:
+            customer = customer_response.json()
 
-            await query.edit_message_text(
-                "Unable to retrieve devices."
+            devices_response = requests.get(
+                f"{API_BASE_URL}/devices/"
+                f"{customer['customer_id']}"
             )
 
-            return
+            if devices_response.status_code != 200:
 
-        device_list = devices_response.json()
+                await query.edit_message_text(
+                    "Unable to retrieve devices."
+                )
 
-        if not device_list:
+                return
 
-            await query.edit_message_text(
-                "No registered devices found."
-            )
+            device_list = devices_response.json()
 
-            return
+            if not device_list:
 
-        keyboard = []
+                await query.edit_message_text(
+                    "No registered devices found."
+                )
 
-        for device in device_list:
+                return
+
+            keyboard = []
+
+            for device in device_list:
+
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            device["device_name"],
+                            callback_data=f"remove_{device['device_id']}"
+                        )
+                    ]
+                )
 
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        device["device_name"],
-                        callback_data=f"remove_{device['device_id']}"
+                        "⬅ Back",
+                        callback_data="menu"
                     )
                 ]
             )
 
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "⬅ Back",
-                    callback_data="menu"
+            await query.edit_message_text(
+                "💻 Select a device to remove:",
+                reply_markup=InlineKeyboardMarkup(
+                    keyboard
                 )
-            ]
-        )
-
-        await query.edit_message_text(
-            "💻 Select a device to remove:",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
             )
-        )
-
     elif query.data.startswith(
         "remove_"
     ):
@@ -511,7 +512,6 @@ async def menu_callback(
             "Are you sure you want to remove this device?",
             reply_markup=keyboard
         )
-
     elif query.data.startswith(
         "confirm_remove_"
     ):
