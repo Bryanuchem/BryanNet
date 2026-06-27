@@ -25,8 +25,16 @@ class SessionService:
 
             return {
                 "next_action": NextAction.START_ONBOARDING,
+                "message": (
+                    "👋 Welcome to BryanNet!\n\n"
+                    "Let's get your account set up.\n\n"
+                    "Step 1 of 2\n\n"
+                    "What is your full name?"
+                ),
+                "keyboard": "REMOVE",
                 "customer": None
             }
+
 
         # Existing customer still entering name
 
@@ -42,13 +50,24 @@ class SessionService:
         if customer.registration_step == "PHONE":
 
             return {
-                "next_action": NextAction.ENTER_PHONE,
+                "next_action": NextAction.ENTER_NAME,
+                "message": (
+                    "Let's continue your onboarding.\n\n"
+                    "What is your full name?"
+                ),
+                "keyboard": "REMOVE",
                 "customer": customer
             }
 
         # Registration complete
-
-        return {
-            "next_action": NextAction.SHOW_MAIN_MENU,
-            "customer": customer
-        }
+        if customer.registration_step == "COMPLETE":
+            
+            return {
+                "next_action": NextAction.ENTER_PHONE,
+                "message": (
+                    "📱 Step 2 of 2\n\n"
+                    "Please share your phone number."
+                ),
+                "keyboard": "REQUEST_PHONE",
+                "customer": customer
+            }

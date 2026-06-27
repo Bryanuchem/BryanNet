@@ -31,5 +31,7 @@ def get_session(
 
     return SessionResponse(
         next_action=session["next_action"],
+        message=session["message"],
+        keyboard=session["keyboard"],
         customer=session["customer"]
     )
