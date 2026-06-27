@@ -1,21 +1,23 @@
 import requests
 
+# Telegram
 from telegram import (
     Update,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    ReplyKeyboardRemove
 )
 
 from telegram.ext import (
-    ContextTypes
+    ContextTypes,
+    ConversationHandler
 )
 
+# Local
 from bot.config import API_BASE_URL
-
-from bot.keyboards import (
-    get_main_keyboard,
-    get_inline_menu
-)
+from bot.session import render_session
+from bot.services.customer_service import CustomerService
+from bot.services.session_service import SessionService
 
 from bot.handler_modules.subscriptions import (
     send_status,
@@ -26,69 +28,93 @@ from bot.handler_modules.devices import (
     send_devices
 )
 
+from bot.keyboards import get_main_keyboard
+
 async def start(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    message = (
-        "📡 Welcome to BryanNet!\n\n"
-        "Your personal internet self-service assistant.\n\n"
-        "Whether you want to buy a plan, check your "
-        "subscription, or manage your devices, "
-        "I'm here to help.\n\n"
-        "Type /menu to get started."
+    telegram_user_id = update.effective_user.id
+
+    session = SessionService.get_session(
+        telegram_user_id
     )
 
-    await update.message.reply_text(
-        message,
-        reply_markup=get_main_keyboard()
+    if session is None:
+
+        await update.message.reply_text(
+            "Unable to retrieve your session."
+        )
+
+        return
+
+    if session["next_action"] == "START_ONBOARDING":
+
+        success = CustomerService.start_onboarding(
+            telegram_user_id
+        )
+
+        if not success:
+
+            await update.message.reply_text(
+                "Unable to start onboarding."
+            )
+
+            return
+
+        await render_session(
+            update.message,
+            telegram_user_id
+        )
+
+        return
+
+    if session["next_action"] == "ENTER_PHONE":
+
+        session["message"] = (
+            "Let's continue your onboarding.\n\n"
+            + session["message"]
+        )
+
+    await render_session(
+        update.message,
+        telegram_user_id,
+        session=session
     )
-        
+       
 async def menu(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
 
     message = (
-        "📡 BryanNet Assistant\n\n"
+        "🛰️ *BryanNet Assistant*\n\n"
+        "Choose an option below to get started.\n\n"
 
-        "━━━━━━━━━━━━━━━━━━\n\n"
+        "📊 *My Status*\n"
+        "View your active subscription and connection.\n\n"
 
-        "👤 Account\n"
-        "• /register\n"
-        "  Create your BryanNet account.\n\n"
+        "📋 *View Plans*\n"
+        "Browse all available internet plans.\n\n"
 
-        "• /status\n"
-        "  View your current subscription.\n\n"
+        "🌐 *Buy Internet*\n"
+        "Purchase a new internet plan.\n\n"
 
-        "━━━━━━━━━━━━━━━━━━\n\n"
+        "💻 *My Devices*\n"
+        "View and manage your registered devices.\n\n"
 
-        "🌐 Internet\n"
-        "• /plans\n"
-        "  View available internet plans.\n\n"
+        "❌ *Remove Device*\n"
+        "Remove one of your registered devices.\n\n"
 
-        "• /buy\n"
-        "  Purchase an internet plan.\n\n"
-
-        "━━━━━━━━━━━━━━━━━━\n\n"
-
-        "💻 Devices\n"
-        "• /devices\n"
-        "  View your registered devices.\n\n"
-
-        "• /remove_device\n"
-        "  Remove one of your devices.\n\n"
-
-        "━━━━━━━━━━━━━━━━━━\n\n"
-
-        "Need help?\n"
-        "Reply to any message or contact BryanNet support."
+        "💬 *Need help?*\n"
+        "Reply to any message to contact BryanNet support."
     )
 
     await update.message.reply_text(
         message,
-        reply_markup=get_inline_menu()
+        parse_mode="Markdown",
+        reply_markup=get_main_keyboard()
     )
 
 async def menu_callback(
@@ -224,7 +250,7 @@ async def menu_callback(
 
                     "❌ Cancel",
 
-                    callback_data="menu"
+                    callback_data="close"
 
                 )
 
@@ -344,7 +370,7 @@ async def menu_callback(
                 [
                     InlineKeyboardButton(
                         "🏠 Main Menu",
-                        callback_data="menu"
+                        callback_data="close"
                     )
                 ]
             ]
@@ -354,15 +380,13 @@ async def menu_callback(
             message,
             reply_markup=keyboard
         )        
+        
+    elif query.data == "close":
 
-    elif query.data == "menu":
-
-        await query.edit_message_text(
-            "📡 BryanNet Assistant\n\n"
-            "Choose an option below.",
-            reply_markup=get_inline_menu()
+        await query.edit_message_reply_markup(
+            reply_markup=None
         )
-
+    
     elif query.data == "remove_device":
 
             customer_response = requests.get(
@@ -420,7 +444,7 @@ async def menu_callback(
                 [
                     InlineKeyboardButton(
                         "⬅ Back",
-                        callback_data="menu"
+                        callback_data="close"
                     )
                 ]
             )
@@ -537,7 +561,7 @@ async def menu_callback(
                 [
                     InlineKeyboardButton(
                         "🏠 Main Menu",
-                        callback_data="menu"
+                        callback_data="close"
                     )
                 ]
             ]
@@ -549,4 +573,15 @@ async def menu_callback(
             "from your BryanNet account.",
             reply_markup=keyboard
         )
-  
+
+async def cancel(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    await update.message.reply_text(
+        "Operation cancelled.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END

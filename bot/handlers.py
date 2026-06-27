@@ -1,16 +1,8 @@
-from bot.handler_modules.registration import (
-    REGISTER_NAME,
-    REGISTER_PHONE,
-    register_start,
-    register_name,
-    register_phone,
-    register_cancel
-)
-
 from bot.handler_modules.menu import (
     start,
     menu,
-    menu_callback
+    menu_callback,
+    cancel
 )
 
 from bot.handler_modules.subscriptions import (
@@ -37,6 +29,10 @@ from bot.handler_modules.devices import (
     confirm_remove_device
 )
 
+from bot.handler_modules.onboarding import (
+    onboarding_handler
+)
+
 from telegram import Update
 
 
@@ -53,7 +49,6 @@ async def keyboard_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-
     text = update.message.text
 
     if text == "📊 My Status":
@@ -92,7 +87,7 @@ async def keyboard_handler(
         
 
 
-def register_handlers(app):
+def setup_handlers(app):
 
     app.add_handler(
         CommandHandler(
@@ -114,44 +109,7 @@ def register_handlers(app):
             plans
         )
     )
-    
-    registration_handler = (
-        ConversationHandler(
-            entry_points=[
-                CommandHandler(
-                    "register",
-                    register_start
-                )
-            ],
-            states={
-                REGISTER_NAME: [
-                    MessageHandler(
-                        filters.TEXT
-                        & ~filters.COMMAND,
-                        register_name
-                    )
-                ],
-                REGISTER_PHONE: [
-                    MessageHandler(
-                        filters.TEXT
-                        & ~filters.COMMAND,
-                        register_phone
-                    )
-                ]
-            },
-            fallbacks=[
-                CommandHandler(
-                    "cancel",
-                    register_cancel
-                )
-            ]
-        )
-    )
 
-    app.add_handler(
-        registration_handler
-    )   
-    
     app.add_handler(
     CommandHandler(
         "status",
@@ -193,7 +151,7 @@ def register_handlers(app):
             fallbacks=[
                 CommandHandler(
                     "cancel",
-                    register_cancel
+                    cancel
                 )
             ]
         )
@@ -229,7 +187,7 @@ def register_handlers(app):
         fallbacks=[
             CommandHandler(
                 "cancel",
-                register_cancel
+                cancel
             )
         ]
     )
@@ -246,7 +204,19 @@ def register_handlers(app):
     
     app.add_handler(
         MessageHandler(
+            (
+                filters.TEXT |
+                filters.CONTACT
+            ) & ~filters.COMMAND,
+            onboarding_handler
+        ),
+        group=0
+    )
+
+    app.add_handler(
+        MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             keyboard_handler
-        )
+        ),
+        group=1
     )

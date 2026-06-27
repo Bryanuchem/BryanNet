@@ -3,7 +3,7 @@ from telegram.ext import (
 )
 
 from bot.config import BOT_TOKEN
-from bot.handlers import register_handlers
+from bot.handlers import setup_handlers
 
 
 app = (
@@ -12,6 +12,6 @@ app = (
     .build()
 )
 
-register_handlers(app)
+setup_handlers(app)
 
 app.run_polling()
