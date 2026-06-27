@@ -26,10 +26,13 @@ class Customer(Base):
     phone_number = Column(
         String(20),
         unique=True,
-        nullable=False
+        nullable=True
     )
 
-    full_name = Column(String(150))
+    full_name = Column(
+        String(150),
+        nullable=True
+    )
 
     whatsapp_enabled = Column(
         Boolean,
@@ -57,8 +60,19 @@ class Customer(Base):
         unique=True,
         nullable=True
     )
-    
+    is_registered = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    registration_step = Column(
+        String(30),
+        nullable=False,
+        default="START"
+    )    
     created_at = Column(
         TIMESTAMP,
         server_default=func.now()
     )
+
