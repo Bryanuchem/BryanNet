@@ -2,6 +2,7 @@ from app.models.customer import Customer
 
 from app.enums.session import NextAction
 
+from app.enums.keyboard import KeyboardType
 
 class SessionService:
 
@@ -31,7 +32,7 @@ class SessionService:
                     "Step 1 of 2\n\n"
                     "What is your full name?"
                 ),
-                "keyboard": "REMOVE",
+                "keyboard": KeyboardType.REMOVE,
                 "customer": None
             }
 
@@ -42,26 +43,18 @@ class SessionService:
 
             return {
                 "next_action": NextAction.ENTER_NAME,
-                "customer": customer
-            }
-
-        # Existing customer still entering phone
-
-        if customer.registration_step == "PHONE":
-
-            return {
-                "next_action": NextAction.ENTER_NAME,
                 "message": (
                     "Let's continue your onboarding.\n\n"
                     "What is your full name?"
                 ),
-                "keyboard": "REMOVE",
+                "keyboard": KeyboardType.REMOVE,
                 "customer": customer
             }
-
-        # Registration complete
-        if customer.registration_step == "COMPLETE":
             
+        # Existing customer still entering phone
+
+        if customer.registration_step == "PHONE":
+
             return {
                 "next_action": NextAction.ENTER_PHONE,
                 "message": (
@@ -71,3 +64,15 @@ class SessionService:
                 "keyboard": "REQUEST_PHONE",
                 "customer": customer
             }
+
+        # Registration complete
+        if customer.registration_step == "COMPLETE":
+
+            return {
+                "next_action": NextAction.SHOW_MAIN_MENU,
+                "message": (
+                    f"👋 Welcome back, {customer.full_name}!"
+                ),
+                "keyboard": "MAIN_MENU",
+                "customer": customer
+            }          
