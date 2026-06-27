@@ -13,7 +13,7 @@ def get_main_keyboard():
             "💻 My Devices"
         ],
         [
-            "📡 Menu"
+            "📡 Menu",
             "❌ Remove Device",  
         ]
     ]
