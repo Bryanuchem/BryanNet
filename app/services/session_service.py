@@ -9,7 +9,8 @@ class SessionService:
     @staticmethod
     def get_session(
         db,
-        telegram_user_id
+        telegram_user_id,
+        first_login=False
     ):
 
         customer = (
@@ -26,6 +27,15 @@ class SessionService:
 
             return {
                 "next_action": NextAction.START_ONBOARDING,
+                "message": "",
+                "keyboard": KeyboardType.REMOVE,
+                "customer": None
+            }
+
+        if customer.registration_step == "START":
+
+            return {
+                "next_action": NextAction.ENTER_NAME,
                 "message": (
                     "👋 Welcome to BryanNet!\n\n"
                     "Let's get your account set up.\n\n"
@@ -33,24 +43,9 @@ class SessionService:
                     "What is your full name?"
                 ),
                 "keyboard": KeyboardType.REMOVE,
-                "customer": None
-            }
-
-
-        # Existing customer still entering name
-
-        if customer.registration_step == "NAME":
-
-            return {
-                "next_action": NextAction.ENTER_NAME,
-                "message": (
-                    "Let's continue your onboarding.\n\n"
-                    "What is your full name?"
-                ),
-                "keyboard": KeyboardType.REMOVE,
                 "customer": customer
             }
-            
+    
         # Existing customer still entering phone
 
         if customer.registration_step == "PHONE":
@@ -68,11 +63,22 @@ class SessionService:
         # Registration complete
         if customer.registration_step == "COMPLETE":
 
+            if first_login:
+
+                message = (
+                    f"🎉 Registration complete!\n\n"
+                    f"Welcome to BryanNet, {customer.full_name}!"
+                )
+
+            else:
+
+                message = (
+                    f"👋 Welcome back, {customer.full_name}!"
+                )
+
             return {
                 "next_action": NextAction.SHOW_MAIN_MENU,
-                "message": (
-                    f"👋 Welcome back, {customer.full_name}!"
-                ),
+                "message": message,
                 "keyboard": "MAIN_MENU",
                 "customer": customer
-            }          
+            }

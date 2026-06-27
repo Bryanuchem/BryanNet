@@ -49,7 +49,7 @@ class CustomerService:
         customer = Customer(
             telegram_user_id=telegram_user_id,
             is_registered=False,
-            registration_step="NAME"
+            registration_step="START"
         )
 
         db.add(customer)
