@@ -139,3 +139,11 @@ class CustomerService:
             )
             .first()
         )
+        
+    @staticmethod
+    def get_all_customers(db):
+        return (
+            db.query(Customer)
+            .order_by(Customer.customer_id)
+            .all()
+        )

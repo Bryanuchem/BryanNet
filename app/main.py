@@ -7,6 +7,7 @@ from app.api.device import router as device_router
 from app.api.dashboard import router as dashboard_router
 from app.api.health import router as health_router
 from app.api import session
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="BryanNet API"
@@ -45,6 +46,16 @@ app.include_router(
 app.include_router(
     session.router,
     prefix="/api/v1"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")

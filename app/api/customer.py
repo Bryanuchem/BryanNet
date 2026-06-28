@@ -105,6 +105,15 @@ def update_phone(
 
     return result
 
+@router.get(
+    "/",
+    response_model=list[CustomerResponse]
+)
+def get_all_customers(
+    db: Session = Depends(get_db)
+):
+    return CustomerService.get_all_customers(db)
+
 
 @router.get(
     "/{phone_number}",
@@ -143,3 +152,5 @@ def get_customer_by_telegram_id(
         )
 
     return customer
+
+
