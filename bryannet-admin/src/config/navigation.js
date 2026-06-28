@@ -1,35 +1,85 @@
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import Inventory2Icon from "@mui/icons-material/Inventory2";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import DevicesIcon from "@mui/icons-material/Devices";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
+import RouterRoundedIcon from "@mui/icons-material/RouterRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 
 const navigation = [
+    // =========================
+    // Overview
+    // =========================
+
     {
+        section: "Overview",
         label: "Dashboard",
-        path: "/",
-        icon: DashboardIcon,
+        path: "/dashboard",
+        icon: DashboardRoundedIcon,
     },
+
+    // =========================
+    // Customers
+    // =========================
+
     {
+        section: "Customers",
         label: "Customers",
         path: "/customers",
-        icon: PeopleIcon,
+        icon: PeopleAltRoundedIcon,
     },
     {
-        label: "Plans",
-        path: "/plans",
-        icon: Inventory2Icon,
-    },
-    {
-        label: "Subscriptions",
-        path: "/subscriptions",
-        icon: ReceiptLongIcon,
-    },
-    {
+        section: "Customers",
         label: "Devices",
         path: "/devices",
-        icon: DevicesIcon,
-    }
+        icon: RouterRoundedIcon,
+    },
+
+    // =========================
+    // Services
+    // =========================
+
+    {
+        section: "Services",
+        label: "Plans",
+        path: "/plans",
+        icon: Inventory2RoundedIcon,
+    },
+    {
+        section: "Services",
+        label: "Subscriptions",
+        path: "/subscriptions",
+        icon: ReceiptLongRoundedIcon,
+    },
+
+    // =========================
+    // Operations
+    // =========================
+
+    {
+        section: "Operations",
+        label: "Payments",
+        path: "/payments",
+        icon: PaymentsRoundedIcon,
+    },
+
+    // =========================
+    // System
+    // =========================
+
+    {
+        section: "System",
+        label: "Administration",
+        path: "/administration",
+        icon: AdminPanelSettingsRoundedIcon,
+    },
+    {
+        section: "System",
+        label: "Settings",
+        path: "/settings",
+        icon: SettingsRoundedIcon,
+    },
 ];
 
 export default navigation;

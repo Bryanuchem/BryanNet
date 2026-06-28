@@ -8,6 +8,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.health import router as health_router
 from app.api import session
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.auth import router as auth_router
 
 app = FastAPI(
     title="BryanNet API"
@@ -58,8 +59,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(
+    auth_router,
+    prefix="/api/v1"
+)
+
 @app.get("/")
 def root():
     return {
         "message": "BryanNet API Running"
     }
+    
+    
