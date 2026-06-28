@@ -20,15 +20,3 @@ export function formatStatus(status) {
 
     return status.charAt(0).toUpperCase() + status.slice(1);
 }
-
-export function formatRegistrationStatus(isRegistered) {
-    return isRegistered
-        ? "Registered"
-        : "Pending";
-}
-
-export function formatTelegramStatus(telegramUserId) {
-    return telegramUserId
-        ? "Linked"
-        : "Not Linked";
-}
