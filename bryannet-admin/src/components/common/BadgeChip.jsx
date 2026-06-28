@@ -22,6 +22,48 @@ const registrationStepConfig = {
     },
 };
 
+const statusConfig = {
+    ACTIVE: {
+        label: "Active",
+        color: "success",
+    },
+
+    INACTIVE: {
+        label: "Inactive",
+        color: "default",
+    },
+
+    REGISTERED: {
+        label: "Registered",
+        color: "success",
+    },
+
+    PENDING: {
+        label: "Pending",
+        color: "warning",
+    },
+
+    SUSPENDED: {
+        label: "Suspended",
+        color: "error",
+    },
+
+    EXPIRED: {
+        label: "Expired",
+        color: "error",
+    },
+
+    ONLINE: {
+        label: "Online",
+        color: "success",
+    },
+
+    OFFLINE: {
+        label: "Offline",
+        color: "default",
+    },
+};
+
 function BadgeChip({
     label,
     color = "default",
@@ -29,11 +71,25 @@ function BadgeChip({
     value,
 }) {
     if (variant === "registrationStep") {
-        const config =
-            registrationStepConfig[value] || {
-                label: value,
-                color: "default",
-            };
+        const config = registrationStepConfig[value] || {
+            label: value,
+            color: "default",
+        };
+
+        return (
+            <Chip
+                label={config.label}
+                color={config.color}
+                size="small"
+            />
+        );
+    }
+
+    if (variant === "status") {
+        const config = statusConfig[value] || {
+            label: value,
+            color: "default",
+        };
 
         return (
             <Chip

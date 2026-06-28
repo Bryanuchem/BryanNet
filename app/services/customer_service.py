@@ -1,20 +1,38 @@
+from fastapi import HTTPException
+
 from app.models.customer import Customer
 
 
 class CustomerService:
 
     @staticmethod
-    def create_customer(
+    def register_customer(
         db,
         phone_number,
         full_name,
         telegram_user_id=None
     ):
 
+        existing_customer = (
+            db.query(Customer)
+            .filter(
+                Customer.phone_number == phone_number
+            )
+            .first()
+        )
+
+        if existing_customer:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer with this phone number already exists."
+            )
+
         customer = Customer(
             phone_number=phone_number,
             full_name=full_name,
-            telegram_user_id=telegram_user_id
+            telegram_user_id=telegram_user_id,
+            is_registered=True,
+            registration_step="COMPLETE",
         )
 
         db.add(customer)
@@ -22,7 +40,50 @@ class CustomerService:
         db.refresh(customer)
 
         return customer
-    
+
+    @staticmethod
+    def update_customer(
+        db,
+        customer_id,
+        customer_data
+    ):
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.customer_id == customer_id
+            )
+            .first()
+        )
+
+        if not customer:
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found."
+            )
+
+        existing_customer = (
+            db.query(Customer)
+            .filter(
+                Customer.phone_number == customer_data.phone_number,
+                Customer.customer_id != customer_id
+            )
+            .first()
+        )
+
+        if existing_customer:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer with this phone number already exists."
+            )
+
+        customer.full_name = customer_data.full_name
+        customer.phone_number = customer_data.phone_number
+
+        db.commit()
+        db.refresh(customer)
+
+        return customer
+
     @staticmethod
     def start_onboarding(
         db,
@@ -56,7 +117,7 @@ class CustomerService:
         db.commit()
         db.refresh(customer)
 
-        return customer    
+        return customer
 
     @staticmethod
     def update_name(
@@ -83,7 +144,7 @@ class CustomerService:
         db.refresh(customer)
 
         return customer
-    
+
     @staticmethod
     def update_phone(
         db,
@@ -124,7 +185,7 @@ class CustomerService:
             )
             .first()
         )
-        
+
     @staticmethod
     def get_customer_by_telegram_id(
         db,
@@ -134,12 +195,11 @@ class CustomerService:
         return (
             db.query(Customer)
             .filter(
-                Customer.telegram_user_id
-                == telegram_user_id
+                Customer.telegram_user_id == telegram_user_id
             )
             .first()
         )
-        
+
     @staticmethod
     def get_all_customers(db):
         return (

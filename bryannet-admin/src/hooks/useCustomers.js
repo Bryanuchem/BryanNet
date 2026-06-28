@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getCustomers } from "../services/customerService";
+import { getCustomers } from "../services/customers";
 
 export function useCustomers() {
     return useQuery({

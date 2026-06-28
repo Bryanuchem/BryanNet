@@ -32,6 +32,7 @@ function CustomerTable({
     onPageChange,
     onRowsPerPageChange,
     onRowClick,
+    onEdit,
 })
 
 {
@@ -207,22 +208,29 @@ function CustomerTable({
                                             items={[
                                                 {
                                                     label: "View Details",
-                                                    icon: <VisibilityIcon fontSize="small" />,
-                                                    onClick: () => onRowClick(customer),
+                                                    icon: (
+                                                        <VisibilityIcon fontSize="small" />
+                                                    ),
+                                                    onClick: () =>
+                                                        onRowClick(customer),
                                                 },
                                                 {
                                                     label: "Edit Customer",
-                                                    icon: <EditIcon fontSize="small" />,
-                                                    disabled: true,
+                                                    icon: (
+                                                        <EditIcon fontSize="small" />
+                                                    ),
+                                                    onClick: () =>
+                                                        onEdit(customer),
                                                 },
                                                 {
                                                     label: "Suspend Customer",
-                                                    icon: <BlockIcon fontSize="small" />,
+                                                    icon: (
+                                                        <BlockIcon fontSize="small" />
+                                                    ),
                                                     disabled: true,
                                                 },
                                             ]}
-                                        />
-                                    </TableCell>
+                                        />                                    </TableCell>
                                 </TableRow>
                             ))}
                     </TableBody>

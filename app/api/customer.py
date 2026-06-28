@@ -10,10 +10,11 @@ from app.database.dependencies import get_db
 
 from app.schemas.customer import (
     CustomerCreate,
+    CustomerUpdate,
     CustomerOnboardingStart,
     CustomerUpdateName,
     CustomerUpdatePhone,
-    CustomerResponse
+    CustomerResponse,
 )
 
 from app.services.customer_service import (
@@ -35,11 +36,28 @@ def register_customer(
     db: Session = Depends(get_db)
 ):
 
-    return CustomerService.create_customer(
+    return CustomerService.register_customer(
         db=db,
         phone_number=customer.phone_number,
         full_name=customer.full_name,
         telegram_user_id=customer.telegram_user_id
+    )
+
+
+@router.put(
+    "/{customer_id}",
+    response_model=CustomerResponse
+)
+def update_customer(
+    customer_id: int,
+    customer: CustomerUpdate,
+    db: Session = Depends(get_db)
+):
+
+    return CustomerService.update_customer(
+        db=db,
+        customer_id=customer_id,
+        customer_data=customer,
     )
 
 
@@ -105,6 +123,7 @@ def update_phone(
 
     return result
 
+
 @router.get(
     "/",
     response_model=list[CustomerResponse]
@@ -152,5 +171,3 @@ def get_customer_by_telegram_id(
         )
 
     return customer
-
-
