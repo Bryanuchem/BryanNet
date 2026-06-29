@@ -27,4 +27,3 @@ watchfiles==1.2.0
 websockets==16.0
 python-jose[cryptography]
 passlib[bcrypt]==1.7.4
-@mui/x-data-grid
