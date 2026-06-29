@@ -13,6 +13,15 @@ export const getSubscription = async (subscriptionId) => {
     return response.data;
 };
 
+export const purchaseSubscription = async (data) => {
+    const response = await apiClient.post(
+        "/subscriptions/purchase",
+        data
+    );
+
+    return response.data;
+};
+
 export const updateSubscription = async ({
     subscriptionId,
     data,

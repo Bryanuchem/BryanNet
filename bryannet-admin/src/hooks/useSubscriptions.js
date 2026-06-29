@@ -8,6 +8,7 @@ import {
     deleteSubscription,
     getSubscription,
     getSubscriptions,
+    purchaseSubscription,
     renewSubscription,
     updateSubscription,
     updateSubscriptionStatus,
@@ -16,13 +17,11 @@ import {
 const QUERY_KEY = ["subscriptions"];
 
 
-
 export const useSubscriptions = () =>
     useQuery({
         queryKey: QUERY_KEY,
         queryFn: getSubscriptions,
     });
-
 
 
 export const useSubscription = (
@@ -39,6 +38,24 @@ export const useSubscription = (
     });
 
 
+export const usePurchaseSubscription = () => {
+
+    const queryClient = useQueryClient();
+
+    return useMutation({
+
+        mutationFn: purchaseSubscription,
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: QUERY_KEY,
+            });
+        },
+
+    });
+
+};
+
 
 export const useUpdateSubscription = () => {
 
@@ -53,9 +70,10 @@ export const useUpdateSubscription = () => {
                 queryKey: QUERY_KEY,
             });
         },
-    });
-};
 
+    });
+
+};
 
 
 export const useUpdateSubscriptionStatus = () => {
@@ -71,8 +89,11 @@ export const useUpdateSubscriptionStatus = () => {
                 queryKey: QUERY_KEY,
             });
         },
+
     });
+
 };
+
 
 export const useRenewSubscription = () => {
 
@@ -92,6 +113,7 @@ export const useRenewSubscription = () => {
 
 };
 
+
 export const useDeleteSubscription = () => {
 
     const queryClient = useQueryClient();
@@ -105,5 +127,7 @@ export const useDeleteSubscription = () => {
                 queryKey: QUERY_KEY,
             });
         },
+
     });
+
 };

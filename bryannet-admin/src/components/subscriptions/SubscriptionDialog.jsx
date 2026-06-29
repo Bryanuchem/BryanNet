@@ -21,23 +21,24 @@ function SubscriptionDialog({
     onChange,
 }) {
 
-    const readOnly = mode === "view";
-
     if (!subscription) {
         return null;
     }
 
+    const isView = mode === "view";
+
     return (
+
         <Dialog
             open={open}
             onClose={onClose}
             fullWidth
-            maxWidth="sm"
+            maxWidth="md"
         >
 
             <DialogTitle>
 
-                {mode === "view"
+                {isView
                     ? "Subscription Details"
                     : "Edit Subscription"}
 
@@ -56,8 +57,10 @@ function SubscriptionDialog({
                     >
 
                         <Grid
-                            item
-                            xs={12}
+                            size={{
+                                xs: 12,
+                                md: 6,
+                            }}
                         >
 
                             <TextField
@@ -74,13 +77,15 @@ function SubscriptionDialog({
                         </Grid>
 
                         <Grid
-                            item
-                            xs={12}
+                            size={{
+                                xs: 12,
+                                md: 6,
+                            }}
                         >
 
                             <TextField
                                 fullWidth
-                                label="Plan"
+                                label="Internet Plan"
                                 value={
                                     subscription.plan_name ?? ""
                                 }
@@ -101,63 +106,105 @@ function SubscriptionDialog({
                     >
 
                         <Grid
-                            item
-                            xs={6}
+                            size={{
+                                xs: 12,
+                                md: 6,
+                            }}
                         >
 
                             <TextField
                                 fullWidth
                                 label="Start Date"
                                 type="date"
+                                name="start_date"
                                 value={
-                                    subscription.start_date
-                                        ?.slice(0, 10) ?? ""
+                                    subscription.start_date?.slice(0, 10) ?? ""
                                 }
                                 onChange={onChange}
-                                name="start_date"
                                 InputLabelProps={{
                                     shrink: true,
                                 }}
                                 InputProps={{
-                                    readOnly,
+                                    readOnly: isView,
                                 }}
                             />
 
                         </Grid>
 
                         <Grid
-                            item
-                            xs={6}
+                            size={{
+                                xs: 12,
+                                md: 6,
+                            }}
                         >
 
                             <TextField
                                 fullWidth
                                 label="Expiry Date"
                                 type="date"
+                                name="expiry_date"
                                 value={
-                                    subscription.expiry_date
-                                        ?.slice(0, 10) ?? ""
+                                    subscription.expiry_date?.slice(0, 10) ?? ""
                                 }
                                 onChange={onChange}
-                                name="expiry_date"
                                 InputLabelProps={{
                                     shrink: true,
                                 }}
                                 InputProps={{
-                                    readOnly,
+                                    readOnly: isView,
                                 }}
                             />
 
                         </Grid>
 
                         <Grid
-                            item
-                            xs={6}
+                            size={{
+                                xs: 12,
+                                md: 4,
+                            }}
                         >
 
                             <TextField
                                 fullWidth
-                                label="Activation Sequence"
+                                label="Price"
+                                value={`₦${Number(
+                                    subscription.price ?? 0
+                                ).toLocaleString()}`}
+                                InputProps={{
+                                    readOnly: true,
+                                }}
+                            />
+
+                        </Grid>
+
+                        <Grid
+                            size={{
+                                xs: 12,
+                                md: 4,
+                            }}
+                        >
+
+                            <TextField
+                                fullWidth
+                                label="Remaining Days"
+                                value={`${subscription.remaining_days ?? 0} Days`}
+                                InputProps={{
+                                    readOnly: true,
+                                }}
+                            />
+
+                        </Grid>
+
+                        <Grid
+                            size={{
+                                xs: 12,
+                                md: 4,
+                            }}
+                        >
+
+                            <TextField
+                                fullWidth
+                                label="Activation Queue"
                                 name="activation_sequence"
                                 type="number"
                                 value={
@@ -165,33 +212,28 @@ function SubscriptionDialog({
                                 }
                                 onChange={onChange}
                                 InputProps={{
-                                    readOnly,
+                                    readOnly: isView,
                                 }}
                             />
 
                         </Grid>
 
-                        <Grid
-                            item
-                            xs={6}
-                        >
-
-                            <Stack
-                                sx={{ mt: 1 }}
-                            >
-
-                                <BadgeChip
-                                    variant="status"
-                                    value={
-                                        subscription.status
-                                    }
-                                />
-
-                            </Stack>
-
-                        </Grid>
-
                     </Grid>
+
+                    <Divider />
+
+                    <Stack
+                        direction="row"
+                        spacing={2}
+                        alignItems="center"
+                    >
+
+                        <BadgeChip
+                            variant="status"
+                            value={subscription.status}
+                        />
+
+                    </Stack>
 
                 </Stack>
 
@@ -205,7 +247,7 @@ function SubscriptionDialog({
                     Close
                 </Button>
 
-                {mode === "edit" && (
+                {!isView && (
 
                     <Button
                         variant="contained"
@@ -219,6 +261,7 @@ function SubscriptionDialog({
             </DialogActions>
 
         </Dialog>
+
     );
 
 }

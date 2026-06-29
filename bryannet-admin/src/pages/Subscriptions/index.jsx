@@ -4,8 +4,25 @@ import {
     Alert,
     Box,
     Snackbar,
-    Typography,
 } from "@mui/material";
+
+import AddIcon from "@mui/icons-material/Add";
+
+import PageHeader from "../../components/common/PageHeader";
+import TableToolbar from "../../components/common/TableToolbar";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+
+import SubscriptionTable from "../../components/subscriptions/SubscriptionTable";
+import SubscriptionDialog from "../../components/subscriptions/SubscriptionDialog";
+import SubscriptionPurchaseDialog from "../../components/subscriptions/SubscriptionPurchaseDialog";
+
+import {
+    useCustomers,
+} from "../../hooks/useCustomers";
+
+import {
+    usePlans,
+} from "../../hooks/usePlans";
 
 import {
     useDeleteSubscription,
@@ -13,21 +30,27 @@ import {
     useSubscriptions,
     useUpdateSubscription,
     useUpdateSubscriptionStatus,
+    usePurchaseSubscription,
 } from "../../hooks/useSubscriptions";
 
-import SubscriptionTable from "../../components/subscriptions/SubscriptionTable";
-import SubscriptionDialog from "../../components/subscriptions/SubscriptionDialog";
-
-import TableToolbar from "../../components/common/TableToolbar";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
-
 function Subscriptions() {
+
+    const {
+        data: customers = [],
+    } = useCustomers();
+
+    const {
+        data: plans = [],
+    } = usePlans();
 
     const {
         data: subscriptions = [],
         isLoading,
         refetch,
     } = useSubscriptions();
+
+    const purchaseSubscription =
+        usePurchaseSubscription();
 
     const updateSubscription =
         useUpdateSubscription();
@@ -41,27 +64,33 @@ function Subscriptions() {
     const deleteSubscription =
         useDeleteSubscription();
 
-
     const [search, setSearch] =
         useState("");
 
-    const [statusFilter, setStatusFilter] =
-        useState("all");
+    const [
+        statusFilter,
+        setStatusFilter,
+    ] = useState("all");
 
+    const [
+        dialogOpen,
+        setDialogOpen,
+    ] = useState(false);
 
+    const [
+        purchaseDialogOpen,
+        setPurchaseDialogOpen,
+    ] = useState(false);
 
-    const [dialogOpen, setDialogOpen] =
-        useState(false);
-
-    const [dialogMode, setDialogMode] =
-        useState("view");
+    const [
+        dialogMode,
+        setDialogMode,
+    ] = useState("view");
 
     const [
         selectedSubscription,
         setSelectedSubscription,
     ] = useState(null);
-
-
 
     const [
         confirmOpen,
@@ -83,8 +112,6 @@ function Subscriptions() {
         setConfirmAction,
     ] = useState(null);
 
-
-
     const [
         snackbar,
         setSnackbar,
@@ -94,10 +121,15 @@ function Subscriptions() {
         message: "",
     });
 
-    const [page, setPage] = useState(0);
+    const [
+        page,
+        setPage,
+    ] = useState(0);
 
-    const [rowsPerPage, setRowsPerPage] =
-        useState(10);
+    const [
+        rowsPerPage,
+        setRowsPerPage,
+    ] = useState(10);
 
     const filteredSubscriptions =
         useMemo(() => {
@@ -126,10 +158,7 @@ function Subscriptions() {
                             subscription.subscription_id
                         ).includes(searchTerm);
 
-
-
-                    let matchesStatus =
-                        true;
+                    let matchesStatus = true;
 
                     switch (statusFilter) {
 
@@ -154,25 +183,23 @@ function Subscriptions() {
 
                                 &&
 
-                                subscription.remaining_days
-                                <= 7;
+                                subscription.remaining_days <= 7;
 
                             break;
 
                         default:
 
-                            matchesStatus =
-                                true;
+                            matchesStatus = true;
 
                     }
 
                     return (
-                        matchesSearch
-                        &&
+                        matchesSearch &&
                         matchesStatus
                     );
 
                 }
+
             );
 
         }, [
@@ -180,8 +207,6 @@ function Subscriptions() {
             search,
             statusFilter,
         ]);
-
-
 
     const filters = [
 
@@ -222,9 +247,27 @@ function Subscriptions() {
 
     ];
 
-    const handleView = (subscription) => {
+    const handleCreate = () => {
 
-        setSelectedSubscription(subscription);
+        setSelectedSubscription({
+
+            customer_id: "",
+
+            plan_id: "",
+
+        });
+
+        setPurchaseDialogOpen(true);
+
+    };
+
+    const handleView = (
+        subscription
+    ) => {
+
+        setSelectedSubscription(
+            subscription
+        );
 
         setDialogMode("view");
 
@@ -232,11 +275,14 @@ function Subscriptions() {
 
     };
 
-
-    const handleEdit = (subscription) => {
+    const handleEdit = (
+        subscription
+    ) => {
 
         setSelectedSubscription({
+
             ...subscription,
+
         });
 
         setDialogMode("edit");
@@ -245,21 +291,26 @@ function Subscriptions() {
 
     };
 
-
-    const handleDialogChange = (event) => {
+    const handleDialogChange = (
+        event
+    ) => {
 
         const {
             name,
             value,
         } = event.target;
 
-        setSelectedSubscription((previous) => ({
-            ...previous,
-            [name]: value,
-        }));
+        setSelectedSubscription(
+            (previous) => ({
+
+                ...previous,
+
+                [name]: value,
+
+            })
+        );
 
     };
-
 
     const handleDialogClose = () => {
 
@@ -269,6 +320,13 @@ function Subscriptions() {
 
     };
 
+    const handlePurchaseDialogClose = () => {
+
+        setPurchaseDialogOpen(false);
+
+        setSelectedSubscription(null);
+
+    };
 
     const handleSave = async () => {
 
@@ -329,13 +387,60 @@ function Subscriptions() {
 
     };
 
+    const handlePurchase = async () => {
+
+        try {
+
+            await purchaseSubscription.mutateAsync({
+
+                customer_id:
+                    selectedSubscription.customer_id,
+
+                plan_id:
+                    selectedSubscription.plan_id,
+
+            });
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "success",
+
+                message:
+                    "Subscription created successfully.",
+
+            });
+
+            handlePurchaseDialogClose();
+
+            refetch();
+
+        } catch {
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "error",
+
+                message:
+                    "Failed to create subscription.",
+
+            });
+
+        }
+
+    };
 
     const handleStatusChange = (
         subscription,
         status
     ) => {
 
-        setConfirmTitle("Update Subscription");
+        setConfirmTitle(
+            "Update Subscription"
+        );
 
         setConfirmMessage(
             `Change subscription status to "${status}"?`
@@ -389,57 +494,60 @@ function Subscriptions() {
     };
 
 
-const handleRenew = (
-    subscription
-) => {
+    const handleRenew = (
+        subscription
+    ) => {
 
-    setConfirmTitle(
-        "Renew Subscription"
-    );
+        setConfirmTitle(
+            "Renew Subscription"
+        );
 
-    setConfirmMessage(
-        `Queue another "${subscription.plan_name}" subscription for ${subscription.customer_name}?`
-    );
+        setConfirmMessage(
+            `Queue another "${subscription.plan_name}" subscription for ${subscription.customer_name}?`
+        );
 
-    setConfirmAction(() => async () => {
+        setConfirmAction(() => async () => {
 
-        try {
+            try {
 
-            await renewSubscription.mutateAsync(
-                subscription.subscription_id
-            );
+                await renewSubscription.mutateAsync(
+                    subscription.subscription_id
+                );
 
-            setSnackbar({
+                setSnackbar({
 
-                open: true,
+                    open: true,
 
-                severity: "success",
+                    severity: "success",
 
-                message:
-                    "Subscription renewed successfully.",
+                    message:
+                        "Subscription renewed successfully.",
 
-            });
+                });
 
-        } catch {
+                refetch();
 
-            setSnackbar({
+            } catch {
 
-                open: true,
+                setSnackbar({
 
-                severity: "error",
+                    open: true,
 
-                message:
-                    "Failed to renew subscription.",
+                    severity: "error",
 
-            });
+                    message:
+                        "Failed to renew subscription.",
 
-        }
+                });
 
-    });
+            }
 
-    setConfirmOpen(true);
+        });
 
-};
+        setConfirmOpen(true);
+
+    };
+
 
     const handleDelete = (
         subscription
@@ -495,7 +603,6 @@ const handleRenew = (
 
     };
 
-
     const handleConfirm = async () => {
 
         if (confirmAction) {
@@ -528,27 +635,20 @@ const handleRenew = (
 
         }));
 
-    };    
+    };
+
+
     return (
+
         <Box>
 
-            <Typography
-                variant="h4"
-                fontWeight={700}
-                gutterBottom
-            >
-                Subscriptions
-            </Typography>
-
-            <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ mb: 3 }}
-            >
-                Manage customer subscriptions,
-                renew plans, suspend services,
-                and monitor subscription status.
-            </Typography>
+            <PageHeader
+                title="Subscriptions"
+                subtitle="Manage customer subscriptions, renew plans, suspend services and monitor subscription status."
+                actionLabel="New Subscription"
+                actionIcon={<AddIcon />}
+                onAction={handleCreate}
+            />
 
             <TableToolbar
                 search={search}
@@ -571,10 +671,16 @@ const handleRenew = (
                     setPage(newPage)
                 }
                 onRowsPerPageChange={(event) => {
+
                     setRowsPerPage(
-                        parseInt(event.target.value, 10)
+                        parseInt(
+                            event.target.value,
+                            10
+                        )
                     );
+
                     setPage(0);
+
                 }}
                 onView={handleView}
                 onEdit={handleEdit}
@@ -591,6 +697,16 @@ const handleRenew = (
                 onSave={handleSave}
                 onChange={handleDialogChange}
             />
+
+            <SubscriptionPurchaseDialog
+                open={purchaseDialogOpen}
+                customers={customers}
+                plans={plans}
+                subscription={selectedSubscription}
+                onChange={handleDialogChange}
+                onClose={handlePurchaseDialogClose}
+                onPurchase={handlePurchase}
+            />            
 
             <ConfirmDialog
                 open={confirmOpen}
@@ -615,15 +731,18 @@ const handleRenew = (
                     severity={snackbar.severity}
                     onClose={handleSnackbarClose}
                     variant="filled"
-                    sx={{ width: "100%" }}
+                    sx={{
+                        width: "100%",
+                    }}
                 >
                     {snackbar.message}
                 </Alert>
             </Snackbar>
 
         </Box>
+
     );
 
 }
 
-export default Subscriptions;    
+export default Subscriptions;
