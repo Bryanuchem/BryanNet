@@ -11,6 +11,7 @@ import AddIcon from "@mui/icons-material/Add";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import AppSnackbar from "../../components/common/AppSnackbar";
+import SearchBar from "../../components/common/SearchBar";
 
 import DeviceTable from "../../components/devices/DeviceTable";
 import DeviceDialog from "../../components/devices/DeviceDialog";
@@ -61,6 +62,9 @@ function Devices() {
             message: "",
         });
 
+    const [searchTerm, setSearchTerm] =
+        useState("");
+
     const sortedCustomers = useMemo(() => {
 
         return [...customers].sort((a, b) => {
@@ -78,6 +82,39 @@ function Devices() {
         });
 
     }, [customers]);
+
+    const filteredDevices = useMemo(() => {
+
+        const query = searchTerm
+            .trim()
+            .toLowerCase();
+
+        if (!query) {
+            return devices;
+        }
+
+        return devices.filter((device) => {
+
+            return (
+                device.customer_name
+                    ?.toLowerCase()
+                    .includes(query) ||
+
+                String(device.customer_id)
+                    .includes(query) ||
+
+                device.device_name
+                    ?.toLowerCase()
+                    .includes(query) ||
+
+                device.mac_address
+                    ?.toLowerCase()
+                    .includes(query)
+            );
+
+        });
+
+    }, [devices, searchTerm]);
 
     const handleOpenRegisterDialog = () => {
         setRegisterDialogOpen(true);
@@ -226,8 +263,16 @@ function Devices() {
                 onAction={handleOpenRegisterDialog}
             />
 
+            <SearchBar
+                placeholder="Search by customer, customer ID, device name or MAC address..."
+                value={searchTerm}
+                onChange={(event) =>
+                    setSearchTerm(event.target.value)
+                }
+            />
+
             <DeviceTable
-                devices={devices}
+                devices={filteredDevices}
                 onView={handleOpenDetailsDialog}
                 onDelete={handleOpenRemoveDialog}
             />

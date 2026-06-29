@@ -96,7 +96,10 @@ class DeviceService:
                 Device.customer_id ==
                 Customer.customer_id
             )
-            .order_by(Device.created_at.desc())
+            .order_by(
+                Device.customer_id,
+                Device.device_id
+            )
             .all()
         )
 

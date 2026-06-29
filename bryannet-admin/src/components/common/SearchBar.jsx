@@ -14,7 +14,9 @@ function SearchBar({
             value={value}
             onChange={onChange}
             placeholder={placeholder}
-            sx={{ mb: 4 }}
+            sx={{
+                mb: 4,
+            }}
             InputProps={{
                 startAdornment: (
                     <InputAdornment position="start">
