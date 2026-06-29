@@ -101,8 +101,7 @@ function DeviceTable({
                             <TableCell>
 
                                 <BadgeChip
-                                    variant="status"
-                                    value={device.device_status}
+                                    status={device.device_status}
                                 />
 
                             </TableCell>

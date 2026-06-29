@@ -157,12 +157,11 @@ function SubscriptionTable({
 
                                     <TableCell>
 
-                                        <BadgeChip
-                                            variant="status"
-                                            value={
-                                                subscription.status
-                                            }
-                                        />
+                                    <BadgeChip
+                                        status={
+                                            subscription.status
+                                        }
+/>
 
                                     </TableCell>
 
