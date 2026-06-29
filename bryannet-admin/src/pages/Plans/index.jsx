@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
 
 import {
     Alert,
@@ -45,23 +48,25 @@ const PlansPage = () => {
         severity: "success",
     });
 
-    useEffect(() => {
-        fetchPlans();
-    }, []);
+    async function fetchPlans() {
 
-    const fetchPlans = async () => {
         try {
+
             setLoading(true);
+
             setError("");
 
             const data = await getPlans();
+
             setPlans(data);
+
         } catch (err) {
+
             console.error(err);
 
             setError(
                 err.response?.data?.detail ||
-                    "Failed to load plans."
+                "Failed to load plans."
             );
 
             setSnackbar({
@@ -71,10 +76,20 @@ const PlansPage = () => {
                     "Failed to load plans.",
                 severity: "error",
             });
+
         } finally {
+
             setLoading(false);
+
         }
-    };
+
+    }
+
+    useEffect(() => {
+
+        fetchPlans();
+
+    }, []);
 
     const handleOpenDialog = () => {
         setSelectedPlan(null);
@@ -94,11 +109,13 @@ const PlansPage = () => {
     const handleSubmitPlan = async (formData) => {
         try {
             if (selectedPlan) {
-                await updatePlan(
-                    selectedPlan.plan_id,
-                    formData
-                );
+                    await updatePlan({
 
+                        planId: selectedPlan.plan_id,
+
+                        data: formData,
+
+                    });
                 setSnackbar({
                     open: true,
                     message:
@@ -147,10 +164,13 @@ const PlansPage = () => {
 
     const handleConfirmToggleStatus = async () => {
         try {
-            await updatePlanStatus(
-                planToToggle.plan_id,
-                !planToToggle.is_active
-            );
+            await updatePlanStatus({
+
+                planId: planToToggle.plan_id,
+
+                isActive: !planToToggle.is_active,
+
+            });
 
             setSnackbar({
                 open: true,
