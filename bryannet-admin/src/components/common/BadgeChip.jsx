@@ -68,6 +68,11 @@ const statusConfig = {
         color: "error",
     },
 
+    REMOVED: {
+        label: "Removed",
+        color: "default",
+    },
+
     ONLINE: {
         label: "Online",
         color: "success",

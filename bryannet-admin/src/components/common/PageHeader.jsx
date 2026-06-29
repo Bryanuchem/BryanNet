@@ -1,13 +1,18 @@
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
+import {
+    Box,
+    Button,
+    Typography,
+} from "@mui/material";
 
-function PageHeader({ title, subtitle }) {
+function PageHeader({
+    title,
+    subtitle,
+    actionLabel,
+    actionIcon,
+    onAction,
+}) {
     return (
-        <Box
-            sx={{
-                mb: 4,
-            }}
-        >
+        <Box sx={{ mb: 4 }}>
             <Typography
                 variant="h4"
                 fontWeight="bold"
@@ -23,6 +28,17 @@ function PageHeader({ title, subtitle }) {
                 >
                     {subtitle}
                 </Typography>
+            )}
+
+            {actionLabel && (
+                <Button
+                    variant="contained"
+                    startIcon={actionIcon}
+                    onClick={onAction}
+                    sx={{ mt: 3 }}
+                >
+                    {actionLabel}
+                </Button>
             )}
         </Box>
     );

@@ -38,14 +38,23 @@ def register_device(
         device_name=device.device_name,
         mac_address=device.mac_address
     )
-    
+
+
+@router.get(
+    "/",
+    response_model=list[DeviceResponse]
+)
+def get_all_devices(
+    db: Session = Depends(get_db)
+):
+
+    return DeviceService.get_all_devices(db)
+
+
 @router.get(
     "/{customer_id}",
     response_model=list[DeviceResponse]
 )
-
-
-
 def get_customer_devices(
     customer_id: int,
     db: Session = Depends(get_db)
@@ -55,12 +64,12 @@ def get_customer_devices(
         db=db,
         customer_id=customer_id
     )
-    
+
+
 @router.delete(
     "/{device_id}",
     response_model=MessageResponse
 )
-
 def remove_device(
     device_id: int,
     db: Session = Depends(get_db)
