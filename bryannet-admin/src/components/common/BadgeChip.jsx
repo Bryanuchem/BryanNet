@@ -43,6 +43,11 @@ const statusConfig = {
         color: "warning",
     },
 
+    QUEUED: {
+        label: "Queued",
+        color: "warning",
+    },
+
     SUSPENDED: {
         label: "Suspended",
         color: "error",
@@ -50,6 +55,16 @@ const statusConfig = {
 
     EXPIRED: {
         label: "Expired",
+        color: "error",
+    },
+
+    CANCELLED: {
+        label: "Cancelled",
+        color: "default",
+    },
+
+    BLOCKED: {
+        label: "Blocked",
         color: "error",
     },
 
@@ -70,11 +85,17 @@ function BadgeChip({
     variant,
     value,
 }) {
+    const normalizedValue =
+        typeof value === "string"
+            ? value.toUpperCase()
+            : value;
+
     if (variant === "registrationStep") {
-        const config = registrationStepConfig[value] || {
-            label: value,
-            color: "default",
-        };
+        const config =
+            registrationStepConfig[normalizedValue] || {
+                label: value,
+                color: "default",
+            };
 
         return (
             <Chip
@@ -86,10 +107,11 @@ function BadgeChip({
     }
 
     if (variant === "status") {
-        const config = statusConfig[value] || {
-            label: value,
-            color: "default",
-        };
+        const config =
+            statusConfig[normalizedValue] || {
+                label: value,
+                color: "default",
+            };
 
         return (
             <Chip

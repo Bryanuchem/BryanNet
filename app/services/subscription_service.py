@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from fastapi import HTTPException
 
+from app.models.customer import Customer
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 
@@ -13,6 +14,7 @@ from app.services.subscription_history_service import (
 from app.services.payment_service import (
     PaymentService
 )
+
 
 class SubscriptionService:
 
@@ -108,10 +110,258 @@ class SubscriptionService:
         )
 
         db.commit()
-        
+
         db.refresh(subscription)
 
         return subscription
+
+    @staticmethod
+    def get_all_subscriptions(db):
+
+        subscriptions = (
+            db.query(
+                Subscription,
+                Customer,
+                Plan
+            )
+            .join(
+                Customer,
+                Subscription.customer_id == Customer.customer_id
+            )
+            .join(
+                Plan,
+                Subscription.plan_id == Plan.plan_id
+            )
+            .order_by(
+                Subscription.created_at.desc()
+            )
+            .all()
+        )
+
+        results = []
+
+        for subscription, customer, plan in subscriptions:
+
+            customer_name = customer.full_name
+
+            results.append(
+                {
+                    "subscription_id": subscription.subscription_id,
+                    "customer_id": customer.customer_id,
+                    "customer_name": customer_name,
+                    "plan_id": plan.plan_id,
+                    "plan_name": plan.plan_name,
+                    "price": float(plan.price),
+                    "start_date": subscription.start_date,
+                    "expiry_date": subscription.expiry_date,
+                    "remaining_days": max(
+                        0,
+                        (subscription.expiry_date - datetime.now()).days
+                    ),
+                    "activation_sequence": (
+                        subscription.activation_sequence
+                    ),
+                    "status": subscription.status,
+                    "created_at": subscription.created_at,
+                    "updated_at": subscription.updated_at,
+                }
+            )
+
+        return results
+
+    @staticmethod
+    def get_subscription(
+        db,
+        subscription_id
+    ):
+
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id
+                == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found"
+            )
+
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.customer_id
+                == subscription.customer_id
+            )
+            .first()
+        )
+
+        plan = (
+            db.query(Plan)
+            .filter(
+                Plan.plan_id
+                == subscription.plan_id
+            )
+            .first()
+        )
+
+        customer_name = customer.full_name
+
+        return {
+            "subscription_id": subscription.subscription_id,
+            "customer_id": customer.customer_id,
+            "customer_name": customer_name,
+            "plan_id": plan.plan_id,
+            "plan_name": plan.plan_name,
+            "price": float(plan.price),
+            "start_date": subscription.start_date,
+            "expiry_date": subscription.expiry_date,
+            "remaining_days": max(
+                0,
+                (subscription.expiry_date - datetime.now()).days
+            ),
+            "activation_sequence": (
+                subscription.activation_sequence
+            ),
+            "status": subscription.status,
+            "created_at": subscription.created_at,
+            "updated_at": subscription.updated_at,
+        }
+
+    @staticmethod
+    def update_subscription(
+        db,
+        subscription_id,
+        subscription_data
+    ):
+
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found"
+            )
+
+        update_data = subscription_data.model_dump(
+            exclude_unset=True
+        )
+
+        for field, value in update_data.items():
+            setattr(
+                subscription,
+                field,
+                value
+            )
+
+        db.commit()
+
+        db.refresh(subscription)
+
+        return subscription
+
+    @staticmethod
+    def update_subscription_status(
+        db,
+        subscription_id,
+        status
+    ):
+
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found"
+            )
+
+        old_status = subscription.status
+
+        subscription.status = status
+
+        SubscriptionHistoryService.log_status_change(
+            db=db,
+            subscription_id=subscription.subscription_id,
+            old_status=old_status,
+            new_status=status,
+            reason="Status updated by administrator"
+        )
+
+        db.commit()
+
+        db.refresh(subscription)
+
+        return subscription
+
+    @staticmethod
+    def renew_subscription(
+        db,
+        subscription_id
+    ):
+
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found"
+            )
+
+        return SubscriptionService.buy_plan(
+            db=db,
+            customer_id=subscription.customer_id,
+            plan_id=subscription.plan_id
+        )
+
+    @staticmethod
+    def delete_subscription(
+        db,
+        subscription_id
+    ):
+
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found"
+            )
+
+        db.delete(subscription)
+
+        db.commit()
+
+        return {
+            "message": "Subscription deleted successfully"
+        }
 
     @staticmethod
     def get_status(
