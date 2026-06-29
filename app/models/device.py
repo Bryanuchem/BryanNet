@@ -6,8 +6,10 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     TIMESTAMP,
-    ForeignKey
+    ForeignKey,
 )
+
+from sqlalchemy.orm import relationship
 
 from sqlalchemy.sql import func
 
@@ -21,23 +23,23 @@ class Device(Base):
     device_id = Column(
         BigInteger,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     customer_id = Column(
         BigInteger,
         ForeignKey("customers.customer_id"),
-        nullable=False
+        nullable=False,
     )
 
     device_name = Column(
-        String(100)
+        String(100),
     )
 
     mac_address = Column(
         String(50),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     device_status = Column(
@@ -45,27 +47,32 @@ class Device(Base):
             "active",
             "blocked",
             "removed",
-            name="device_status"
+            name="device_status",
         ),
-        default="active"
+        default="active",
     )
 
     approved_by_customer = Column(
         Boolean,
-        default=True
+        default=True,
     )
 
     first_seen = Column(
         DateTime,
-        nullable=True
+        nullable=True,
     )
 
     last_seen = Column(
         DateTime,
-        nullable=True
+        nullable=True,
     )
 
     created_at = Column(
         TIMESTAMP,
-        server_default=func.now()
+        server_default=func.now(),
+    )
+
+    customer = relationship(
+        "Customer",
+        back_populates="devices",
     )

@@ -5,10 +5,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     TIMESTAMP,
-    ForeignKey
+    ForeignKey,
 )
 
 from sqlalchemy.sql import func
+
+from sqlalchemy.orm import relationship
 
 from app.database.base import Base
 
@@ -20,34 +22,34 @@ class Subscription(Base):
     subscription_id = Column(
         BigInteger,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     customer_id = Column(
         BigInteger,
         ForeignKey("customers.customer_id"),
-        nullable=False
+        nullable=False,
     )
 
     plan_id = Column(
         Integer,
         ForeignKey("plans.plan_id"),
-        nullable=False
+        nullable=False,
     )
 
     start_date = Column(
         DateTime,
-        nullable=False
+        nullable=False,
     )
 
     expiry_date = Column(
         DateTime,
-        nullable=False
+        nullable=False,
     )
 
     activation_sequence = Column(
         Integer,
-        default=1
+        default=1,
     )
 
     status = Column(
@@ -57,18 +59,34 @@ class Subscription(Base):
             "expired",
             "suspended",
             "cancelled",
-            name="subscription_status"
+            name="subscription_status",
         ),
-        default="queued"
+        default="queued",
     )
 
     created_at = Column(
         TIMESTAMP,
-        server_default=func.now()
+        server_default=func.now(),
     )
 
     updated_at = Column(
         TIMESTAMP,
         server_default=func.now(),
-        onupdate=func.now()
+        onupdate=func.now(),
+    )
+
+    customer = relationship(
+        "Customer",
+        back_populates="subscriptions",
+    )
+
+    plan = relationship(
+        "Plan",
+        back_populates="subscriptions",
+    )
+
+    payments = relationship(
+        "Payment",
+        back_populates="subscription",
+        cascade="all, delete-orphan",
     )

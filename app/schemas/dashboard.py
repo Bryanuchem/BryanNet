@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from datetime import datetime
 
 class DashboardSummaryResponse(BaseModel):
     total_customers: int
@@ -17,3 +17,19 @@ class DashboardSummaryResponse(BaseModel):
 
     new_customers_today: int
     new_customers_this_month: int
+
+
+class RevenueOverviewItem(BaseModel):
+    label: str
+    revenue: float
+
+
+class SubscriptionBreakdownItem(BaseModel):
+    status: str
+    count: int
+    
+class RecentActivityItem(BaseModel):
+    type: str
+    title: str
+    description: str
+    created_at: datetime

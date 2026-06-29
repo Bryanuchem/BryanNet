@@ -5,8 +5,11 @@ from sqlalchemy import (
     String,
     Enum,
     TIMESTAMP,
-    ForeignKey
+    ForeignKey,
+    Text,
 )
+
+from sqlalchemy.orm import relationship
 
 from sqlalchemy.sql import func
 
@@ -20,35 +23,40 @@ class Payment(Base):
     payment_id = Column(
         BigInteger,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     customer_id = Column(
         BigInteger,
         ForeignKey("customers.customer_id"),
-        nullable=False
+        nullable=False,
     )
 
     subscription_id = Column(
         BigInteger,
         ForeignKey("subscriptions.subscription_id"),
-        nullable=True
+        nullable=True,
     )
 
     amount = Column(
         DECIMAL(12, 2),
-        nullable=False
+        nullable=False,
+    )
+
+    payment_channel = Column(
+        String(50),
+        nullable=False,
     )
 
     payment_method = Column(
-        String(50),
-        nullable=False
+        String(100),
+        nullable=True,
     )
 
     payment_reference = Column(
         String(100),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     status = Column(
@@ -56,17 +64,44 @@ class Payment(Base):
             "pending",
             "successful",
             "failed",
-            name="payment_status"
+            "cancelled",
+            "refunded",
+            name="payment_status",
         ),
-        default="successful"
+        default="successful",
+        nullable=False,
+    )
+
+    notes = Column(
+        Text,
+        nullable=True,
     )
 
     payment_date = Column(
         TIMESTAMP,
-        server_default=func.now()
+        server_default=func.now(),
+        nullable=False,
     )
 
     created_at = Column(
         TIMESTAMP,
-        server_default=func.now()
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    customer = relationship(
+        "Customer",
+        back_populates="payments",
+    )
+
+    subscription = relationship(
+        "Subscription",
+        back_populates="payments",
     )

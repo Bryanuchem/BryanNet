@@ -1,139 +1,76 @@
 import Chip from "@mui/material/Chip";
 
-const registrationStepConfig = {
-    START: {
-        label: "Started",
-        color: "info",
-    },
+const STATUS_COLORS = {
 
-    NAME: {
-        label: "Awaiting Name",
-        color: "warning",
-    },
+    active: "success",
 
-    PHONE: {
-        label: "Awaiting Phone",
-        color: "warning",
-    },
+    inactive: "default",
 
-    COMPLETE: {
-        label: "Complete",
-        color: "success",
-    },
-};
+    suspended: "warning",
 
-const statusConfig = {
-    ACTIVE: {
-        label: "Active",
-        color: "success",
-    },
+    blocked: "error",
 
-    INACTIVE: {
-        label: "Inactive",
-        color: "default",
-    },
+    queued: "info",
 
-    REGISTERED: {
-        label: "Registered",
-        color: "success",
-    },
+    expired: "default",
 
-    PENDING: {
-        label: "Pending",
-        color: "warning",
-    },
+    cancelled: "default",
 
-    QUEUED: {
-        label: "Queued",
-        color: "warning",
-    },
+    successful: "success",
 
-    SUSPENDED: {
-        label: "Suspended",
-        color: "error",
-    },
+    pending: "warning",
 
-    EXPIRED: {
-        label: "Expired",
-        color: "error",
-    },
+    failed: "error",
 
-    CANCELLED: {
-        label: "Cancelled",
-        color: "default",
-    },
+    refunded: "info",
 
-    BLOCKED: {
-        label: "Blocked",
-        color: "error",
-    },
-
-    REMOVED: {
-        label: "Removed",
-        color: "default",
-    },
-
-    ONLINE: {
-        label: "Online",
-        color: "success",
-    },
-
-    OFFLINE: {
-        label: "Offline",
-        color: "default",
-    },
 };
 
 function BadgeChip({
+
     label,
-    color = "default",
-    variant,
-    value,
+
+    status,
+
+    color,
+
+    size = "small",
+
+    variant = "filled",
+
 }) {
-    const normalizedValue =
-        typeof value === "string"
-            ? value.toUpperCase()
-            : value;
 
-    if (variant === "registrationStep") {
-        const config =
-            registrationStepConfig[normalizedValue] || {
-                label: value,
-                color: "default",
-            };
+    const chipLabel = label ?? status ?? "-";
 
-        return (
-            <Chip
-                label={config.label}
-                color={config.color}
-                size="small"
-            />
-        );
-    }
-
-    if (variant === "status") {
-        const config =
-            statusConfig[normalizedValue] || {
-                label: value,
-                color: "default",
-            };
-
-        return (
-            <Chip
-                label={config.label}
-                color={config.color}
-                size="small"
-            />
-        );
-    }
+    const chipColor =
+        color ||
+        STATUS_COLORS[status] ||
+        "default";
 
     return (
+
         <Chip
-            label={label}
-            color={color}
-            size="small"
+
+            label={chipLabel}
+
+            color={chipColor}
+
+            size={size}
+
+            variant={variant}
+
+            sx={{
+
+                fontWeight: 600,
+
+                textTransform: "capitalize",
+
+            }}
+
         />
+
     );
+
 }
 
 export default BadgeChip;

@@ -9,6 +9,7 @@ from app.api.health import router as health_router
 from app.api import session
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
+from app.api.payment import router as payment_router
 
 app = FastAPI(
     title="BryanNet API"
@@ -61,6 +62,11 @@ app.add_middleware(
 
 app.include_router(
     auth_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    payment_router,
     prefix="/api/v1"
 )
 

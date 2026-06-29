@@ -5,10 +5,11 @@ from sqlalchemy import (
     Enum,
     Boolean,
     TIMESTAMP,
-    ForeignKey
 )
 
 from sqlalchemy.sql import func
+
+from sqlalchemy.orm import relationship
 
 from app.database.base import Base
 
@@ -20,23 +21,23 @@ class Customer(Base):
     customer_id = Column(
         BigInteger,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     phone_number = Column(
         String(20),
         unique=True,
-        nullable=True
+        nullable=True,
     )
 
     full_name = Column(
         String(150),
-        nullable=True
+        nullable=True,
     )
 
     whatsapp_enabled = Column(
         Boolean,
-        default=True
+        default=True,
     )
 
     status = Column(
@@ -44,35 +45,54 @@ class Customer(Base):
             "active",
             "suspended",
             "blocked",
-            name="customer_status"
+            name="customer_status",
         ),
-        default="active"
+        default="active",
     )
 
     referred_by_agent_id = Column(
         BigInteger,
-       #ForeignKey("agents.agent_id"),
-        nullable=True
+        # ForeignKey("agents.agent_id"),
+        nullable=True,
     )
 
     telegram_user_id = Column(
         BigInteger,
         unique=True,
-        nullable=True
+        nullable=True,
     )
+
     is_registered = Column(
         Boolean,
         default=False,
-        nullable=False
+        nullable=False,
     )
 
     registration_step = Column(
         String(30),
         nullable=False,
-        default="START"
-    )    
-    created_at = Column(
-        TIMESTAMP,
-        server_default=func.now()
+        default="START",
     )
 
+    created_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+    )
+
+    subscriptions = relationship(
+        "Subscription",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
+
+    devices = relationship(
+        "Device",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
+
+    payments = relationship(
+        "Payment",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
