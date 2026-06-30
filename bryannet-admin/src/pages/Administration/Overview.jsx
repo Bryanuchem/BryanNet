@@ -12,7 +12,6 @@ export default function Overview() {
     const {
         data,
         isLoading,
-        isError,
     } = useAdministrationOverview();
 
     return (
