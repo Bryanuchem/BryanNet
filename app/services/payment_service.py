@@ -405,6 +405,43 @@ class PaymentService:
         )
 
     @staticmethod
+    def create_payment_for_subscription(
+        db,
+        customer_id,
+        subscription_id,
+        amount,
+        payment_method="wallet",
+    ):
+
+        payment = Payment(
+
+            customer_id=customer_id,
+
+            subscription_id=subscription_id,
+
+            amount=amount,
+
+            payment_channel="system",
+
+            payment_method=payment_method,
+
+            payment_reference=f"PAY-{uuid4().hex[:12].upper()}",
+
+            status="pending",
+
+            notes="Subscription purchase",
+
+            payment_date=datetime.utcnow(),
+
+        )
+
+        db.add(payment)
+
+        db.flush()
+
+        return payment
+
+    @staticmethod
     def update_payment(
         db,
         payment_id,

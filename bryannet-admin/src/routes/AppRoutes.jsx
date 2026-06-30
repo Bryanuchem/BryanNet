@@ -18,8 +18,15 @@ import NotFound from "../pages/NotFound";
 import Plans from "../pages/Plans";
 import Subscriptions from "../pages/Subscriptions";
 import Payments from "../pages/Payments";
-import Administration from "../pages/Administration";
 import Settings from "../pages/Settings";
+
+// Administration
+import Overview from "../pages/Administration/Overview";
+import AdminUsers from "../pages/Administration/AdminUsers";
+import RolesPermissions from "../pages/Administration/RolesPermissions";
+import AuditLogs from "../pages/Administration/AuditLogs";
+import LoginSessions from "../pages/Administration/LoginSessions";
+import SystemActivity from "../pages/Administration/SystemActivity";
 
 export default function AppRoutes() {
 
@@ -92,9 +99,38 @@ export default function AppRoutes() {
                         element={<Payments />}
                     />
 
+                    {/* ==========================
+                        Administration
+                    ========================== */}
+
                     <Route
                         path="/administration"
-                        element={<Administration />}
+                        element={<Overview />}
+                    />
+
+                    <Route
+                        path="/administration/users"
+                        element={<AdminUsers />}
+                    />
+
+                    <Route
+                        path="/administration/roles"
+                        element={<RolesPermissions />}
+                    />
+
+                    <Route
+                        path="/administration/audit-logs"
+                        element={<AuditLogs />}
+                    />
+
+                    <Route
+                        path="/administration/sessions"
+                        element={<LoginSessions />}
+                    />
+
+                    <Route
+                        path="/administration/system-activity"
+                        element={<SystemActivity />}
                     />
 
                     <Route

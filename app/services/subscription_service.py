@@ -93,12 +93,11 @@ class SubscriptionService:
 
         db.flush()
 
-        PaymentService.create_payment(
+        PaymentService.create_payment_for_subscription(
             db=db,
             customer_id=customer_id,
             subscription_id=subscription.subscription_id,
             amount=plan.price,
-            payment_method="wallet"
         )
 
         SubscriptionHistoryService.log_status_change(

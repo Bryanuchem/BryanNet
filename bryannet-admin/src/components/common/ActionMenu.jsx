@@ -70,9 +70,11 @@ function ActionMenu({
             >
 
                 {items
+
                     .filter(
                         (item) => !item.hidden,
                     )
+
                     .map((item, index) => (
 
                         <div key={index}>
@@ -88,13 +90,24 @@ function ActionMenu({
                                     handleClose();
 
                                     if (
-                                        !item.disabled &&
-                                        item.onClick
+                                        item.disabled ||
+                                        !item.onClick
                                     ) {
 
-                                        item.onClick(
-                                            row,
-                                        );
+                                        return;
+
+                                    }
+
+                                    if (
+                                        row !== null &&
+                                        row !== undefined
+                                    ) {
+
+                                        item.onClick(row);
+
+                                    } else {
+
+                                        item.onClick();
 
                                     }
 
@@ -112,12 +125,14 @@ function ActionMenu({
                                 {item.icon && (
 
                                     <ListItemIcon
+
                                         sx={{
 
                                             color:
                                                 item.color,
 
                                         }}
+
                                     >
 
                                         {item.icon}

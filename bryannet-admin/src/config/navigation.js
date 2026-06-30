@@ -71,9 +71,36 @@ const navigation = [
     {
         section: "System",
         label: "Administration",
-        path: "/administration",
         icon: AdminPanelSettingsRoundedIcon,
+
+        children: [
+            {
+                label: "Overview",
+                path: "/administration",
+            },
+            {
+                label: "Admin Users",
+                path: "/administration/users",
+            },
+            {
+                label: "Roles & Permissions",
+                path: "/administration/roles",
+            },
+            {
+                label: "Audit Logs",
+                path: "/administration/audit-logs",
+            },
+            {
+                label: "Login Sessions",
+                path: "/administration/sessions",
+            },
+            {
+                label: "System Activity",
+                path: "/administration/system-activity",
+            },
+        ],
     },
+
     {
         section: "System",
         label: "Settings",

@@ -1,11 +1,6 @@
-import { useState } from "react";
-
 import {
     Box,
     CircularProgress,
-    IconButton,
-    Menu,
-    MenuItem,
     Paper,
     Table,
     TableBody,
@@ -13,68 +8,46 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Tooltip,
     Typography,
 } from "@mui/material";
 
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import ToggleOnOutlinedIcon from "@mui/icons-material/ToggleOnOutlined";
+import ToggleOffOutlinedIcon from "@mui/icons-material/ToggleOffOutlined";
 
 import BadgeChip from "../common/BadgeChip";
+import EmptyState from "../common/EmptyState";
+import ActionMenu from "../common/ActionMenu";
 
-const PlansTable = ({
+function PlansTable({
+
     plans = [],
+
     loading = false,
+
     onEdit,
+
     onToggleStatus,
+
     onDelete,
-}) => {
 
-    const [anchorEl, setAnchorEl] = useState(null);
-
-    const [selectedPlan, setSelectedPlan] = useState(null);
-
-    const menuOpen = Boolean(anchorEl);
-
-    const handleMenuOpen = (
-        event,
-        plan,
-    ) => {
-
-        setAnchorEl(event.currentTarget);
-
-        setSelectedPlan(plan);
-
-    };
-
-    const handleMenuClose = () => {
-
-        setAnchorEl(null);
-
-        setSelectedPlan(null);
-
-    };
-
-    const handleEdit = () => {
-
-        if (selectedPlan && onEdit) {
-
-            onEdit(selectedPlan);
-
-        }
-
-        handleMenuClose();
-
-    };
+}) {
 
     if (loading) {
 
         return (
 
             <Box
+
                 display="flex"
+
                 justifyContent="center"
+
                 alignItems="center"
+
                 py={6}
+
             >
 
                 <CircularProgress />
@@ -90,24 +63,39 @@ const PlansTable = ({
         return (
 
             <Paper
+
                 sx={{
+
                     p: 4,
+
                     textAlign: "center",
+
                 }}
+
             >
 
                 <Typography variant="h6">
+
                     No Plans Found
+
                 </Typography>
 
                 <Typography
+
                     variant="body2"
+
                     color="text.secondary"
+
                     sx={{
+
                         mt: 1,
+
                     }}
+
                 >
+
                     There are currently no internet plans available.
+
                 </Typography>
 
             </Paper>
@@ -118,194 +106,238 @@ const PlansTable = ({
 
     return (
 
-        <>
+        <TableContainer
 
-            <TableContainer component={Paper}>
+            component={Paper}
 
-                <Table>
+            elevation={0}
 
-                    <TableHead>
+        >
 
-                        <TableRow>
+            <Table>
+
+                <TableHead>
+
+                    <TableRow>
+
+                        <TableCell>
+
+                            <strong>Name</strong>
+
+                        </TableCell>
+
+                        <TableCell>
+
+                            <strong>Speed</strong>
+
+                        </TableCell>
+
+                        <TableCell>
+
+                            <strong>Price</strong>
+
+                        </TableCell>
+
+                        <TableCell>
+
+                            <strong>Duration</strong>
+
+                        </TableCell>
+
+                        <TableCell align="center">
+
+                            <strong>Max Devices</strong>
+
+                        </TableCell>
+
+                        <TableCell align="center">
+
+                            <strong>Concurrent</strong>
+
+                        </TableCell>
+
+                        <TableCell align="center">
+
+                            <strong>Status</strong>
+
+                        </TableCell>
+
+                        <TableCell align="right">
+
+                            <strong>Actions</strong>
+
+                        </TableCell>
+
+                    </TableRow>
+
+                </TableHead>
+
+                <TableBody>
+
+                    {plans.map((plan) => (
+
+                        <TableRow
+
+                            key={plan.plan_id}
+
+                            hover
+
+                        >
 
                             <TableCell>
-                                <strong>Name</strong>
+
+                                {plan.plan_name}
+
                             </TableCell>
 
                             <TableCell>
-                                <strong>Speed</strong>
+
+                                {plan.speed_limit_mbps} Mbps
+
                             </TableCell>
 
                             <TableCell>
-                                <strong>Price</strong>
+
+                                ₦{Number(
+
+                                    plan.price,
+
+                                ).toLocaleString()}
+
                             </TableCell>
 
                             <TableCell>
-                                <strong>Duration</strong>
+
+                                {plan.duration_days} Days
+
                             </TableCell>
 
                             <TableCell align="center">
-                                <strong>Max Devices</strong>
+
+                                {plan.max_devices}
+
                             </TableCell>
 
                             <TableCell align="center">
-                                <strong>Concurrent</strong>
+
+                                {plan.concurrent_devices}
+
                             </TableCell>
 
                             <TableCell align="center">
-                                <strong>Status</strong>
+
+                                <BadgeChip
+
+                                    status={
+
+                                        plan.is_active
+
+                                            ? "active"
+
+                                            : "inactive"
+
+                                    }
+
+                                />
+
                             </TableCell>
 
                             <TableCell align="right">
-                                <strong>Actions</strong>
+
+                                <ActionMenu
+
+                                    row={plan}
+
+                                    items={[
+
+                                        {
+
+                                            label: "Edit",
+
+                                            icon: (
+
+                                                <EditOutlinedIcon
+
+                                                    fontSize="small"
+
+                                                />
+
+                                            ),
+
+                                            onClick: onEdit,
+
+                                        },
+
+                                        {
+
+                                            label: plan.is_active
+
+                                                ? "Deactivate"
+
+                                                : "Activate",
+
+                                            icon: plan.is_active ? (
+
+                                                <ToggleOffOutlinedIcon
+
+                                                    fontSize="small"
+
+                                                />
+
+                                            ) : (
+
+                                                <ToggleOnOutlinedIcon
+
+                                                    fontSize="small"
+
+                                                />
+
+                                            ),
+
+                                            onClick: onToggleStatus,
+
+                                        },
+
+                                        {
+
+                                            divider: true,
+
+                                            label: "Delete",
+
+                                            color: "error.main",
+
+                                            icon: (
+
+                                                <DeleteOutlineOutlinedIcon
+
+                                                    fontSize="small"
+
+                                                />
+
+                                            ),
+
+                                            onClick: onDelete,
+
+                                        },
+
+                                    ]}
+
+                                />
+
                             </TableCell>
 
                         </TableRow>
 
-                    </TableHead>
+                    ))}
 
-                    <TableBody>
+                </TableBody>
 
-                        {plans.map((plan) => (
+            </Table>
 
-                            <TableRow
-                                key={plan.plan_id}
-                                hover
-                            >
-
-                                <TableCell>
-                                    {plan.plan_name}
-                                </TableCell>
-
-                                <TableCell>
-                                    {plan.speed_limit_mbps} Mbps
-                                </TableCell>
-
-                                <TableCell>
-                                    ₦{Number(plan.price).toLocaleString()}
-                                </TableCell>
-
-                                <TableCell>
-                                    {plan.duration_days} Days
-                                </TableCell>
-
-                                <TableCell align="center">
-                                    {plan.max_devices}
-                                </TableCell>
-
-                                <TableCell align="center">
-                                    {plan.concurrent_devices}
-                                </TableCell>
-
-                                <TableCell align="center">
-
-                                    <BadgeChip
-                                        status={
-                                            plan.is_active
-                                                ? "active"
-                                                : "inactive"
-                                        }
-                                    />
-
-                                </TableCell>
-
-                                <TableCell align="right">
-
-                                    <Tooltip title="Actions">
-
-                                        <IconButton
-                                            onClick={(event) =>
-                                                handleMenuOpen(
-                                                    event,
-                                                    plan,
-                                                )
-                                            }
-                                        >
-
-                                            <MoreVertIcon />
-
-                                        </IconButton>
-
-                                    </Tooltip>
-
-                                </TableCell>
-
-                            </TableRow>
-
-                        ))}
-
-                    </TableBody>
-
-                </Table>
-
-            </TableContainer>
-
-            <Menu
-                anchorEl={anchorEl}
-                open={menuOpen}
-                onClose={handleMenuClose}
-            >
-
-                <MenuItem
-                    onClick={handleEdit}
-                >
-                    Edit
-                </MenuItem>
-
-                <MenuItem
-                    onClick={() => {
-
-                        if (
-                            selectedPlan &&
-                            onToggleStatus
-                        ) {
-
-                            onToggleStatus(
-                                selectedPlan,
-                            );
-
-                        }
-
-                        handleMenuClose();
-
-                    }}
-                >
-
-                    {selectedPlan?.is_active
-                        ? "Deactivate"
-                        : "Activate"}
-
-                </MenuItem>
-
-                <MenuItem
-                    onClick={() => {
-
-                        if (
-                            selectedPlan &&
-                            onDelete
-                        ) {
-
-                            onDelete(
-                                selectedPlan,
-                            );
-
-                        }
-
-                        handleMenuClose();
-
-                    }}
-                >
-
-                    Delete
-
-                </MenuItem>
-
-            </Menu>
-
-        </>
+        </TableContainer>
 
     );
 
-};
+}
 
-export default PlansTable;
+export default PlansTable;                                

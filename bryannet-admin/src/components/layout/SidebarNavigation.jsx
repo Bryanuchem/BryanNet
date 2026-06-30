@@ -8,26 +8,70 @@ import {
     Typography,
 } from "@mui/material";
 
-import { NavLink } from "react-router-dom";
+import {
+    useMemo,
+    useState,
+} from "react";
+
+import {
+    NavLink,
+    useLocation,
+} from "react-router-dom";
 
 import navigation from "../../config/navigation";
 import { useLayout } from "../../context/LayoutContext";
+
+import SidebarExpandableItem from "./SidebarExpandableItem";
 
 export default function SidebarNavigation() {
 
     const { sidebarCollapsed } = useLayout();
 
-    const groups = navigation.reduce((acc, item) => {
+    const location = useLocation();
 
-        if (!acc[item.section]) {
-            acc[item.section] = [];
+    const [expandedItems, setExpandedItems] = useState({});
+
+    const groups = useMemo(() => {
+
+        return navigation.reduce((acc, item) => {
+
+            if (!acc[item.section]) {
+                acc[item.section] = [];
+            }
+
+            acc[item.section].push(item);
+
+            return acc;
+
+        }, {});
+
+    }, []);
+
+    const toggleItem = (label) => {
+
+        setExpandedItems((prev) => ({
+
+            ...prev,
+
+            [label]: !prev[label],
+
+        }));
+
+    };
+
+    const isExpanded = (item) => {
+
+        if (!item.children) {
+            return false;
         }
 
-        acc[item.section].push(item);
+        const routeMatch = item.children.some((child) =>
+            location.pathname.startsWith(child.path)
+        );
 
-        return acc;
+        return routeMatch || expandedItems[item.label];
 
-    }, {});
+    };
 
     return (
 
@@ -72,6 +116,26 @@ export default function SidebarNavigation() {
                         {items.map((item) => {
 
                             const Icon = item.icon;
+
+                            if (item.children) {
+
+                                return (
+
+                                    <SidebarExpandableItem
+                                        key={item.label}
+                                        icon={Icon}
+                                        label={item.label}
+                                        open={isExpanded(item)}
+                                        onToggle={() =>
+                                            toggleItem(item.label)
+                                        }
+                                        childrenItems={item.children}
+                                        sidebarCollapsed={sidebarCollapsed}
+                                    />
+
+                                );
+
+                            }
 
                             const button = (
 
@@ -198,10 +262,8 @@ export default function SidebarNavigation() {
                                         <ListItemText
                                             primary={item.label}
                                             primaryTypographyProps={{
-                                                fontSize:
-                                                    ".95rem",
-                                                fontWeight:
-                                                    500,
+                                                fontSize: ".95rem",
+                                                fontWeight: 500,
                                             }}
                                         />
 
@@ -244,4 +306,4 @@ export default function SidebarNavigation() {
 
     );
 
-}
+}                                        
