@@ -1,11 +1,5 @@
-import Typography from "@mui/material/Typography";
+import { Outlet } from "react-router-dom";
 
-function Devices() {
-    return (
-        <Typography variant="h4">
-            Settings
-        </Typography>
-    );
+export default function Settings() {
+  return <Outlet />;
 }
-
-export default Devices;

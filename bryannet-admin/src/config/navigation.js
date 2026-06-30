@@ -4,8 +4,9 @@ import RouterRoundedIcon from "@mui/icons-material/RouterRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+
+import settingsNavigation from "../navigation/settingsNavigation";
 
 const navigation = [
     // =========================
@@ -103,9 +104,13 @@ const navigation = [
 
     {
         section: "System",
-        label: "Settings",
-        path: "/settings",
-        icon: SettingsRoundedIcon,
+        label: settingsNavigation.title,
+        icon: settingsNavigation.icon,
+
+        children: settingsNavigation.children.map((item) => ({
+            label: item.title,
+            path: item.path,
+        })),
     },
 ];
 

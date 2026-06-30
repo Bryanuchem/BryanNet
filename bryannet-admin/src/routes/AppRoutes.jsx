@@ -18,7 +18,17 @@ import NotFound from "../pages/NotFound";
 import Plans from "../pages/Plans";
 import Subscriptions from "../pages/Subscriptions";
 import Payments from "../pages/Payments";
+
 import Settings from "../pages/Settings";
+
+import General from "../pages/Settings/General";
+import Authentication from "../pages/Settings/Authentication";
+import Notifications from "../pages/Settings/Notifications";
+import Network from "../pages/Settings/Network";
+import Billing from "../pages/Settings/Billing";
+import Integrations from "../pages/Settings/Integrations";
+import Branding from "../pages/Settings/Branding";
+import System from "../pages/Settings/System";
 
 // Administration
 import Overview from "../pages/Administration/Overview";
@@ -133,10 +143,59 @@ export default function AppRoutes() {
                         element={<SystemActivity />}
                     />
 
+                    {/* ==========================
+                        Settings
+                    ========================== */}
+
                     <Route
                         path="/settings"
                         element={<Settings />}
-                    />
+                    >
+                        <Route
+                            index
+                            element={<Navigate to="general" replace />}
+                        />
+
+                        <Route
+                            path="general"
+                            element={<General />}
+                        />
+
+                        <Route
+                            path="authentication"
+                            element={<Authentication />}
+                        />
+
+                        <Route
+                            path="notifications"
+                            element={<Notifications />}
+                        />
+
+                        <Route
+                            path="network"
+                            element={<Network />}
+                        />
+
+                        <Route
+                            path="billing"
+                            element={<Billing />}
+                        />
+
+                        <Route
+                            path="integrations"
+                            element={<Integrations />}
+                        />
+
+                        <Route
+                            path="branding"
+                            element={<Branding />}
+                        />
+
+                        <Route
+                            path="system"
+                            element={<System />}
+                        />
+                    </Route>
 
                 </Route>
 
