@@ -12,6 +12,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
+from app.enums.session import NextAction
 
 
 class Customer(Base):
@@ -35,19 +36,28 @@ class Customer(Base):
         nullable=True,
     )
 
+    email = Column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
+
     whatsapp_enabled = Column(
         Boolean,
         default=True,
+        nullable=False,
     )
 
     status = Column(
         Enum(
             "active",
+            "inactive",
             "suspended",
             "blocked",
             name="customer_status",
         ),
         default="active",
+        nullable=False,
     )
 
     referred_by_agent_id = Column(
@@ -69,14 +79,25 @@ class Customer(Base):
     )
 
     registration_step = Column(
-        String(30),
+        Enum(
+            NextAction,
+            name="customer_registration_step",
+        ),
         nullable=False,
-        default="START",
+        default=NextAction.START_ONBOARDING,
     )
 
     created_at = Column(
         TIMESTAMP,
         server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     subscriptions = relationship(
@@ -96,3 +117,9 @@ class Customer(Base):
         back_populates="customer",
         cascade="all, delete-orphan",
     )
+    
+    router_accounts = relationship(
+        "RouterAccount",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )    

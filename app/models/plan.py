@@ -30,6 +30,11 @@ class Plan(Base):
         unique=True,
     )
 
+    description = Column(
+        String(255),
+        nullable=True,
+    )
+
     price = Column(
         DECIMAL(12, 2),
         nullable=False,
@@ -66,6 +71,13 @@ class Plan(Base):
     created_at = Column(
         TIMESTAMP,
         server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

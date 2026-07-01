@@ -2,52 +2,61 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
+    Text,
+    Enum,
     Boolean,
     TIMESTAMP,
-    ForeignKey,
 )
-
-from sqlalchemy.orm import relationship
 
 from sqlalchemy.sql import func
 
 from app.database.base import Base
 
 
-class AdminUser(Base):
+class Setting(Base):
 
-    __tablename__ = "admin_users"
+    __tablename__ = "settings"
 
-    admin_user_id = Column(
+    setting_id = Column(
         BigInteger,
         primary_key=True,
         autoincrement=True,
     )
 
-    username = Column(
-        String(50),
+    category = Column(
+        String(100),
+        nullable=False,
+    )
+
+    key = Column(
+        String(100),
         unique=True,
         nullable=False,
     )
 
-    email = Column(
-        String(255),
-        unique=True,
+    value = Column(
+        Text,
         nullable=False,
     )
 
-    password_hash = Column(
-        String(255),
+    value_type = Column(
+        Enum(
+            "string",
+            "number",
+            "boolean",
+            "json",
+            name="setting_value_type",
+        ),
         nullable=False,
+        default="string",
     )
 
-    role_id = Column(
-        BigInteger,
-        ForeignKey("roles.role_id"),
-        nullable=False,
+    description = Column(
+        Text,
+        nullable=True,
     )
 
-    is_active = Column(
+    is_editable = Column(
         Boolean,
         nullable=False,
         default=True,
@@ -65,18 +74,3 @@ class AdminUser(Base):
         onupdate=func.now(),
         nullable=False,
     )
-
-    role = relationship(
-        "Role",
-        back_populates="admin_users",
-    )
-    
-    audit_logs = relationship(
-        "AuditLog",
-        back_populates="admin_user",
-    )    
-    
-    admin_sessions = relationship(
-        "AdminSession",
-        back_populates="admin_user",
-    )    

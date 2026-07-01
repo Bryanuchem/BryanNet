@@ -34,12 +34,28 @@ class Device(Base):
 
     device_name = Column(
         String(100),
+        nullable=True,
     )
 
     mac_address = Column(
         String(50),
         unique=True,
         nullable=False,
+    )
+
+    device_type = Column(
+        Enum(
+            "phone",
+            "laptop",
+            "desktop",
+            "tablet",
+            "tv",
+            "router",
+            "unknown",
+            name="device_type",
+        ),
+        nullable=False,
+        default="unknown",
     )
 
     device_status = Column(
@@ -49,11 +65,13 @@ class Device(Base):
             "removed",
             name="device_status",
         ),
+        nullable=False,
         default="active",
     )
 
     approved_by_customer = Column(
         Boolean,
+        nullable=False,
         default=True,
     )
 
@@ -70,6 +88,14 @@ class Device(Base):
     created_at = Column(
         TIMESTAMP,
         server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     customer = relationship(

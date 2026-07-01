@@ -1,25 +1,25 @@
 from sqlalchemy import (
     Column,
     BigInteger,
-    Integer,
-    DateTime,
+    String,
     Enum,
+    DateTime,
     TIMESTAMP,
     ForeignKey,
 )
 
-from sqlalchemy.sql import func
-
 from sqlalchemy.orm import relationship
+
+from sqlalchemy.sql import func
 
 from app.database.base import Base
 
 
-class Subscription(Base):
+class RouterAccount(Base):
 
-    __tablename__ = "subscriptions"
+    __tablename__ = "router_accounts"
 
-    subscription_id = Column(
+    router_account_id = Column(
         BigInteger,
         primary_key=True,
         autoincrement=True,
@@ -31,44 +31,42 @@ class Subscription(Base):
         nullable=False,
     )
 
-    plan_id = Column(
-        Integer,
-        ForeignKey("plans.plan_id"),
+    router_id = Column(
+        BigInteger,
+        ForeignKey("routers.router_id"),
         nullable=False,
     )
 
-    start_date = Column(
-        DateTime,
+    username = Column(
+        String(100),
+        unique=True,
         nullable=False,
     )
 
-    expiry_date = Column(
-        DateTime,
+    password_hash = Column(
+        String(255),
         nullable=False,
     )
 
-    activated_at = Column(
-        DateTime,
+    profile_name = Column(
+        String(100),
         nullable=True,
-    )
-
-    activation_sequence = Column(
-        Integer,
-        default=1,
-        nullable=False,
     )
 
     status = Column(
         Enum(
-            "queued",
             "active",
-            "expired",
             "suspended",
-            "cancelled",
-            name="subscription_status",
+            "expired",
+            name="router_account_status",
         ),
-        default="queued",
         nullable=False,
+        default="active",
+    )
+
+    last_sync_at = Column(
+        DateTime,
+        nullable=True,
     )
 
     created_at = Column(
@@ -86,16 +84,10 @@ class Subscription(Base):
 
     customer = relationship(
         "Customer",
-        back_populates="subscriptions",
+        back_populates="router_accounts",
     )
 
-    plan = relationship(
-        "Plan",
-        back_populates="subscriptions",
-    )
-
-    payments = relationship(
-        "Payment",
-        back_populates="subscription",
-        cascade="all, delete-orphan",
+    router = relationship(
+        "Router",
+        back_populates="router_accounts",
     )

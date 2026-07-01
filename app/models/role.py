@@ -2,9 +2,9 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
+    Text,
     Boolean,
     TIMESTAMP,
-    ForeignKey,
 )
 
 from sqlalchemy.orm import relationship
@@ -14,37 +14,31 @@ from sqlalchemy.sql import func
 from app.database.base import Base
 
 
-class AdminUser(Base):
+class Role(Base):
 
-    __tablename__ = "admin_users"
+    __tablename__ = "roles"
 
-    admin_user_id = Column(
+    role_id = Column(
         BigInteger,
         primary_key=True,
         autoincrement=True,
     )
 
-    username = Column(
-        String(50),
+    role_name = Column(
+        String(100),
         unique=True,
         nullable=False,
     )
 
-    email = Column(
-        String(255),
-        unique=True,
-        nullable=False,
+    description = Column(
+        Text,
+        nullable=True,
     )
 
-    password_hash = Column(
-        String(255),
+    is_system_role = Column(
+        Boolean,
         nullable=False,
-    )
-
-    role_id = Column(
-        BigInteger,
-        ForeignKey("roles.role_id"),
-        nullable=False,
+        default=False,
     )
 
     is_active = Column(
@@ -66,17 +60,7 @@ class AdminUser(Base):
         nullable=False,
     )
 
-    role = relationship(
-        "Role",
-        back_populates="admin_users",
+    admin_users = relationship(
+        "AdminUser",
+        back_populates="role",
     )
-    
-    audit_logs = relationship(
-        "AuditLog",
-        back_populates="admin_user",
-    )    
-    
-    admin_sessions = relationship(
-        "AdminSession",
-        back_populates="admin_user",
-    )    
