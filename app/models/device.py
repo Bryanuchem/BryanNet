@@ -15,6 +15,7 @@ from sqlalchemy.sql import func
 
 from app.database.base import Base
 
+from app.enums import DeviceStatus
 
 class Device(Base):
 
@@ -60,13 +61,11 @@ class Device(Base):
 
     device_status = Column(
         Enum(
-            "active",
-            "blocked",
-            "removed",
+            DeviceStatus,
             name="device_status",
         ),
         nullable=False,
-        default="active",
+        default=DeviceStatus.ACTIVE,
     )
 
     approved_by_customer = Column(

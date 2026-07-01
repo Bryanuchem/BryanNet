@@ -1,7 +1,5 @@
 from pydantic import BaseModel
 
-from app.enums.admin_role import AdminRole
-
 
 class LoginRequest(BaseModel):
     username: str
@@ -17,5 +15,5 @@ class CurrentAdminResponse(BaseModel):
     admin_user_id: int
     username: str
     email: str
-    role: AdminRole
+    role: str
     is_active: bool

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.enums.session import NextAction
+from app.enums.next_action import NextAction
 from app.schemas.customer import CustomerResponse
 
 

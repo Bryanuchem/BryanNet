@@ -1,6 +1,6 @@
 from app.models.customer import Customer
 
-from app.enums.session import NextAction
+from app.enums.next_action import NextAction
 
 from app.enums.keyboard import KeyboardType
 
@@ -51,7 +51,7 @@ class SessionService:
         if customer.registration_step == "PHONE":
 
             return {
-                "next_action": NextAction.ENTER_PHONE,
+                "next_action": NextAction.ENTER_PHONE_NUMBER,
                 "message": (
                     "📱 Step 2 of 2\n\n"
                     "Please share your phone number."

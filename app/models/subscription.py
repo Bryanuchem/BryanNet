@@ -14,6 +14,7 @@ from sqlalchemy.orm import relationship
 
 from app.database.base import Base
 
+from app.enums import SubscriptionStatus
 
 class Subscription(Base):
 
@@ -60,15 +61,11 @@ class Subscription(Base):
 
     status = Column(
         Enum(
-            "queued",
-            "active",
-            "expired",
-            "suspended",
-            "cancelled",
+            SubscriptionStatus,
             name="subscription_status",
         ),
-        default="queued",
         nullable=False,
+        default=SubscriptionStatus.QUEUED,
     )
 
     created_at = Column(

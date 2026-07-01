@@ -12,8 +12,9 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
-from app.enums.session import NextAction
+from app.enums.next_action import NextAction
 
+from app.enums import CustomerStatus
 
 class Customer(Base):
 
@@ -50,14 +51,11 @@ class Customer(Base):
 
     status = Column(
         Enum(
-            "active",
-            "inactive",
-            "suspended",
-            "blocked",
+            CustomerStatus,
             name="customer_status",
         ),
-        default="active",
         nullable=False,
+        default=CustomerStatus.ACTIVE,
     )
 
     referred_by_agent_id = Column(

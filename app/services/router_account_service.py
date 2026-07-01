@@ -1,0 +1,366 @@
+import secrets
+import string
+
+from fastapi import HTTPException
+
+from app.models.customer import Customer
+from app.models.router import Router
+from app.models.router_account import RouterAccount
+
+from app.services.router_service import RouterService
+from app.services.subscription_service import SubscriptionService
+from app.services.device_service import DeviceService
+
+
+class RouterAccountService:
+
+    # ==========================================================
+    # Private Helpers
+    # ==========================================================
+
+    @staticmethod
+    def _find_account(
+        db,
+        router_account_id,
+    ):
+
+        account = (
+            db.query(RouterAccount)
+            .filter(
+                RouterAccount.router_account_id
+                == router_account_id
+            )
+            .first()
+        )
+
+        if not account:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Router account not found.",
+            )
+
+        return account
+
+    @staticmethod
+    def _find_customer_account(
+        db,
+        customer_id,
+        router_id,
+    ):
+
+        return (
+            db.query(RouterAccount)
+            .filter(
+                RouterAccount.customer_id == customer_id,
+                RouterAccount.router_id == router_id,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def _generate_username(
+        customer,
+    ):
+
+        if customer.phone_number:
+
+            return (
+                f"BRN{customer.phone_number}"
+            )
+
+        return (
+            f"CUST{customer.customer_id:06d}"
+        )
+
+    @staticmethod
+    def _generate_password():
+
+        alphabet = (
+            string.ascii_letters
+            + string.digits
+        )
+
+        return "".join(
+            secrets.choice(alphabet)
+            for _ in range(12)
+        )
+
+    @staticmethod
+    def _validate_router(
+        db,
+        router_id,
+    ):
+
+        return (
+            RouterService.get_router(
+                db,
+                router_id,
+            )
+        )
+
+    # ==========================================================
+    # Business Commands
+    # ==========================================================
+
+    @staticmethod
+    def create_router_account(
+        db,
+        customer_id,
+        router_id,
+    ):
+
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.customer_id == customer_id
+            )
+            .first()
+        )
+
+        if not customer:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found.",
+            )
+
+        RouterAccountService._validate_router(
+            db,
+            router_id,
+        )
+
+        existing_account = (
+            RouterAccountService
+            ._find_customer_account(
+                db,
+                customer_id,
+                router_id,
+            )
+        )
+
+        if existing_account:
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Customer already has a "
+                    "router account on this router."
+                ),
+            )
+
+        account = RouterAccount(
+
+            customer_id=customer_id,
+
+            router_id=router_id,
+
+            username=(
+                RouterAccountService
+                ._generate_username(
+                    customer,
+                )
+            ),
+
+            password=(
+                RouterAccountService
+                ._generate_password()
+            ),
+
+            is_enabled=False,
+
+        )
+
+        db.add(account)
+
+        db.commit()
+
+        db.refresh(account)
+
+        return account
+
+    @staticmethod
+    def activate_account(
+        db,
+        router_account_id,
+    ):
+
+        account = (
+            RouterAccountService
+            ._find_account(
+                db,
+                router_account_id,
+            )
+        )
+
+        account.is_enabled = True
+
+        db.commit()
+
+        db.refresh(account)
+
+        return account
+
+    @staticmethod
+    def suspend_account(
+        db,
+        router_account_id,
+    ):
+
+        account = (
+            RouterAccountService
+            ._find_account(
+                db,
+                router_account_id,
+            )
+        )
+
+        account.is_enabled = False
+
+        db.commit()
+
+        db.refresh(account)
+
+        return account
+
+    @staticmethod
+    def remove_account(
+        db,
+        router_account_id,
+    ):
+
+        account = (
+            RouterAccountService
+            ._find_account(
+                db,
+                router_account_id,
+            )
+        )
+
+        db.delete(account)
+
+        db.commit()
+
+        return {
+            "message":
+                "Router account removed successfully."
+        }
+
+    @staticmethod
+    def synchronize_customer_access(
+        db,
+        customer_id,
+    ):
+
+        """
+        Synchronize the customer's access state with
+        the configured router.
+
+        Future implementation:
+
+        • Active subscription
+        • Plan limits
+        • Active devices
+        • Router account
+        • Router profile
+        • Push changes through RouterService
+        """
+
+        subscription = (
+            SubscriptionService
+            .get_active_subscription(
+                db,
+                customer_id,
+            )
+        )
+
+        if not subscription:
+
+            return
+
+        active_devices = (
+            DeviceService
+            .get_active_devices(
+                db,
+                customer_id,
+            )
+        )
+
+        #
+        # Future:
+        #
+        # provider = RouterService.resolve_provider(...)
+        #
+        # provider.sync_customer(
+        #     subscription,
+        #     active_devices,
+        #     router_account,
+        # )
+        #
+
+        return {
+            "customer_id": customer_id,
+            "devices": len(active_devices),
+            "status": "Synchronization queued.",
+        }
+
+    # ==========================================================
+    # Query Methods
+    # ==========================================================
+
+    @staticmethod
+    def get_account(
+        db,
+        router_account_id,
+    ):
+
+        return (
+            RouterAccountService
+            ._find_account(
+                db,
+                router_account_id,
+            )
+        )
+
+    @staticmethod
+    def get_customer_account(
+        db,
+        customer_id,
+        router_id,
+    ):
+
+        return (
+            RouterAccountService
+            ._find_customer_account(
+                db,
+                customer_id,
+                router_id,
+            )
+        )
+
+    @staticmethod
+    def get_router_accounts(
+        db,
+        router_id,
+    ):
+
+        return (
+            db.query(RouterAccount)
+            .filter(
+                RouterAccount.router_id == router_id,
+            )
+            .all()
+        )
+
+    @staticmethod
+    def get_all_accounts(
+        db,
+    ):
+
+        return (
+            db.query(RouterAccount)
+            .order_by(
+                RouterAccount.router_account_id
+            )
+            .all()
+        )

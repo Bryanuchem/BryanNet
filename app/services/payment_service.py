@@ -1,101 +1,446 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import (
-    func,
-    or_,
-)
+from fastapi import HTTPException
+
+from sqlalchemy import func
+
+from app.enums import PaymentStatus
 
 from app.models.customer import Customer
 from app.models.payment import Payment
+from app.models.plan import Plan
+
+from app.services.subscription_service import (
+    SubscriptionService,
+)
 
 
 class PaymentService:
 
+    # ==========================================================
+    # Private Helpers
+    # ==========================================================
+
     @staticmethod
-    def get_payment_summary(
+    def _generate_payment_reference():
+
+        return (
+            f"BRN-{uuid4().hex[:12].upper()}"
+        )
+
+    @staticmethod
+    def _find_payment(
         db,
+        payment_reference,
     ):
 
-        total_revenue = (
-
-            db.query(
-
-                func.coalesce(
-                    func.sum(
-                        Payment.amount,
-                    ),
-                    0,
-                ),
-
-            )
-
+        return (
+            db.query(Payment)
             .filter(
-                Payment.status == "successful",
+                Payment.payment_reference
+                == payment_reference
+            )
+            .first()
+        )
+
+    @staticmethod
+    def _mark_successful(
+        payment,
+    ):
+
+        payment.status = (
+            PaymentStatus.SUCCESSFUL
+        )
+
+        payment.payment_date = (
+            datetime.utcnow()
+        )
+
+    @staticmethod
+    def _mark_failed(
+        payment,
+    ):
+
+        payment.status = (
+            PaymentStatus.FAILED
+        )
+
+    # ==========================================================
+    # Business Commands
+    # ==========================================================
+
+    @staticmethod
+    def create_payment(
+        db,
+        customer_id,
+        plan_id,
+        payment_channel,
+        payment_method=None,
+    ):
+
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.customer_id
+                == customer_id
+            )
+            .first()
+        )
+
+        if not customer:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found.",
             )
 
-            .scalar()
+        plan = (
+            db.query(Plan)
+            .filter(
+                Plan.plan_id
+                == plan_id
+            )
+            .first()
+        )
+
+        if not plan:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Plan not found.",
+            )
+
+        payment = Payment(
+
+            customer_id=customer_id,
+
+            subscription_id=None,
+
+            amount=plan.price,
+
+            payment_channel=payment_channel,
+
+            payment_method=payment_method,
+
+            payment_reference=(
+                PaymentService
+                ._generate_payment_reference()
+            ),
+
+            status=PaymentStatus.PENDING,
+
+            payment_date=None,
 
         )
+
+        db.add(payment)
+
+        db.commit()
+
+        db.refresh(payment)
+
+        return payment
+
+    @staticmethod
+    def verify_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService
+            ._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if not payment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found.",
+            )
+
+        #
+        # Payment Provider Verification
+        #
+        # Flutterwave
+        # Paystack
+        # etc.
+        #
+
+        gateway_success = True
+
+        if not gateway_success:
+
+            PaymentService._mark_failed(
+                payment
+            )
+
+            db.commit()
+
+            db.refresh(payment)
+
+            return payment
+
+        PaymentService._mark_successful(
+            payment
+        )
+
+        subscription = (
+            SubscriptionService
+            .create_subscription(
+                db=db,
+                customer_id=payment.customer_id,
+                plan_id=payment.plan_id,
+            )
+        )
+
+        payment.subscription_id = (
+            subscription.subscription_id
+        )
+
+        db.commit()
+
+        db.refresh(payment)
+
+        return payment
+
+    @staticmethod
+    def cancel_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService
+            ._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if not payment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found.",
+            )
+
+        if payment.status != (
+            PaymentStatus.PENDING
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only pending payments "
+                    "can be cancelled."
+                ),
+            )
+
+        payment.status = (
+            PaymentStatus.CANCELLED
+        )
+
+        db.commit()
+
+        db.refresh(payment)
+
+        return payment
+
+    @staticmethod
+    def refund_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService
+            ._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if not payment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found.",
+            )
+
+        if payment.status != (
+            PaymentStatus.SUCCESSFUL
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only successful payments "
+                    "can be refunded."
+                ),
+            )
+
+        payment.status = (
+            PaymentStatus.REFUNDED
+        )
+
+        db.commit()
+
+        db.refresh(payment)
+
+        return payment
+
+    # ==========================================================
+    # Payment Gateway
+    # ==========================================================
+
+    @staticmethod
+    def process_webhook(
+        db,
+        payload,
+    ):
+        """
+        Placeholder for payment gateway webhooks.
+
+        Flutterwave
+        Paystack
+        etc.
+        """
+
+        payment_reference = payload.get(
+            "payment_reference"
+        )
+
+        return PaymentService.verify_payment(
+            db=db,
+            payment_reference=payment_reference,
+        )
+
+    # ==========================================================
+    # Query Methods
+    # ==========================================================
+
+    @staticmethod
+    def get_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if not payment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found.",
+            )
+
+        return payment
+
+    @staticmethod
+    def get_customer_payments(
+        db,
+        customer_id,
+    ):
+
+        return (
+            db.query(Payment)
+            .filter(
+                Payment.customer_id == customer_id
+            )
+            .order_by(
+                Payment.created_at.desc()
+            )
+            .all()
+        )
+
+    @staticmethod
+    def get_all_payments(db):
+
+        return (
+            db.query(Payment)
+            .order_by(
+                Payment.created_at.desc()
+            )
+            .all()
+        )
+
+    @staticmethod
+    def get_payment_summary(db):
 
         total_payments = (
-
-            db.query(
-                func.count(
-                    Payment.payment_id,
-                ),
-            )
-
-            .scalar()
-
-        )
-
-        successful_payments = (
-
-            db.query(
-                func.count(
-                    Payment.payment_id,
-                ),
-            )
-
-            .filter(
-                Payment.status == "successful",
-            )
-
-            .scalar()
-
+            db.query(Payment)
+            .count()
         )
 
         pending_payments = (
-
-            db.query(
-                func.count(
-                    Payment.payment_id,
-                ),
-            )
-
+            db.query(Payment)
             .filter(
-                Payment.status == "pending",
+                Payment.status
+                == PaymentStatus.PENDING
             )
+            .count()
+        )
 
-            .scalar()
-
+        successful_payments = (
+            db.query(Payment)
+            .filter(
+                Payment.status
+                == PaymentStatus.SUCCESSFUL
+            )
+            .count()
         )
 
         failed_payments = (
-
-            db.query(
-                func.count(
-                    Payment.payment_id,
-                ),
-            )
-
+            db.query(Payment)
             .filter(
-                Payment.status == "failed",
+                Payment.status
+                == PaymentStatus.FAILED
             )
+            .count()
+        )
 
+        cancelled_payments = (
+            db.query(Payment)
+            .filter(
+                Payment.status
+                == PaymentStatus.CANCELLED
+            )
+            .count()
+        )
+
+        refunded_payments = (
+            db.query(Payment)
+            .filter(
+                Payment.status
+                == PaymentStatus.REFUNDED
+            )
+            .count()
+        )
+
+        total_revenue = (
+            db.query(
+                func.coalesce(
+                    func.sum(
+                        Payment.amount
+                    ),
+                    0,
+                )
+            )
+            .filter(
+                Payment.status
+                == PaymentStatus.SUCCESSFUL
+            )
             .scalar()
-
         )
 
         return {
@@ -103,445 +448,22 @@ class PaymentService:
             "total_payments":
                 total_payments,
 
-            "total_revenue":
-                total_revenue,
+            "pending_payments":
+                pending_payments,
 
             "successful_payments":
                 successful_payments,
 
-            "pending_payments":
-                pending_payments,
-
             "failed_payments":
                 failed_payments,
 
-        }
+            "cancelled_payments":
+                cancelled_payments,
 
-    @staticmethod
-    def get_all_payments(
-        db,
-        search=None,
-        payment_channel=None,
-        status=None,
-    ):
+            "refunded_payments":
+                refunded_payments,
 
-        query = (
+            "total_revenue":
+                total_revenue,
 
-            db.query(
-
-                Payment,
-
-                Customer.full_name.label(
-                    "customer_name",
-                ),
-
-                Customer.phone_number.label(
-                    "phone_number",
-                ),
-
-            )
-
-            .join(
-
-                Customer,
-
-                Payment.customer_id
-                == Customer.customer_id,
-
-            )
-
-        )
-
-        if search:
-
-            query = query.filter(
-
-                or_(
-
-                    Customer.full_name.ilike(
-                        f"%{search}%"
-                    ),
-
-                    Customer.phone_number.ilike(
-                        f"%{search}%"
-                    ),
-
-                    Payment.payment_reference.ilike(
-                        f"%{search}%"
-                    ),
-
-                )
-
-            )
-
-        if payment_channel:
-
-            query = query.filter(
-
-                Payment.payment_channel
-                == payment_channel
-
-            )
-
-        if status:
-
-            query = query.filter(
-
-                Payment.status
-                == status
-
-            )
-
-        results = (
-
-            query.order_by(
-
-                Payment.created_at.desc()
-
-            )
-
-            .all()
-
-        )
-
-        return [
-
-            {
-
-                "payment_id":
-                    payment.payment_id,
-
-                "customer_id":
-                    payment.customer_id,
-
-                "customer_name":
-                    customer_name,
-
-                "phone_number":
-                    phone_number,
-
-                "subscription_id":
-                    payment.subscription_id,
-
-                "amount":
-                    payment.amount,
-
-                "payment_channel":
-                    payment.payment_channel,
-
-                "payment_method":
-                    payment.payment_method,
-
-                "payment_reference":
-                    payment.payment_reference,
-
-                "status":
-                    payment.status,
-
-                "notes":
-                    payment.notes,
-
-                "payment_date":
-                    payment.payment_date,
-
-                "created_at":
-                    payment.created_at,
-
-                "updated_at":
-                    payment.updated_at,
-
-            }
-
-            for (
-
-                payment,
-                customer_name,
-                phone_number,
-
-            ) in results
-
-        ]
-
-    @staticmethod
-    def get_payment(
-        db,
-        payment_id,
-    ):
-
-        result = (
-
-            db.query(
-
-                Payment,
-
-                Customer.full_name.label(
-                    "customer_name",
-                ),
-
-                Customer.phone_number.label(
-                    "phone_number",
-                ),
-
-            )
-
-            .join(
-
-                Customer,
-
-                Payment.customer_id
-                == Customer.customer_id,
-
-            )
-
-            .filter(
-
-                Payment.payment_id
-                == payment_id
-
-            )
-
-            .first()
-
-        )
-
-        if result is None:
-
-            return None
-
-        payment, customer_name, phone_number = result
-
-        return {
-
-            "payment_id":
-                payment.payment_id,
-
-            "customer_id":
-                payment.customer_id,
-
-            "customer_name":
-                customer_name,
-
-            "phone_number":
-                phone_number,
-
-            "subscription_id":
-                payment.subscription_id,
-
-            "amount":
-                payment.amount,
-
-            "payment_channel":
-                payment.payment_channel,
-
-            "payment_method":
-                payment.payment_method,
-
-            "payment_reference":
-                payment.payment_reference,
-
-            "status":
-                payment.status,
-
-            "notes":
-                payment.notes,
-
-            "payment_date":
-                payment.payment_date,
-
-            "created_at":
-                payment.created_at,
-
-            "updated_at":
-                payment.updated_at,
-
-        }
-
-    @staticmethod
-    def create_payment(
-        db,
-        payment_data,
-    ):
-
-        payment = Payment(
-
-            customer_id=payment_data.customer_id,
-
-            subscription_id=payment_data.subscription_id,
-
-            amount=payment_data.amount,
-
-            payment_channel=payment_data.payment_channel,
-
-            payment_method=payment_data.payment_method,
-
-            payment_reference=f"PAY-{uuid4().hex[:12].upper()}",
-
-            status=payment_data.status,
-
-            notes=payment_data.notes,
-
-            payment_date=(
-
-                payment_data.payment_date
-
-                or datetime.utcnow()
-
-            ),
-
-        )
-
-        db.add(payment)
-
-        db.commit()
-
-        db.refresh(payment)
-
-        return PaymentService.get_payment(
-
-            db,
-
-            payment.payment_id,
-
-        )
-
-    @staticmethod
-    def create_payment_for_subscription(
-        db,
-        customer_id,
-        subscription_id,
-        amount,
-        payment_method="wallet",
-    ):
-
-        payment = Payment(
-
-            customer_id=customer_id,
-
-            subscription_id=subscription_id,
-
-            amount=amount,
-
-            payment_channel="system",
-
-            payment_method=payment_method,
-
-            payment_reference=f"PAY-{uuid4().hex[:12].upper()}",
-
-            status="pending",
-
-            notes="Subscription purchase",
-
-            payment_date=datetime.utcnow(),
-
-        )
-
-        db.add(payment)
-
-        db.flush()
-
-        return payment
-
-    @staticmethod
-    def update_payment(
-        db,
-        payment_id,
-        payment_data,
-    ):
-
-        payment = (
-
-            db.query(Payment)
-
-            .filter(
-
-                Payment.payment_id
-                == payment_id
-
-            )
-
-            .first()
-
-        )
-
-        if payment is None:
-
-            return None
-
-        payment.customer_id = (
-            payment_data.customer_id
-        )
-
-        payment.subscription_id = (
-            payment_data.subscription_id
-        )
-
-        payment.amount = (
-            payment_data.amount
-        )
-
-        payment.payment_channel = (
-            payment_data.payment_channel
-        )
-
-        payment.payment_method = (
-            payment_data.payment_method
-        )
-
-        payment.status = (
-            payment_data.status
-        )
-
-        payment.notes = (
-            payment_data.notes
-        )
-
-        payment.payment_date = (
-
-            payment_data.payment_date
-
-            or payment.payment_date
-
-        )
-
-        db.commit()
-
-        db.refresh(payment)
-
-        return PaymentService.get_payment(
-
-            db,
-
-            payment.payment_id,
-
-        )
-
-    @staticmethod
-    def delete_payment(
-        db,
-        payment_id,
-    ):
-
-        payment = (
-
-            db.query(Payment)
-
-            .filter(
-
-                Payment.payment_id
-                == payment_id
-
-            )
-
-            .first()
-
-        )
-
-        if payment is None:
-
-            return False
-
-        db.delete(payment)
-
-        db.commit()
-
-        return True
+        }   

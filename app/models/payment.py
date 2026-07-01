@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     BigInteger,
+    Integer,
     DECIMAL,
     String,
     Enum,
@@ -9,11 +10,13 @@ from sqlalchemy import (
     Text,
 )
 
+from sqlalchemy import func
+
 from sqlalchemy.orm import relationship
 
-from sqlalchemy.sql import func
-
 from app.database.base import Base
+
+from app.enums import PaymentStatus
 
 
 class Payment(Base):
@@ -29,6 +32,12 @@ class Payment(Base):
     customer_id = Column(
         BigInteger,
         ForeignKey("customers.customer_id"),
+        nullable=False,
+    )
+
+    plan_id = Column(
+        Integer,
+        ForeignKey("plans.plan_id"),
         nullable=False,
     )
 
@@ -59,17 +68,19 @@ class Payment(Base):
         nullable=False,
     )
 
+    gateway_transaction_id = Column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
+
     status = Column(
         Enum(
-            "pending",
-            "successful",
-            "failed",
-            "cancelled",
-            "refunded",
+            PaymentStatus,
             name="payment_status",
         ),
-        default="successful",
         nullable=False,
+        default=PaymentStatus.PENDING,
     )
 
     notes = Column(
@@ -79,8 +90,7 @@ class Payment(Base):
 
     payment_date = Column(
         TIMESTAMP,
-        server_default=func.now(),
-        nullable=False,
+        nullable=True,
     )
 
     created_at = Column(
@@ -98,6 +108,11 @@ class Payment(Base):
 
     customer = relationship(
         "Customer",
+        back_populates="payments",
+    )
+
+    plan = relationship(
+        "Plan",
         back_populates="payments",
     )
 

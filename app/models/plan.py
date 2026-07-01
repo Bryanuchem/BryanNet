@@ -86,3 +86,8 @@ class Plan(Base):
         back_populates="plan",
         cascade="all, delete-orphan",
     )
+    
+    payments = relationship(
+        "Payment",
+        back_populates="plan",
+    )    

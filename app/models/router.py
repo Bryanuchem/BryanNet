@@ -6,11 +6,13 @@ from sqlalchemy import (
     TIMESTAMP,
 )
 
+from sqlalchemy.orm import relationship
+
 from sqlalchemy.sql import func
 
 from app.database.base import Base
 
-from sqlalchemy.orm import relationship
+from app.enums import RouterStatus
 
 class Router(Base):
 
@@ -35,29 +37,27 @@ class Router(Base):
 
     management_ip = Column(
         String(50),
-        nullable=True,
+        nullable=False,
+        unique=True,
     )
 
-    router_type = Column(
-        Enum(
-            "simulator",
-            "mikrotik_chr",
-            "mikrotik_physical",
-            name="router_type",
-        ),
+    api_username = Column(
+        String(100),
         nullable=False,
-        default="simulator",
+    )
+
+    api_password = Column(
+        String(255),
+        nullable=False,
     )
 
     status = Column(
         Enum(
-            "online",
-            "offline",
-            "maintenance",
+            RouterStatus,
             name="router_status",
         ),
         nullable=False,
-        default="online",
+        default=RouterStatus.ONLINE,
     )
 
     created_at = Column(
@@ -72,8 +72,8 @@ class Router(Base):
         onupdate=func.now(),
         nullable=False,
     )
-    
-router_accounts = relationship(
-    "RouterAccount",
-    back_populates="router",
-)    
+
+    router_accounts = relationship(
+        "RouterAccount",
+        back_populates="router",
+    )
