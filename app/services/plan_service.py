@@ -2,11 +2,6 @@ from fastapi import HTTPException
 
 from app.models.plan import Plan
 
-from app.enums import SubscriptionStatus
-
-from app.models.subscription import Subscription
-
-
 class PlanService:
 
     # ==========================================================

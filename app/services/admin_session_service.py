@@ -106,11 +106,13 @@ class AdminSessionService:
             datetime.now(UTC)
         )
 
-        db.commit()
-
-        db.refresh(session)
-
-        return session
+        return (
+            AdminSessionService
+            ._finalize_session_change(
+                db,
+                session,
+            )
+        )
 
     @staticmethod
     def close_session(
@@ -131,11 +133,13 @@ class AdminSessionService:
 
         session.is_active = False
 
-        db.commit()
-
-        db.refresh(session)
-
-        return session
+        return (
+            AdminSessionService
+            ._finalize_session_change(
+                db,
+                session,
+            )
+        )
 
     @staticmethod
     def close_all_sessions(
@@ -162,11 +166,27 @@ class AdminSessionService:
 
             session.is_active = False
 
-        db.commit()
+        return (
+            AdminSessionService
+            ._finalize_session_change(
+                db,
+                session,
+            )
+)
 
-        return {
-            "closed_sessions": len(sessions),
-        }
+    @staticmethod
+    def _finalize_session_change(
+        db,
+        session,
+    ):
+
+        return (
+            AdminSessionService
+            ._finalize_session_change(
+                db,
+                session,
+            )
+        )
 
     # ==========================================================
     # Query Methods

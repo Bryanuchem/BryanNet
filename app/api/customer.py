@@ -1,173 +1,274 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException
 )
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+    Session,
+)
 
-from app.database.dependencies import get_db
+from app.database.dependencies import (
+    get_current_admin,
+    get_db,
+)
 
 from app.schemas.customer import (
     CustomerCreate,
-    CustomerUpdate,
     CustomerOnboardingStart,
+    CustomerResponse,
+    CustomerUpdate,
     CustomerUpdateName,
     CustomerUpdatePhone,
-    CustomerResponse,
 )
 
 from app.services.customer_service import (
-    CustomerService
+    CustomerService,
 )
+
 
 router = APIRouter(
     prefix="/customers",
-    tags=["Customers"]
+    tags=["Customers"],
 )
 
+
+# ==========================================================
+# Business Commands
+# ==========================================================
 
 @router.post(
     "/register",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
 def register_customer(
     customer: CustomerCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return CustomerService.register_customer(
-        db=db,
-        phone_number=customer.phone_number,
-        full_name=customer.full_name,
-        telegram_user_id=customer.telegram_user_id
+    return (
+        CustomerService.register_customer(
+            db=db,
+            phone_number=customer.phone_number,
+            full_name=customer.full_name,
+            telegram_user_id=customer.telegram_user_id,
+        )
     )
 
 
 @router.put(
     "/{customer_id}",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
 def update_customer(
     customer_id: int,
     customer: CustomerUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return CustomerService.update_customer(
-        db=db,
-        customer_id=customer_id,
-        customer_data=customer,
+    return (
+        CustomerService.update_customer(
+            db=db,
+            customer_id=customer_id,
+            customer_data=customer,
+        )
+    )
+
+
+@router.patch(
+    "/{customer_id}/activate",
+    response_model=CustomerResponse,
+)
+def activate_customer(
+    customer_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        CustomerService.activate_customer(
+            db=db,
+            customer_id=customer_id,
+        )
+    )
+
+
+@router.patch(
+    "/{customer_id}/deactivate",
+    response_model=CustomerResponse,
+)
+def deactivate_customer(
+    customer_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        CustomerService.deactivate_customer(
+            db=db,
+            customer_id=customer_id,
+        )
     )
 
 
 @router.post(
     "/onboarding/start",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
 def start_onboarding(
     customer: CustomerOnboardingStart,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
 ):
 
-    return CustomerService.start_onboarding(
-        db=db,
-        telegram_user_id=customer.telegram_user_id
+    return (
+        CustomerService.start_onboarding(
+            db=db,
+            telegram_user_id=customer.telegram_user_id,
+        )
     )
 
 
 @router.patch(
     "/onboarding/name",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
-def update_name(
+def update_full_name(
     customer: CustomerUpdateName,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
 ):
 
-    result = CustomerService.update_name(
-        db=db,
-        telegram_user_id=customer.telegram_user_id,
-        full_name=customer.full_name
-    )
-
-    if result is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Customer not found."
+    return (
+        CustomerService.update_full_name(
+            db=db,
+            telegram_user_id=customer.telegram_user_id,
+            full_name=customer.full_name,
         )
-
-    return result
+    )
 
 
 @router.patch(
     "/onboarding/phone",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
-def update_phone(
+def update_phone_number(
     customer: CustomerUpdatePhone,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
 ):
 
-    result = CustomerService.update_phone(
-        db=db,
-        telegram_user_id=customer.telegram_user_id,
-        phone_number=customer.phone_number
+    return (
+        CustomerService.update_phone_number(
+            db=db,
+            telegram_user_id=customer.telegram_user_id,
+            phone_number=customer.phone_number,
+        )
     )
 
-    if result is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Customer not found."
-        )
 
-    return result
-
+# ==========================================================
+# Query Methods
+# ==========================================================
 
 @router.get(
     "/",
-    response_model=list[CustomerResponse]
+    response_model=list[CustomerResponse],
 )
 def get_all_customers(
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
-    return CustomerService.get_all_customers(db)
+
+    return (
+        CustomerService.get_all_customers(
+            db,
+        )
+    )
 
 
 @router.get(
-    "/{phone_number}",
-    response_model=CustomerResponse
+    "/id/{customer_id}",
+    response_model=CustomerResponse,
 )
 def get_customer(
-    phone_number: str,
-    db: Session = Depends(get_db)
+    customer_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return CustomerService.get_customer_by_phone(
-        db=db,
-        phone_number=phone_number
+    return (
+        CustomerService.get_customer(
+            db=db,
+            customer_id=customer_id,
+        )
+    )
+
+
+@router.get(
+    "/phone/{phone_number}",
+    response_model=CustomerResponse,
+)
+def get_customer_by_phone(
+    phone_number: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        CustomerService.get_customer_by_phone(
+            db=db,
+            phone_number=phone_number,
+        )
     )
 
 
 @router.get(
     "/telegram/{telegram_user_id}",
-    response_model=CustomerResponse
+    response_model=CustomerResponse,
 )
 def get_customer_by_telegram_id(
     telegram_user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
 ):
 
-    customer = CustomerService.get_customer_by_telegram_id(
-        db=db,
-        telegram_user_id=telegram_user_id
-    )
-
-    if customer is None:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Customer not found."
+    return (
+        CustomerService.get_customer_by_telegram_id(
+            db=db,
+            telegram_user_id=telegram_user_id,
         )
-
-    return customer
+    )

@@ -27,7 +27,7 @@ router = APIRouter(
 # ==========================================================
 
 @router.post(
-    "/run",
+    "/all",
 )
 def run_all_jobs(
     db: Session = Depends(

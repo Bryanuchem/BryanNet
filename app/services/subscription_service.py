@@ -1,5 +1,4 @@
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta, UTC
 
 from fastapi import HTTPException
 
@@ -172,9 +171,10 @@ class SubscriptionService:
         else:
 
             start_date = (
-                datetime.now()
+                datetime.now(
+                    UTC,
+                )
             )
-
             status = (
                 SubscriptionStatus.ACTIVE
             )
@@ -250,7 +250,9 @@ class SubscriptionService:
         )
 
         subscription.activated_at = (
-            datetime.now()
+            datetime.now(
+                UTC,
+            )
         )
 
         if commit:
@@ -369,55 +371,6 @@ class SubscriptionService:
         )
 
         return subscription
-
-    # ==========================================================
-    # Background Tasks
-    # ==========================================================
-
-    @staticmethod
-    def process_expired_subscriptions(
-        db,
-    ):
-
-        expired_subscriptions = (
-            db.query(Subscription)
-            .filter(
-                Subscription.status == SubscriptionStatus.ACTIVE,
-                Subscription.expiry_date <= datetime.now(),
-            )
-            .all()
-        )
-
-        processed_count = 0
-
-        for subscription in expired_subscriptions:
-
-            SubscriptionService.expire_subscription(
-                db=db,
-                subscription=subscription,
-                commit=False,
-            )
-
-            SubscriptionService.activate_next_subscription(
-                db=db,
-                customer_id=subscription.customer_id,
-                commit=False,
-            )
-
-            processed_count += 1
-
-        db.commit()
-
-        for subscription in expired_subscriptions:
-
-            RouterAccountService.synchronize_customer_access(
-                db,
-                subscription.customer_id,
-            )
-
-        return {
-            "processed_subscriptions": processed_count,
-        }
 
     # ==========================================================
     # Query Methods

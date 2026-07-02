@@ -116,6 +116,35 @@ class DeviceService:
                 detail="Device limit reached.",
             )
 
+    @staticmethod
+    def _finalize_device_change(
+        db,
+        device,
+        synchronize=True,
+    ):
+
+        db.commit()
+
+        db.refresh(
+            device,
+        )
+
+        if synchronize:
+
+            from app.services.router_account_service import (
+                RouterAccountService,
+            )
+
+            RouterAccountService.synchronize_customer_access(
+
+                db,
+
+                device.customer_id,
+
+            )
+
+        return device
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -193,22 +222,13 @@ class DeviceService:
             device,
         )
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            customer_id,
-        )
-
-        return device
 
     @staticmethod
     def activate_device(
@@ -258,22 +278,13 @@ class DeviceService:
             datetime.now(UTC)
         )
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            device.customer_id,
-        )
-
-        return device
 
     @staticmethod
     def deactivate_device(
@@ -292,22 +303,13 @@ class DeviceService:
             DeviceStatus.INACTIVE
         )
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            device.customer_id,
-        )
-
-        return device
 
     @staticmethod
     def replace_device(
@@ -354,22 +356,13 @@ class DeviceService:
             datetime.now(UTC)
         )
 
-        db.commit()
-
-        db.refresh(
-            new_device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                new_device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            customer_id,
-        )
-
-        return new_device
     
     @staticmethod
     def approve_device(
@@ -386,22 +379,13 @@ class DeviceService:
 
         device.approved_by_customer = True
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            device.customer_id,
-        )
-
-        return device
 
     @staticmethod
     def rename_device(
@@ -419,13 +403,14 @@ class DeviceService:
 
         device.device_name = device_name
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+                synchronize=False,
+            )
         )
-
-        return device
 
     @staticmethod
     def block_device(
@@ -444,25 +429,16 @@ class DeviceService:
             DeviceStatus.BLOCKED
         )
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+            )
         )
-        
-        from app.services.router_account_service import (
-            RouterAccountService,
-        )
-        
-        RouterAccountService.synchronize_customer_access(
-            db,
-            device.customer_id,
-        )
-
-        return device
 
     @staticmethod
-    def update_last_seen(
+    def touch_device(
         db,
         mac_address,
     ):
@@ -482,13 +458,14 @@ class DeviceService:
             datetime.now(UTC)
         )
 
-        db.commit()
-
-        db.refresh(
-            device,
+        return (
+            DeviceService
+            ._finalize_device_change(
+                db,
+                device,
+                synchronize=False,
+            )
         )
-
-        return device
 
     # ==========================================================
     # Query Methods

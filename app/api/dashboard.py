@@ -1,77 +1,137 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from sqlalchemy.orm import Session
+from typing import Literal
 
-from app.database.dependencies import get_db
+from fastapi import (
+    APIRouter,
+    Depends,
+)
+
+from sqlalchemy.orm import (
+    Session,
+)
+
+from app.database.dependencies import (
+    get_current_admin,
+    get_db,
+)
 
 from app.schemas.dashboard import (
     DashboardSummaryResponse,
     RevenueOverviewItem,
-    SubscriptionBreakdownItem,
     RecentActivityItem,
+    SubscriptionBreakdownItem,
 )
 
 from app.services.dashboard_service import (
-    DashboardService
+    DashboardService,
 )
+
 
 router = APIRouter(
     prefix="/dashboard",
-    tags=["Dashboard"]
+    tags=["Dashboard"],
 )
 
+
+# ==========================================================
+# Summary
+# ==========================================================
 
 @router.get(
     "/summary",
-    response_model=DashboardSummaryResponse
+    response_model=DashboardSummaryResponse,
 )
 def get_dashboard_summary(
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return DashboardService.get_summary(
-        db=db
+    return (
+        DashboardService.get_summary(
+            db,
+        )
     )
 
+
+# ==========================================================
+# Revenue
+# ==========================================================
 
 @router.get(
     "/revenue-overview",
-    response_model=list[RevenueOverviewItem]
+    response_model=list[RevenueOverviewItem],
 )
 def get_revenue_overview(
-    period: str = "month",
-    db: Session = Depends(get_db)
+    period: Literal[
+        "7d",
+        "30d",
+        "month",
+        "12m",
+    ] = "month",
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return DashboardService.get_revenue_overview(
-        db=db,
-        period=period
+    return (
+        DashboardService.get_revenue_overview(
+            db=db,
+            period=period,
+        )
     )
 
+
+# ==========================================================
+# Subscription Breakdown
+# ==========================================================
 
 @router.get(
     "/subscription-breakdown",
-    response_model=list[SubscriptionBreakdownItem]
+    response_model=list[SubscriptionBreakdownItem],
 )
 def get_subscription_breakdown(
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return DashboardService.get_subscription_breakdown(
-        db=db
+    return (
+        DashboardService.get_subscription_breakdown(
+            db,
+        )
     )
 
-  
+
+# ==========================================================
+# Recent Activity
+# ==========================================================
+
 @router.get(
     "/recent-activity",
     response_model=list[RecentActivityItem],
 )
 def get_recent_activity(
     limit: int = 10,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return DashboardService.get_recent_activity(
-        db=db,
-        limit=limit,
-    )    
+    return (
+        DashboardService.get_recent_activity(
+            db=db,
+            limit=limit,
+        )
+    )

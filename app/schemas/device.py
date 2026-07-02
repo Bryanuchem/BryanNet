@@ -7,6 +7,16 @@ class DeviceCreate(BaseModel):
     mac_address: str
 
 
+class DeviceRenameRequest(BaseModel):
+    device_name: str
+
+
+class DeviceReplacementRequest(BaseModel):
+    customer_id: int
+    old_device_id: int
+    new_device_id: int
+
+
 class DeviceResponse(BaseModel):
     device_id: int
     customer_id: int

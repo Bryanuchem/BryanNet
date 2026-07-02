@@ -109,6 +109,20 @@ class PaymentService:
             PaymentStatus.EXPIRED
         )
 
+    @staticmethod
+    def _finalize_payment_change(
+        db,
+        payment,
+    ):
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -165,13 +179,13 @@ class PaymentService:
             payment,
         )
 
-        db.commit()
-
-        db.refresh(
-            payment,
+        return (
+            PaymentService
+            ._finalize_payment_change(
+                db,
+                payment,
+            )
         )
-
-        return payment
 
     @staticmethod
     def complete_payment(
@@ -217,13 +231,13 @@ class PaymentService:
             subscription.subscription_id
         )
 
-        db.commit()
-
-        db.refresh(
-            payment,
+        return (
+            PaymentService
+            ._finalize_payment_change(
+                db,
+                payment,
+            )
         )
-
-        return payment
     
     @staticmethod
     def cancel_payment(
@@ -255,13 +269,13 @@ class PaymentService:
             payment,
         )
 
-        db.commit()
-
-        db.refresh(
-            payment,
+        return (
+            PaymentService
+            ._finalize_payment_change(
+                db,
+                payment,
+            )
         )
-
-        return payment
 
     @staticmethod
     def refund_payment(
@@ -293,13 +307,13 @@ class PaymentService:
             payment,
         )
 
-        db.commit()
-
-        db.refresh(
-            payment,
+        return (
+            PaymentService
+            ._finalize_payment_change(
+                db,
+                payment,
+            )
         )
-
-        return payment
 
     @staticmethod
     def expire_payment(
@@ -331,13 +345,13 @@ class PaymentService:
             payment,
         )
 
-        db.commit()
-
-        db.refresh(
-            payment,
+        return (
+            PaymentService
+            ._finalize_payment_change(
+                db,
+                payment,
+            )
         )
-
-        return payment
 
     # ==========================================================
     # Query Methods

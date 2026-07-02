@@ -88,15 +88,23 @@ class CustomerService:
         )
 
         if not customer:
-            return None
+
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found.",
+            )
 
         customer.full_name = full_name
+
         customer.registration_step = (
             NextAction.ENTER_PHONE_NUMBER
         )
 
         db.commit()
-        db.refresh(customer)
+
+        db.refresh(
+            customer,
+        )
 
         return customer
 
@@ -131,16 +139,25 @@ class CustomerService:
         )
 
         if not customer:
-            return None
+
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found.",
+            )
 
         customer.phone_number = phone_number
+
         customer.is_registered = True
+
         customer.registration_step = (
             NextAction.COMPLETE
         )
 
         db.commit()
-        db.refresh(customer)
+
+        db.refresh(
+            customer,
+        )
 
         return customer
 

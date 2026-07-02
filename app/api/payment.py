@@ -1,18 +1,25 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
 )
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+    Session,
+)
 
-from app.database.dependencies import get_db
+from app.database.dependencies import (
+    get_current_admin,
+    get_db,
+)
+
+from app.enums import (
+    PaymentProvider,
+)
 
 from app.schemas.payment import (
     PaymentCreate,
-    PaymentUpdate,
-    PaymentResponse,
     PaymentListItem,
+    PaymentResponse,
     PaymentStatsResponse,
 )
 
@@ -20,67 +27,16 @@ from app.services.payment_service import (
     PaymentService,
 )
 
+
 router = APIRouter(
     prefix="/payments",
     tags=["Payments"],
 )
 
 
-@router.get(
-    "/",
-    response_model=list[PaymentListItem],
-)
-def get_payments(
-    search: str | None = None,
-    payment_channel: str | None = None,
-    status: str | None = None,
-    db: Session = Depends(get_db),
-):
-
-    return PaymentService.get_all_payments(
-        db=db,
-        search=search,
-        payment_channel=payment_channel,
-        status=status,
-    )
-
-
-@router.get(
-    "/summary",
-    response_model=PaymentStatsResponse,
-)
-def get_payment_summary(
-    db: Session = Depends(get_db),
-):
-
-    return PaymentService.get_payment_summary(
-        db=db,
-    )
-
-
-@router.get(
-    "/{payment_id}",
-    response_model=PaymentResponse,
-)
-def get_payment(
-    payment_id: int,
-    db: Session = Depends(get_db),
-):
-
-    payment = PaymentService.get_payment(
-        db=db,
-        payment_id=payment_id,
-    )
-
-    if payment is None:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Payment not found.",
-        )
-
-    return payment
-
+# ==========================================================
+# Business Commands
+# ==========================================================
 
 @router.post(
     "/",
@@ -89,61 +45,200 @@ def get_payment(
 )
 def create_payment(
     payment: PaymentCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    return PaymentService.create_payment(
-        db=db,
-        payment_data=payment,
+    return (
+        PaymentService.create_payment(
+            db=db,
+            customer_id=payment.customer_id,
+            plan_id=payment.plan_id,
+            payment_provider=PaymentProvider(
+                payment.payment_provider,
+            ),
+            payment_method=payment.payment_method,
+        )
     )
 
 
-@router.put(
-    "/{payment_id}",
+@router.post(
+    "/{payment_reference}/complete",
     response_model=PaymentResponse,
 )
-def update_payment(
-    payment_id: int,
-    payment: PaymentUpdate,
-    db: Session = Depends(get_db),
+def complete_payment(
+    payment_reference: str,
+    gateway_transaction_id: str | None = None,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    updated_payment = PaymentService.update_payment(
-        db=db,
-        payment_id=payment_id,
-        payment_data=payment,
+    return (
+        PaymentService.complete_payment(
+            db=db,
+            payment_reference=payment_reference,
+            gateway_transaction_id=gateway_transaction_id,
+        )
     )
 
-    if updated_payment is None:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Payment not found.",
-        )
-
-    return updated_payment
-
-
-@router.delete(
-    "/{payment_id}",
+@router.patch(
+    "/{payment_reference}/cancel",
+    response_model=PaymentResponse,
 )
-def delete_payment(
-    payment_id: int,
-    db: Session = Depends(get_db),
+def cancel_payment(
+    payment_reference: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
-    deleted = PaymentService.delete_payment(
-        db=db,
-        payment_id=payment_id,
+    return (
+        PaymentService.cancel_payment(
+            db=db,
+            payment_reference=payment_reference,
+        )
     )
 
-    if not deleted:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Payment not found.",
+@router.patch(
+    "/{payment_reference}/refund",
+    response_model=PaymentResponse,
+)
+def refund_payment(
+    payment_reference: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.refund_payment(
+            db=db,
+            payment_reference=payment_reference,
         )
+    )
 
-    return {
-        "message": "Payment deleted successfully.",
-    }
+
+@router.patch(
+    "/{payment_reference}/expire",
+    response_model=PaymentResponse,
+)
+def expire_payment(
+    payment_reference: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.expire_payment(
+            db=db,
+            payment_reference=payment_reference,
+        )
+    )
+
+
+# ==========================================================
+# Query Methods
+# ==========================================================
+
+@router.get(
+    "/",
+    response_model=list[PaymentListItem],
+)
+def get_all_payments(
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.get_all_payments(
+            db,
+        )
+    )
+
+
+@router.get(
+    "/summary",
+    response_model=PaymentStatsResponse,
+)
+def get_payment_summary(
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.get_payment_summary(
+            db,
+        )
+    )
+
+
+@router.get(
+    "/{payment_reference}",
+    response_model=PaymentResponse,
+)
+def get_payment(
+    payment_reference: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.get_payment(
+            db=db,
+            payment_reference=payment_reference,
+        )
+    )
+
+
+@router.get(
+    "/customer/{customer_id}",
+    response_model=list[PaymentResponse],
+)
+def get_customer_payments(
+    customer_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PaymentService.get_customer_payments(
+            db=db,
+            customer_id=customer_id,
+        )
+    )

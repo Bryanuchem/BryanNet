@@ -1,15 +1,26 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from sqlalchemy.orm import Session
+from fastapi import (
+    APIRouter,
+    Depends,
+)
 
-from app.database.dependencies import get_db
+from sqlalchemy.orm import (
+    Session,
+)
+
+from app.database.dependencies import (
+    get_current_admin,
+    get_db,
+)
 
 from app.schemas.plan import (
     PlanCreate,
     PlanResponse,
 )
 
-from app.services.plan_service import PlanService
+from app.services.plan_service import (
+    PlanService,
+)
+
 
 router = APIRouter(
     prefix="/plans",
@@ -17,15 +28,9 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "/",
-    response_model=list[PlanResponse],
-)
-def get_plans(
-    db: Session = Depends(get_db),
-):
-    return PlanService.get_all_plans(db)
-
+# ==========================================================
+# Business Commands
+# ==========================================================
 
 @router.post(
     "/",
@@ -34,9 +39,20 @@ def get_plans(
 )
 def create_plan(
     plan: PlanCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
-    return PlanService.create_plan(db, plan)
+
+    return (
+        PlanService.create_plan(
+            db=db,
+            plan_data=plan,
+        )
+    )
 
 
 @router.put(
@@ -46,39 +62,128 @@ def create_plan(
 def update_plan(
     plan_id: int,
     plan: PlanCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
-    return PlanService.update_plan(
-        db=db,
-        plan_id=plan_id,
-        plan=plan,
+
+    return (
+        PlanService.update_plan_details(
+            db=db,
+            plan_id=plan_id,
+            plan_data=plan,
+        )
     )
 
 
 @router.patch(
-    "/{plan_id}/status",
+    "/{plan_id}/activate",
     response_model=PlanResponse,
 )
-def update_plan_status(
+def activate_plan(
     plan_id: int,
-    is_active: bool,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
-    return PlanService.set_plan_status(
-        db=db,
-        plan_id=plan_id,
-        is_active=is_active,
+
+    return (
+        PlanService.activate_plan(
+            db=db,
+            plan_id=plan_id,
+        )
     )
-    
-@router.delete(
-    "/{plan_id}",
-    status_code=200,
+
+
+@router.patch(
+    "/{plan_id}/deactivate",
+    response_model=PlanResponse,
 )
-def delete_plan(
+def deactivate_plan(
     plan_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
-    return PlanService.delete_plan(
-        db=db,
-        plan_id=plan_id,
-    )    
+
+    return (
+        PlanService.deactivate_plan(
+            db=db,
+            plan_id=plan_id,
+        )
+    )
+
+
+# ==========================================================
+# Query Methods
+# ==========================================================
+
+@router.get(
+    "/",
+    response_model=list[PlanResponse],
+)
+def get_all_plans(
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PlanService.get_all_plans(
+            db,
+        )
+    )
+
+
+@router.get(
+    "/active",
+    response_model=list[PlanResponse],
+)
+def get_active_plans(
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PlanService.get_active_plans(
+            db,
+        )
+    )
+
+
+@router.get(
+    "/{plan_id}",
+    response_model=PlanResponse,
+)
+def get_plan(
+    plan_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        PlanService.get_plan(
+            db=db,
+            plan_id=plan_id,
+        )
+    )
