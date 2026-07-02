@@ -1,16 +1,18 @@
 from datetime import datetime
 from uuid import uuid4
+from sqlalchemy import func
 
 from fastapi import HTTPException
 
-from sqlalchemy import func
+from app.enums import (
+    PaymentProvider,
+    PaymentStatus,
+)
 
-from app.enums import PaymentStatus
-
-from app.models.customer import Customer
 from app.models.payment import Payment
-from app.models.plan import Plan
 
+from app.services.customer_service import CustomerService
+from app.services.plan_service import PlanService
 from app.services.subscription_service import (
     SubscriptionService,
 )
@@ -35,7 +37,7 @@ class PaymentService:
         payment_reference,
     ):
 
-        return (
+        payment = (
             db.query(Payment)
             .filter(
                 Payment.payment_reference
@@ -44,13 +46,27 @@ class PaymentService:
             .first()
         )
 
+        if not payment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found.",
+            )
+
+        return payment
+
     @staticmethod
     def _mark_successful(
         payment,
+        gateway_transaction_id=None,
     ):
 
         payment.status = (
             PaymentStatus.SUCCESSFUL
+        )
+
+        payment.gateway_transaction_id = (
+            gateway_transaction_id
         )
 
         payment.payment_date = (
@@ -66,6 +82,33 @@ class PaymentService:
             PaymentStatus.FAILED
         )
 
+    @staticmethod
+    def _mark_cancelled(
+        payment,
+    ):
+
+        payment.status = (
+            PaymentStatus.CANCELLED
+        )
+
+    @staticmethod
+    def _mark_refunded(
+        payment,
+    ):
+
+        payment.status = (
+            PaymentStatus.REFUNDED
+        )
+
+    @staticmethod
+    def _mark_expired(
+        payment,
+    ):
+
+        payment.status = (
+            PaymentStatus.EXPIRED
+        )
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -75,51 +118,33 @@ class PaymentService:
         db,
         customer_id,
         plan_id,
-        payment_channel,
+        payment_provider: PaymentProvider,
         payment_method=None,
     ):
 
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id
-                == customer_id
-            )
-            .first()
+        CustomerService.get_customer(
+            db,
+            customer_id,
         )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
 
         plan = (
-            db.query(Plan)
-            .filter(
-                Plan.plan_id
-                == plan_id
+            PlanService.get_plan(
+                db,
+                plan_id,
             )
-            .first()
         )
-
-        if not plan:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Plan not found.",
-            )
 
         payment = Payment(
 
             customer_id=customer_id,
 
+            plan_id=plan_id,
+
             subscription_id=None,
 
             amount=plan.price,
 
-            payment_channel=payment_channel,
+            payment_provider=payment_provider,
 
             payment_method=payment_method,
 
@@ -128,70 +153,60 @@ class PaymentService:
                 ._generate_payment_reference()
             ),
 
+            gateway_transaction_id=None,
+
             status=PaymentStatus.PENDING,
 
             payment_date=None,
 
         )
 
-        db.add(payment)
+        db.add(
+            payment,
+        )
 
         db.commit()
 
-        db.refresh(payment)
+        db.refresh(
+            payment,
+        )
 
         return payment
 
     @staticmethod
-    def verify_payment(
+    def complete_payment(
         db,
         payment_reference,
+        gateway_transaction_id=None,
     ):
 
         payment = (
-            PaymentService
-            ._find_payment(
+            PaymentService._find_payment(
                 db,
                 payment_reference,
             )
         )
 
-        if not payment:
+        if (
+            payment.status
+            != PaymentStatus.PENDING
+        ):
 
             raise HTTPException(
-                status_code=404,
-                detail="Payment not found.",
+                status_code=400,
+                detail=(
+                    "Only pending payments "
+                    "can be completed."
+                ),
             )
-
-        #
-        # Payment Provider Verification
-        #
-        # Flutterwave
-        # Paystack
-        # etc.
-        #
-
-        gateway_success = True
-
-        if not gateway_success:
-
-            PaymentService._mark_failed(
-                payment
-            )
-
-            db.commit()
-
-            db.refresh(payment)
-
-            return payment
 
         PaymentService._mark_successful(
-            payment
+            payment,
+            gateway_transaction_id,
         )
 
         subscription = (
-            SubscriptionService
-            .create_subscription(
+            SubscriptionService.create_subscription(
                 db=db,
                 customer_id=payment.customer_id,
                 plan_id=payment.plan_id,
@@ -204,128 +219,14 @@ class PaymentService:
 
         db.commit()
 
-        db.refresh(payment)
+        db.refresh(
+            payment,
+        )
 
         return payment
-
+    
     @staticmethod
     def cancel_payment(
-        db,
-        payment_reference,
-    ):
-
-        payment = (
-            PaymentService
-            ._find_payment(
-                db,
-                payment_reference,
-            )
-        )
-
-        if not payment:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Payment not found.",
-            )
-
-        if payment.status != (
-            PaymentStatus.PENDING
-        ):
-
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Only pending payments "
-                    "can be cancelled."
-                ),
-            )
-
-        payment.status = (
-            PaymentStatus.CANCELLED
-        )
-
-        db.commit()
-
-        db.refresh(payment)
-
-        return payment
-
-    @staticmethod
-    def refund_payment(
-        db,
-        payment_reference,
-    ):
-
-        payment = (
-            PaymentService
-            ._find_payment(
-                db,
-                payment_reference,
-            )
-        )
-
-        if not payment:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Payment not found.",
-            )
-
-        if payment.status != (
-            PaymentStatus.SUCCESSFUL
-        ):
-
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Only successful payments "
-                    "can be refunded."
-                ),
-            )
-
-        payment.status = (
-            PaymentStatus.REFUNDED
-        )
-
-        db.commit()
-
-        db.refresh(payment)
-
-        return payment
-
-    # ==========================================================
-    # Payment Gateway
-    # ==========================================================
-
-    @staticmethod
-    def process_webhook(
-        db,
-        payload,
-    ):
-        """
-        Placeholder for payment gateway webhooks.
-
-        Flutterwave
-        Paystack
-        etc.
-        """
-
-        payment_reference = payload.get(
-            "payment_reference"
-        )
-
-        return PaymentService.verify_payment(
-            db=db,
-            payment_reference=payment_reference,
-        )
-
-    # ==========================================================
-    # Query Methods
-    # ==========================================================
-
-    @staticmethod
-    def get_payment(
         db,
         payment_reference,
     ):
@@ -337,14 +238,123 @@ class PaymentService:
             )
         )
 
-        if not payment:
+        if (
+            payment.status
+            != PaymentStatus.PENDING
+        ):
 
             raise HTTPException(
-                status_code=404,
-                detail="Payment not found.",
+                status_code=400,
+                detail=(
+                    "Only pending payments "
+                    "can be cancelled."
+                ),
             )
 
+        PaymentService._mark_cancelled(
+            payment,
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
         return payment
+
+    @staticmethod
+    def refund_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if (
+            payment.status
+            != PaymentStatus.SUCCESSFUL
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only successful payments "
+                    "can be refunded."
+                ),
+            )
+
+        PaymentService._mark_refunded(
+            payment,
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
+    @staticmethod
+    def expire_payment(
+        db,
+        payment_reference,
+    ):
+
+        payment = (
+            PaymentService._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if (
+            payment.status
+            != PaymentStatus.PENDING
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only pending payments "
+                    "can be expired."
+                ),
+            )
+
+        PaymentService._mark_expired(
+            payment,
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
+    # ==========================================================
+    # Query Methods
+    # ==========================================================
+
+    @staticmethod
+    def get_payment(
+        db,
+        payment_reference,
+    ):
+
+        return (
+            PaymentService._find_payment(
+                db,
+                payment_reference,
+            )
+        )
 
     @staticmethod
     def get_customer_payments(
@@ -352,10 +362,15 @@ class PaymentService:
         customer_id,
     ):
 
+        CustomerService.get_customer(
+            db,
+            customer_id,
+        )
+
         return (
             db.query(Payment)
             .filter(
-                Payment.customer_id == customer_id
+                Payment.customer_id == customer_id,
             )
             .order_by(
                 Payment.created_at.desc()
@@ -364,7 +379,9 @@ class PaymentService:
         )
 
     @staticmethod
-    def get_all_payments(db):
+    def get_all_payments(
+        db,
+    ):
 
         return (
             db.query(Payment)
@@ -375,7 +392,9 @@ class PaymentService:
         )
 
     @staticmethod
-    def get_payment_summary(db):
+    def get_payment_summary(
+        db,
+    ):
 
         total_payments = (
             db.query(Payment)
@@ -427,11 +446,20 @@ class PaymentService:
             .count()
         )
 
+        expired_payments = (
+            db.query(Payment)
+            .filter(
+                Payment.status
+                == PaymentStatus.EXPIRED
+            )
+            .count()
+        )
+
         total_revenue = (
             db.query(
                 func.coalesce(
                     func.sum(
-                        Payment.amount
+                        Payment.amount,
                     ),
                     0,
                 )
@@ -463,7 +491,10 @@ class PaymentService:
             "refunded_payments":
                 refunded_payments,
 
+            "expired_payments":
+                expired_payments,
+
             "total_revenue":
                 total_revenue,
 
-        }   
+        }    

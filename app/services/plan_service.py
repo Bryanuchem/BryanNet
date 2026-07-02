@@ -6,9 +6,6 @@ from app.enums import SubscriptionStatus
 
 from app.models.subscription import Subscription
 
-from app.services.router_account_service import (
-    RouterAccountService,
-)
 
 class PlanService:
 
@@ -137,22 +134,6 @@ class PlanService:
         db.commit()
 
         db.refresh(plan)
-
-        active_subscriptions = (
-            db.query(Subscription)
-            .filter(
-                Subscription.plan_id == plan.plan_id,
-                Subscription.status == SubscriptionStatus.ACTIVE,
-            )
-            .all()
-        )
-
-        for subscription in active_subscriptions:
-
-            RouterAccountService.synchronize_customer_access(
-                db,
-                subscription.customer_id,
-            )
 
         return plan
 

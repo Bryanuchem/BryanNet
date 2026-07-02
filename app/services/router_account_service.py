@@ -9,12 +9,16 @@ from app.models.router_account import RouterAccount
 
 from app.services.customer_service import CustomerService
 from app.services.device_service import DeviceService
-from app.services.plan_service import PlanService
 from app.services.router_service import RouterService
-from app.services.subscription_service import (
-    SubscriptionService,
+
+
+from app.models.subscription import (
+    Subscription,
 )
 
+from app.enums import (
+    SubscriptionStatus,
+)
 
 class RouterAccountService:
 
@@ -124,11 +128,23 @@ class RouterAccountService:
         )
 
         subscription = (
-            SubscriptionService
-            .get_active_subscription(
-                db,
-                customer_id,
+
+            db.query(
+                Subscription,
             )
+
+            .filter(
+
+                Subscription.customer_id
+                == customer_id,
+
+                Subscription.status
+                == SubscriptionStatus.ACTIVE,
+
+            )
+
+            .first()
+
         )
 
         if not subscription:
@@ -137,7 +153,7 @@ class RouterAccountService:
                 status_code=400,
                 detail="Customer has no active subscription.",
             )
-
+        from app.services.plan_service import PlanService
         plan = (
             PlanService.get_plan(
                 db,

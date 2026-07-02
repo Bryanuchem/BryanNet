@@ -4,16 +4,14 @@ from fastapi import HTTPException
 
 from app.enums import DeviceStatus
 
+from app.enums import SubscriptionStatus
+
+from app.models.subscription import Subscription
+
 from app.models.device import Device
 
 from app.services.customer_service import CustomerService
-from app.services.plan_service import PlanService
-from app.services.router_account_service import (
-    RouterAccountService,
-)
-from app.services.subscription_service import (
-    SubscriptionService,
-)
+
 
 
 class DeviceService:
@@ -66,17 +64,31 @@ class DeviceService:
     ):
 
         subscription = (
-            SubscriptionService.get_active_subscription(
-                db,
-                customer_id,
+
+            db.query(Subscription)
+
+            .filter(
+
+                Subscription.customer_id
+                == customer_id,
+
+                Subscription.status
+                == SubscriptionStatus.ACTIVE,
+
             )
+
+            .first()
+
         )
 
         if not subscription:
 
             raise HTTPException(
                 status_code=400,
-                detail="Customer has no active subscription.",
+                detail=(
+                    "Customer has no active "
+                    "subscription."
+                ),
             )
 
         return subscription
@@ -144,7 +156,8 @@ class DeviceService:
                 customer_id,
             )
         )
-
+        from app.services.plan_service import PlanService
+        
         plan = (
             PlanService.get_plan(
                 db,
@@ -185,7 +198,11 @@ class DeviceService:
         db.refresh(
             device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             customer_id,
@@ -219,7 +236,7 @@ class DeviceService:
                 device.customer_id,
             )
         )
-
+        from app.services.plan_service import PlanService
         plan = (
             PlanService.get_plan(
                 db,
@@ -246,7 +263,11 @@ class DeviceService:
         db.refresh(
             device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             device.customer_id,
@@ -276,7 +297,11 @@ class DeviceService:
         db.refresh(
             device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             device.customer_id,
@@ -334,7 +359,11 @@ class DeviceService:
         db.refresh(
             new_device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             customer_id,
@@ -362,7 +391,11 @@ class DeviceService:
         db.refresh(
             device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             device.customer_id,
@@ -416,7 +449,11 @@ class DeviceService:
         db.refresh(
             device,
         )
-
+        
+        from app.services.router_account_service import (
+            RouterAccountService,
+        )
+        
         RouterAccountService.synchronize_customer_access(
             db,
             device.customer_id,

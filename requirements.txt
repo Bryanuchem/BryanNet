@@ -28,3 +28,4 @@ websockets==16.0
 python-jose[cryptography]
 passlib[bcrypt]==1.7.4
 routeros_api
+reportlab
