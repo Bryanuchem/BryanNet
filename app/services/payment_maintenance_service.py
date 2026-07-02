@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from sqlalchemy import func
 
@@ -24,7 +24,7 @@ class PaymentMaintenanceService:
         """
 
         expiry_time = (
-            datetime.utcnow()
+            datetime.now(UTC)
             - timedelta(
                 hours=expiry_hours,
             )
@@ -76,7 +76,7 @@ class PaymentMaintenanceService:
         """
 
         stale_date = (
-            datetime.utcnow()
+            datetime.now(UTC)
             - timedelta(
                 days=stale_days,
             )

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from fastapi import HTTPException
 
@@ -183,9 +183,9 @@ class DeviceService:
 
             device_status=DeviceStatus.ACTIVE,
 
-            first_seen=datetime.utcnow(),
+            first_seen=datetime.now(UTC),
 
-            last_seen=datetime.utcnow(),
+            last_seen=datetime.now(UTC),
 
         )
 
@@ -255,7 +255,7 @@ class DeviceService:
         )
 
         device.last_seen = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         db.commit()
@@ -351,7 +351,7 @@ class DeviceService:
         )
 
         new_device.last_seen = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         db.commit()
@@ -479,7 +479,7 @@ class DeviceService:
             return None
 
         device.last_seen = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         db.commit()

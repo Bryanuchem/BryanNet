@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 from sqlalchemy import func
 
@@ -70,7 +70,7 @@ class PaymentService:
         )
 
         payment.payment_date = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
     @staticmethod

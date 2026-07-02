@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from app.domain import RouterContext
 
@@ -90,7 +90,7 @@ class SimulatedRouterProvider(
     ):
 
         virtual_account.last_synchronized_at = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         return virtual_account

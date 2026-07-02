@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from fastapi import HTTPException
 
@@ -69,9 +69,9 @@ class AdminSessionService:
 
             admin_user_id=admin_user_id,
 
-            login_time=datetime.utcnow(),
+            login_time=datetime.now(UTC),
 
-            last_activity=datetime.utcnow(),
+            last_activity=datetime.now(UTC),
 
             ip_address=ip_address,
 
@@ -103,7 +103,7 @@ class AdminSessionService:
         )
 
         session.last_activity = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         db.commit()
@@ -126,7 +126,7 @@ class AdminSessionService:
         )
 
         session.logout_time = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
         session.is_active = False
@@ -152,7 +152,7 @@ class AdminSessionService:
             .all()
         )
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for session in sessions:
 

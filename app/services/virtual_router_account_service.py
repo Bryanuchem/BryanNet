@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from fastapi import HTTPException
 
@@ -120,7 +120,7 @@ class VirtualRouterAccountService:
         )
 
         virtual_account.last_synchronized_at = (
-            datetime.utcnow()
+            datetime.now(UTC)
         )
 
     # ==========================================================
