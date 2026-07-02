@@ -1,8 +1,14 @@
 from fastapi import HTTPException
 
+from app.domain import RouterContext
+
 from app.enums import RouterStatus
 
 from app.models.router import Router
+
+from app.providers.router import (
+    ProviderFactory,
+)
 
 
 class RouterService:
@@ -46,25 +52,6 @@ class RouterService:
                 detail="Router is currently in maintenance mode.",
             )
 
-    @staticmethod
-    def _get_provider(
-        router,
-    ):
-        """
-        Placeholder.
-
-        Later this will return the appropriate
-        Router Provider implementation.
-
-        Simulator
-
-        MikroTik CHR
-
-        Physical MikroTik
-        """
-
-        return None
-
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -76,85 +63,82 @@ class RouterService:
     ):
 
         router = Router(
+
             router_name=router_data.router_name,
+
             ip_address=router_data.ip_address,
+
             api_port=router_data.api_port,
+
             api_username=router_data.api_username,
+
             api_password=router_data.api_password,
+
             location=router_data.location,
+
+            provider=router_data.provider,
+
             status=RouterStatus.OFFLINE,
+
         )
 
-        db.add(router)
+        db.add(
+            router,
+        )
 
         db.commit()
 
-        db.refresh(router)
+        db.refresh(
+            router,
+        )
 
         return router
 
     @staticmethod
-    def test_connection(
+    def synchronize_customer(
         db,
-        router_id,
+        context: RouterContext,
     ):
-
-        router = (
-            RouterService._find_router(
-                db,
-                router_id,
-            )
-        )
 
         RouterService._validate_router(
-            router,
+            context.router,
         )
 
         provider = (
-            RouterService._get_provider(
-                router,
+            ProviderFactory.get(
+                context.router,
             )
         )
 
-        #
-        # Future:
-        #
-        # return provider.test_connection()
-        #
-
-        return {
-            "connected": True,
-            "message": "Connection successful.",
-        }
+        return (
+            provider.synchronize_customer(
+                db,
+                context,
+            )
+        )
 
     @staticmethod
-    def synchronize_router(
+    def disconnect_customer(
         db,
-        router_id,
+        context: RouterContext,
     ):
 
-        router = (
-            RouterService._find_router(
-                db,
-                router_id,
-            )
+        RouterService._validate_router(
+            context.router,
         )
 
         provider = (
-            RouterService._get_provider(
-                router,
+            ProviderFactory.get(
+                context.router,
             )
         )
 
-        #
-        # Future:
-        #
-        # provider.synchronize()
-        #
-
-        return {
-            "message": "Router synchronized.",
-        }
+        return (
+            provider.disconnect_customer(
+                db,
+                context,
+            )
+        )
 
     @staticmethod
     def refresh_router_status(
@@ -170,52 +154,34 @@ class RouterService:
         )
 
         provider = (
-            RouterService._get_provider(
+            ProviderFactory.get(
                 router,
             )
         )
 
-        #
-        # Future:
-        #
-        # router.status =
-        # provider.get_status()
-        #
+        health = (
+            provider.health_check(
+                router,
+            )
+        )
+
+        router.status = (
+
+            RouterStatus.ONLINE
+
+            if health.healthy
+
+            else RouterStatus.OFFLINE
+
+        )
 
         db.commit()
 
-        db.refresh(router)
+        db.refresh(
+            router,
+        )
 
         return router
-
-    @staticmethod
-    def disconnect_router(
-        db,
-        router_id,
-    ):
-
-        router = (
-            RouterService._find_router(
-                db,
-                router_id,
-            )
-        )
-
-        provider = (
-            RouterService._get_provider(
-                router,
-            )
-        )
-
-        #
-        # Future:
-        #
-        # provider.disconnect()
-        #
-
-        return {
-            "message": "Router disconnected.",
-        }
 
     # ==========================================================
     # Query Methods
@@ -247,29 +213,17 @@ class RouterService:
             )
         )
 
-        return {
-            "router_id": router.router_id,
-            "router_name": router.router_name,
-            "status": router.status,
-        }
-
-    @staticmethod
-    def get_router_statistics(
-        db,
-        router_id,
-    ):
-
-        router = (
-            RouterService._find_router(
-                db,
-                router_id,
+        provider = (
+            ProviderFactory.get(
+                router,
             )
         )
 
-        return {
-            "router_id": router.router_id,
-            "router_name": router.router_name,
-        }
+        return (
+            provider.health_check(
+                router,
+            )
+        )
 
     @staticmethod
     def get_online_routers(
@@ -277,11 +231,19 @@ class RouterService:
     ):
 
         return (
+
             db.query(Router)
+
             .filter(
                 Router.status == RouterStatus.ONLINE
             )
+
+            .order_by(
+                Router.router_name,
+            )
+
             .all()
+
         )
 
     @staticmethod
@@ -290,9 +252,13 @@ class RouterService:
     ):
 
         return (
+
             db.query(Router)
+
             .order_by(
-                Router.router_name
+                Router.router_name,
             )
+
             .all()
+
         )

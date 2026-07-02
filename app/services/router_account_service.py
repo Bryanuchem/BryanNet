@@ -3,13 +3,17 @@ import string
 
 from fastapi import HTTPException
 
-from app.models.customer import Customer
-from app.models.router import Router
+from app.domain import RouterContext
+
 from app.models.router_account import RouterAccount
 
-from app.services.router_service import RouterService
-from app.services.subscription_service import SubscriptionService
+from app.services.customer_service import CustomerService
 from app.services.device_service import DeviceService
+from app.services.plan_service import PlanService
+from app.services.router_service import RouterService
+from app.services.subscription_service import (
+    SubscriptionService,
+)
 
 
 class RouterAccountService:
@@ -82,8 +86,11 @@ class RouterAccountService:
         )
 
         return "".join(
+
             secrets.choice(alphabet)
+
             for _ in range(12)
+
         )
 
     @staticmethod
@@ -100,6 +107,90 @@ class RouterAccountService:
         )
 
     # ==========================================================
+    # Context Builder
+    # ==========================================================
+
+    @staticmethod
+    def build_router_context(
+        db,
+        customer_id,
+    ):
+
+        customer = (
+            CustomerService.get_customer(
+                db,
+                customer_id,
+            )
+        )
+
+        subscription = (
+            SubscriptionService
+            .get_active_subscription(
+                db,
+                customer_id,
+            )
+        )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Customer has no active subscription.",
+            )
+
+        plan = (
+            PlanService.get_plan(
+                db,
+                subscription.plan_id,
+            )
+        )
+
+        router_account = (
+            db.query(RouterAccount)
+            .filter(
+                RouterAccount.customer_id == customer_id,
+            )
+            .first()
+        )
+
+        if not router_account:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Router account not found.",
+            )
+
+        router = (
+            RouterService.get_router(
+                db,
+                router_account.router_id,
+            )
+        )
+
+        devices = (
+            DeviceService.get_active_devices(
+                db,
+                customer_id,
+            )
+        )
+
+        return RouterContext(
+
+            customer=customer,
+
+            subscription=subscription,
+
+            plan=plan,
+
+            router=router,
+
+            router_account=router_account,
+
+            devices=devices,
+
+        )
+
+    # ==========================================================
     # Business Commands
     # ==========================================================
 
@@ -111,19 +202,11 @@ class RouterAccountService:
     ):
 
         customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+            CustomerService.get_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
 
         RouterAccountService._validate_router(
             db,
@@ -131,12 +214,18 @@ class RouterAccountService:
         )
 
         existing_account = (
+
             RouterAccountService
             ._find_customer_account(
+
                 db,
+
                 customer_id,
+
                 router_id,
+
             )
+
         )
 
         if existing_account:
@@ -156,29 +245,37 @@ class RouterAccountService:
             router_id=router_id,
 
             username=(
+
                 RouterAccountService
                 ._generate_username(
                     customer,
                 )
+
             ),
 
             password=(
+
                 RouterAccountService
                 ._generate_password()
+
             ),
 
             is_enabled=False,
 
         )
 
-        db.add(account)
+        db.add(
+            account,
+        )
 
         db.commit()
 
-        db.refresh(account)
+        db.refresh(
+            account,
+        )
 
         return account
-
+    
     @staticmethod
     def activate_account(
         db,
@@ -197,7 +294,9 @@ class RouterAccountService:
 
         db.commit()
 
-        db.refresh(account)
+        db.refresh(
+            account,
+        )
 
         return account
 
@@ -219,7 +318,9 @@ class RouterAccountService:
 
         db.commit()
 
-        db.refresh(account)
+        db.refresh(
+            account,
+        )
 
         return account
 
@@ -237,7 +338,9 @@ class RouterAccountService:
             )
         )
 
-        db.delete(account)
+        db.delete(
+            account,
+        )
 
         db.commit()
 
@@ -252,57 +355,31 @@ class RouterAccountService:
         customer_id,
     ):
 
-        """
-        Synchronize the customer's access state with
-        the configured router.
+        context = (
 
-        Future implementation:
+            RouterAccountService
+            .build_router_context(
 
-        • Active subscription
-        • Plan limits
-        • Active devices
-        • Router account
-        • Router profile
-        • Push changes through RouterService
-        """
-
-        subscription = (
-            SubscriptionService
-            .get_active_subscription(
                 db,
+
                 customer_id,
+
             )
+
         )
 
-        if not subscription:
+        return (
 
-            return
+            RouterService
+            .synchronize_customer(
 
-        active_devices = (
-            DeviceService
-            .get_active_devices(
                 db,
-                customer_id,
+
+                context,
+
             )
+
         )
-
-        #
-        # Future:
-        #
-        # provider = RouterService.resolve_provider(...)
-        #
-        # provider.sync_customer(
-        #     subscription,
-        #     active_devices,
-        #     router_account,
-        # )
-        #
-
-        return {
-            "customer_id": customer_id,
-            "devices": len(active_devices),
-            "status": "Synchronization queued.",
-        }
 
     # ==========================================================
     # Query Methods
@@ -315,11 +392,16 @@ class RouterAccountService:
     ):
 
         return (
+
             RouterAccountService
             ._find_account(
+
                 db,
+
                 router_account_id,
+
             )
+
         )
 
     @staticmethod
@@ -329,14 +411,29 @@ class RouterAccountService:
         router_id,
     ):
 
-        return (
+        account = (
+
             RouterAccountService
             ._find_customer_account(
+
                 db,
+
                 customer_id,
+
                 router_id,
+
             )
+
         )
+
+        if not account:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Router account not found.",
+            )
+
+        return account
 
     @staticmethod
     def get_router_accounts(
@@ -345,11 +442,21 @@ class RouterAccountService:
     ):
 
         return (
-            db.query(RouterAccount)
+
+            db.query(
+                RouterAccount,
+            )
+
             .filter(
                 RouterAccount.router_id == router_id,
             )
+
+            .order_by(
+                RouterAccount.router_account_id,
+            )
+
             .all()
+
         )
 
     @staticmethod
@@ -358,9 +465,15 @@ class RouterAccountService:
     ):
 
         return (
-            db.query(RouterAccount)
-            .order_by(
-                RouterAccount.router_account_id
+
+            db.query(
+                RouterAccount,
             )
+
+            .order_by(
+                RouterAccount.router_account_id,
+            )
+
             .all()
-        )
+
+        )    

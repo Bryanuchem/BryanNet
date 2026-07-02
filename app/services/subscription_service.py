@@ -5,9 +5,13 @@ from fastapi import HTTPException
 
 from app.enums import SubscriptionStatus
 
-from app.models.customer import Customer
-from app.models.plan import Plan
 from app.models.subscription import Subscription
+
+from app.services.customer_service import CustomerService
+from app.services.plan_service import PlanService
+from app.services.router_account_service import (
+    RouterAccountService,
+)
 
 
 class SubscriptionService:
@@ -15,76 +19,6 @@ class SubscriptionService:
     # ==========================================================
     # Private Helpers
     # ==========================================================
-
-    @staticmethod
-    def _find_customer(
-        db,
-        customer_id,
-    ):
-
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
-            )
-            .first()
-        )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
-
-        return customer
-
-    @staticmethod
-    def _find_plan(
-        db,
-        plan_id,
-    ):
-
-        plan = (
-            db.query(Plan)
-            .filter(
-                Plan.plan_id == plan_id
-            )
-            .first()
-        )
-
-        if not plan:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Plan not found.",
-            )
-
-        return plan
-
-    @staticmethod
-    def _find_subscription(
-        db,
-        subscription_id,
-    ):
-
-        subscription = (
-            db.query(Subscription)
-            .filter(
-                Subscription.subscription_id
-                == subscription_id
-            )
-            .first()
-        )
-
-        if not subscription:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Subscription not found.",
-            )
-
-        return subscription
 
     @staticmethod
     def _has_active_subscription(
@@ -148,7 +82,9 @@ class SubscriptionService:
 
         expiry_date = (
             start_date
-            + timedelta(days=duration_days)
+            + timedelta(
+                days=duration_days,
+            )
         )
 
         return (
@@ -193,27 +129,31 @@ class SubscriptionService:
         plan_id,
     ):
 
-        SubscriptionService._find_customer(
-            db,
-            customer_id,
+        customer = (
+            CustomerService.get_customer(
+                db,
+                customer_id,
+            )
         )
 
         plan = (
-            SubscriptionService._find_plan(
+            PlanService.get_plan(
                 db,
                 plan_id,
             )
         )
 
         active_subscription = (
-            SubscriptionService._has_active_subscription(
+            SubscriptionService
+            ._has_active_subscription(
                 db,
                 customer_id,
             )
         )
 
         latest_subscription = (
-            SubscriptionService._get_latest_subscription(
+            SubscriptionService
+            ._get_latest_subscription(
                 db,
                 customer_id,
             )
@@ -231,7 +171,9 @@ class SubscriptionService:
 
         else:
 
-            start_date = datetime.now()
+            start_date = (
+                datetime.now()
+            )
 
             status = (
                 SubscriptionStatus.ACTIVE
@@ -241,21 +183,24 @@ class SubscriptionService:
             start_date,
             expiry_date,
         ) = (
-            SubscriptionService._calculate_dates(
+            SubscriptionService
+            ._calculate_dates(
                 start_date,
                 plan.duration_days,
             )
         )
 
         activation_sequence = (
-            SubscriptionService._get_next_activation_sequence(
+            SubscriptionService
+            ._get_next_activation_sequence(
                 db,
                 customer_id,
             )
         )
 
         subscription = (
-            SubscriptionService._build_subscription(
+            SubscriptionService
+            ._build_subscription(
                 customer_id=customer_id,
                 plan_id=plan_id,
                 start_date=start_date,
@@ -265,7 +210,9 @@ class SubscriptionService:
             )
         )
 
-        db.add(subscription)
+        db.add(
+            subscription,
+        )
 
         db.flush()
 
@@ -279,9 +226,17 @@ class SubscriptionService:
 
         db.commit()
 
-        db.refresh(subscription)
+        db.refresh(
+            subscription,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            customer_id,
+        )
 
         return subscription
+    
     
     @staticmethod
     def activate_subscription(
@@ -290,17 +245,29 @@ class SubscriptionService:
         commit=True,
     ):
 
-        subscription.status = SubscriptionStatus.ACTIVE
-        subscription.activated_at = datetime.now()
+        subscription.status = (
+            SubscriptionStatus.ACTIVE
+        )
+
+        subscription.activated_at = (
+            datetime.now()
+        )
 
         if commit:
 
             db.commit()
 
-            db.refresh(subscription)
+            db.refresh(
+                subscription,
+            )
+
+            RouterAccountService.synchronize_customer_access(
+                db,
+                subscription.customer_id,
+            )
 
         return subscription
-
+    
     @staticmethod
     def expire_subscription(
         db,
@@ -308,13 +275,22 @@ class SubscriptionService:
         commit=True,
     ):
 
-        subscription.status = SubscriptionStatus.EXPIRED
+        subscription.status = (
+            SubscriptionStatus.EXPIRED
+        )
 
         if commit:
 
             db.commit()
 
-            db.refresh(subscription)
+            db.refresh(
+                subscription,
+            )
+
+            RouterAccountService.synchronize_customer_access(
+                db,
+                subscription.customer_id,
+            )
 
         return subscription
 
@@ -322,6 +298,7 @@ class SubscriptionService:
     def activate_next_subscription(
         db,
         customer_id,
+        commit=True,
     ):
 
         subscription = (
@@ -340,11 +317,10 @@ class SubscriptionService:
 
             return None
 
-        return (
-            SubscriptionService.activate_subscription(
-                db=db,
-                subscription=subscription,
-            )
+        return SubscriptionService.activate_subscription(
+            db=db,
+            subscription=subscription,
+            commit=commit,
         )
 
     @staticmethod
@@ -354,11 +330,20 @@ class SubscriptionService:
     ):
 
         subscription = (
-            SubscriptionService._find_subscription(
-                db,
-                subscription_id,
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id
+                == subscription_id
             )
+            .first()
         )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found.",
+            )
 
         if (
             subscription.status
@@ -379,7 +364,9 @@ class SubscriptionService:
 
         db.commit()
 
-        db.refresh(subscription)
+        db.refresh(
+            subscription,
+        )
 
         return subscription
 
@@ -395,10 +382,8 @@ class SubscriptionService:
         expired_subscriptions = (
             db.query(Subscription)
             .filter(
-                Subscription.status
-                == SubscriptionStatus.ACTIVE,
-                Subscription.expiry_date
-                <= datetime.now(),
+                Subscription.status == SubscriptionStatus.ACTIVE,
+                Subscription.expiry_date <= datetime.now(),
             )
             .all()
         )
@@ -416,15 +401,22 @@ class SubscriptionService:
             SubscriptionService.activate_next_subscription(
                 db=db,
                 customer_id=subscription.customer_id,
+                commit=False,
             )
 
             processed_count += 1
 
         db.commit()
 
+        for subscription in expired_subscriptions:
+
+            RouterAccountService.synchronize_customer_access(
+                db,
+                subscription.customer_id,
+            )
+
         return {
-            "processed_subscriptions":
-                processed_count,
+            "processed_subscriptions": processed_count,
         }
 
     # ==========================================================
@@ -437,12 +429,23 @@ class SubscriptionService:
         subscription_id,
     ):
 
-        return (
-            SubscriptionService._find_subscription(
-                db,
-                subscription_id,
+        subscription = (
+            db.query(Subscription)
+            .filter(
+                Subscription.subscription_id
+                == subscription_id
             )
+            .first()
         )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found.",
+            )
+
+        return subscription
 
     @staticmethod
     def get_active_subscription(
@@ -453,8 +456,10 @@ class SubscriptionService:
         return (
             db.query(Subscription)
             .filter(
-                Subscription.customer_id == customer_id,
-                Subscription.status == SubscriptionStatus.ACTIVE,
+                Subscription.customer_id
+                == customer_id,
+                Subscription.status
+                == SubscriptionStatus.ACTIVE,
             )
             .first()
         )
@@ -468,11 +473,13 @@ class SubscriptionService:
         return (
             db.query(Subscription)
             .filter(
-                Subscription.customer_id == customer_id,
-                Subscription.status == SubscriptionStatus.QUEUED,
+                Subscription.customer_id
+                == customer_id,
+                Subscription.status
+                == SubscriptionStatus.QUEUED,
             )
             .order_by(
-                Subscription.activation_sequence,
+                Subscription.activation_sequence
             )
             .all()
         )
@@ -486,10 +493,11 @@ class SubscriptionService:
         return (
             db.query(Subscription)
             .filter(
-                Subscription.customer_id == customer_id,
+                Subscription.customer_id
+                == customer_id
             )
             .order_by(
-                Subscription.activation_sequence,
+                Subscription.activation_sequence
             )
             .all()
         )
@@ -501,14 +509,16 @@ class SubscriptionService:
     ):
 
         active_subscription = (
-            SubscriptionService.get_active_subscription(
+            SubscriptionService
+            .get_active_subscription(
                 db,
                 customer_id,
             )
         )
 
         queued_subscriptions = (
-            SubscriptionService.get_queued_subscriptions(
+            SubscriptionService
+            .get_queued_subscriptions(
                 db,
                 customer_id,
             )
@@ -525,7 +535,7 @@ class SubscriptionService:
             }
 
         plan = (
-            SubscriptionService._find_plan(
+            PlanService.get_plan(
                 db,
                 active_subscription.plan_id,
             )
@@ -548,7 +558,7 @@ class SubscriptionService:
         return (
             db.query(Subscription)
             .order_by(
-                Subscription.created_at.desc(),
+                Subscription.created_at.desc()
             )
             .all()
-        )    
+        )       

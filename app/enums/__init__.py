@@ -5,3 +5,4 @@ from app.enums.next_action import NextAction
 from app.enums.payment_status import PaymentStatus
 from app.enums.router_status import RouterStatus
 from app.enums.subscription_status import SubscriptionStatus
+from app.enums.router_provider import RouterProviderType

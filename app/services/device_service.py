@@ -4,10 +4,13 @@ from fastapi import HTTPException
 
 from app.enums import DeviceStatus
 
-from app.models.customer import Customer
 from app.models.device import Device
-from app.models.plan import Plan
 
+from app.services.customer_service import CustomerService
+from app.services.plan_service import PlanService
+from app.services.router_account_service import (
+    RouterAccountService,
+)
 from app.services.subscription_service import (
     SubscriptionService,
 )
@@ -63,8 +66,7 @@ class DeviceService:
     ):
 
         subscription = (
-            SubscriptionService
-            .get_active_subscription(
+            SubscriptionService.get_active_subscription(
                 db,
                 customer_id,
             )
@@ -116,19 +118,11 @@ class DeviceService:
     ):
 
         customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+            CustomerService.get_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
 
         existing_device = (
             DeviceService._find_device_by_mac(
@@ -152,11 +146,10 @@ class DeviceService:
         )
 
         plan = (
-            db.query(Plan)
-            .filter(
-                Plan.plan_id == subscription.plan_id
+            PlanService.get_plan(
+                db,
+                subscription.plan_id,
             )
-            .first()
         )
 
         DeviceService._validate_device_limit(
@@ -166,20 +159,37 @@ class DeviceService:
         )
 
         device = Device(
+
             customer_id=customer_id,
+
             device_name=device_name,
+
             mac_address=mac_address,
+
             approved_by_customer=approved_by_customer,
+
             device_status=DeviceStatus.ACTIVE,
+
             first_seen=datetime.utcnow(),
+
             last_seen=datetime.utcnow(),
+
         )
 
-        db.add(device)
+        db.add(
+            device,
+        )
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            customer_id,
+        )
 
         return device
 
@@ -211,11 +221,10 @@ class DeviceService:
         )
 
         plan = (
-            db.query(Plan)
-            .filter(
-                Plan.plan_id == subscription.plan_id
+            PlanService.get_plan(
+                db,
+                subscription.plan_id,
             )
-            .first()
         )
 
         DeviceService._validate_device_limit(
@@ -224,12 +233,24 @@ class DeviceService:
             plan,
         )
 
-        device.device_status = DeviceStatus.ACTIVE
-        device.last_seen = datetime.utcnow()
+        device.device_status = (
+            DeviceStatus.ACTIVE
+        )
+
+        device.last_seen = (
+            datetime.utcnow()
+        )
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            device.customer_id,
+        )
 
         return device
 
@@ -246,11 +267,20 @@ class DeviceService:
             )
         )
 
-        device.device_status = DeviceStatus.INACTIVE
+        device.device_status = (
+            DeviceStatus.INACTIVE
+        )
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            device.customer_id,
+        )
 
         return device
 
@@ -301,10 +331,17 @@ class DeviceService:
 
         db.commit()
 
-        db.refresh(new_device)
+        db.refresh(
+            new_device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            customer_id,
+        )
 
         return new_device
-
+    
     @staticmethod
     def approve_device(
         db,
@@ -322,7 +359,14 @@ class DeviceService:
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            device.customer_id,
+        )
 
         return device
 
@@ -344,7 +388,9 @@ class DeviceService:
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
 
         return device
 
@@ -361,11 +407,20 @@ class DeviceService:
             )
         )
 
-        device.device_status = DeviceStatus.BLOCKED
+        device.device_status = (
+            DeviceStatus.BLOCKED
+        )
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            device.customer_id,
+        )
 
         return device
 
@@ -386,11 +441,15 @@ class DeviceService:
 
             return None
 
-        device.last_seen = datetime.utcnow()
+        device.last_seen = (
+            datetime.utcnow()
+        )
 
         db.commit()
 
-        db.refresh(device)
+        db.refresh(
+            device,
+        )
 
         return device
 
@@ -423,7 +482,7 @@ class DeviceService:
                 Device.customer_id == customer_id,
             )
             .order_by(
-                Device.device_name
+                Device.device_name,
             )
             .all()
         )
@@ -441,7 +500,7 @@ class DeviceService:
                 Device.device_status == DeviceStatus.ACTIVE,
             )
             .order_by(
-                Device.device_name
+                Device.device_name,
             )
             .all()
         )
@@ -458,4 +517,4 @@ class DeviceService:
                 Device.device_name,
             )
             .all()
-        )
+        )    
