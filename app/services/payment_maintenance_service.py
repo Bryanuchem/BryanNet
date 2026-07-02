@@ -226,3 +226,15 @@ class PaymentMaintenanceService:
                 ),
 
         }
+        
+    @staticmethod
+    def run(
+        db,
+    ):
+
+        return (
+            PaymentMaintenanceService
+            .expire_pending_payments(
+                db,
+            )
+        )        

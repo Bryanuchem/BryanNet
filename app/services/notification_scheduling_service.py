@@ -39,8 +39,12 @@ class NotificationSchedulingService:
     # Business Commands
     # ==========================================================
 
+    # ==========================================================
+    # Business Commands
+    # ==========================================================
+
     @staticmethod
-    def send_subscription_expiry_reminders(
+    def run(
         db,
     ):
 

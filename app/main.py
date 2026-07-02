@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.payment import router as payment_router
 from app.api.administration import router as administration_router
+from app.api.automation import router as automation_router
 
 app = FastAPI(
     title="BryanNet API"
@@ -76,10 +77,14 @@ app.include_router(
     prefix="/api/v1"
 )
 
+app.include_router(
+    automation_router,
+    prefix="/api/vi"
+)
+
 @app.get("/")
 def root():
     return {
         "message": "BryanNet API Running"
     }
-    
     

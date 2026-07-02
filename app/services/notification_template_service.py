@@ -96,7 +96,7 @@ class NotificationTemplateService:
 
             f"Expiry Date: "
 
-            f"{NotificationTemplateService._format_date(subscription.end_date)}"
+            f"{NotificationTemplateService._format_date(subscription.expiry_date)}"
 
         )
 
@@ -118,7 +118,7 @@ class NotificationTemplateService:
 
             f"Expiry Date: "
 
-            f"{NotificationTemplateService._format_date(subscription.end_date)}"
+            f"{NotificationTemplateService._format_date(subscription.expiry_date)}"
 
         )
 
@@ -138,7 +138,7 @@ class NotificationTemplateService:
 
             f"Expired On: "
 
-            f"{NotificationTemplateService._format_date(subscription.end_date)}"
+            f"{NotificationTemplateService._format_date(subscription.expiry_date)}"
 
         )
 
