@@ -3,7 +3,6 @@ from sqlalchemy import (
     BigInteger,
     Integer,
     DateTime,
-    Enum,
     TIMESTAMP,
     ForeignKey,
 )
@@ -15,6 +14,10 @@ from sqlalchemy.orm import relationship
 from app.database.base import Base
 
 from app.enums import SubscriptionStatus
+
+from app.database.sqlalchemy_enum import (
+    sql_enum,
+)
 
 class Subscription(Base):
 
@@ -60,9 +63,9 @@ class Subscription(Base):
     )
 
     status = Column(
-        Enum(
+        sql_enum(
             SubscriptionStatus,
-            name="subscription_status",
+            "subscription_status",
         ),
         nullable=False,
         default=SubscriptionStatus.QUEUED,

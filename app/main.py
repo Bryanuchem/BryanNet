@@ -54,18 +54,56 @@ from app.api.subscription import (
     router as subscription_router,
 )
 
+from app.core.exception_handlers import (
+    register_exception_handlers,
+)
+
+from app.core.request_logging import (
+    RequestLoggingMiddleware,
+)
+
+from app.core.settings import settings
+
+from slowapi.errors import (
+    RateLimitExceeded,
+)
+
+from slowapi.middleware import (
+    SlowAPIMiddleware,
+)
+
+from slowapi import (
+    _rate_limit_exceeded_handler,
+)
+
+from typing import (
+    Any,
+    cast,
+)
+
+from app.core.rate_limit import (
+    limiter,
+)
 
 app = FastAPI(
 
-    title="BryanNet API",
+    title=settings.app_name,
 
-    version="1.0.0",
+    version=settings.app_version,
 
     description="Backend API for the BryanNet ISP Management Platform",
 
 )
 
+app.state.limiter = limiter
 
+app.add_exception_handler(
+    RateLimitExceeded,
+    cast(
+        Any,
+        _rate_limit_exceeded_handler,
+    ),
+)
 # ==========================================================
 # Middleware
 # ==========================================================
@@ -75,7 +113,7 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        "http://localhost:5173",
+        settings.frontend_origin,
     ],
 
     allow_credentials=True,
@@ -86,12 +124,20 @@ app.add_middleware(
 
 )
 
+app.add_middleware(
+    SlowAPIMiddleware,
+)
+
+app.add_middleware(
+    RequestLoggingMiddleware,
+)
+
 
 # ==========================================================
 # API v1
 # ==========================================================
 
-API_PREFIX = "/api/v1"
+API_PREFIX = settings.api_prefix
 
 
 app.include_router(
@@ -156,6 +202,15 @@ app.include_router(
 
 
 # ==========================================================
+# Exception Handlers
+# ==========================================================
+
+register_exception_handlers(
+    app,
+)
+
+
+# ==========================================================
 # Root
 # ==========================================================
 
@@ -166,6 +221,6 @@ def root():
 
         "message": "BryanNet API Running",
 
-        "version": "1.0.0",
+        "version": settings.app_version,
 
     }

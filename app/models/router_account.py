@@ -2,9 +2,9 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
-    Enum,
     DateTime,
     TIMESTAMP,
+    Enum,
     ForeignKey,
 )
 

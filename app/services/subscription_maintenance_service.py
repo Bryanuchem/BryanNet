@@ -240,6 +240,11 @@ class SubscriptionMaintenanceService:
 
         return {
 
+            "processed":
+                len(
+                    active_subscriptions,
+                ),
+
             "subscriptions_checked":
                 len(
                     active_subscriptions,
@@ -251,4 +256,4 @@ class SubscriptionMaintenanceService:
             "activated":
                 activated,
 
-        }   
+        } 

@@ -10,6 +10,17 @@ from app.providers.router import (
     ProviderFactory,
 )
 
+from typing import cast
+
+from app.services.audit_log_service import AuditLogService
+
+from app.constants.audit_actions import (
+    SYSTEM_CREATED,
+    SYSTEM_UPDATED,
+)
+
+from app.enums.audit_result import AuditResult
+
 
 class RouterService:
 
@@ -60,37 +71,79 @@ class RouterService:
     def register_router(
         db,
         router_data,
+        admin=None,
+        session=None,
     ):
 
         router = Router(
 
             router_name=router_data.router_name,
 
-            ip_address=router_data.ip_address,
+            management_ip=router_data.management_ip,
 
-            api_port=router_data.api_port,
+            location_name=router_data.location_name,
 
-            api_username=router_data.api_username,
-
-            api_password=router_data.api_password,
-
-            location=router_data.location,
-
-            provider=router_data.provider,
+            router_type=router_data.router_type,
 
             status=RouterStatus.OFFLINE,
 
         )
 
-        db.add(
-            router,
-        )
+        db.add(router)
+
+        db.flush()
+
+        if admin:
+
+            AuditLogService.log_admin_action(
+
+                db=db,
+
+            admin_id=cast(
+                int,
+                admin.admin_user_id,
+            ),
+
+            admin_session_id=(
+                cast(
+                    int,
+                    session.admin_session_id,
+                )
+                if session
+                else None
+            ),
+
+                action=SYSTEM_CREATED,
+
+                entity_type="Router",
+
+                entity_id=cast(int, router.router_id),
+
+                target_name=str(router.router_name),
+
+                result=AuditResult.SUCCESS,
+
+                description=(
+                    f"Registered router '{router.router_name}'."
+                ),
+
+                new_values={
+
+                    "management_ip": str(router.management_ip),
+
+                    "location_name": str(router.location_name),
+
+                    "router_type": str(router.router_type),
+
+                    "status": router.status.value,
+
+                },
+
+            )
 
         db.commit()
 
-        db.refresh(
-            router,
-        )
+        db.refresh(router)
 
         return router
 
@@ -144,6 +197,8 @@ class RouterService:
     def refresh_router_status(
         db,
         router_id,
+        admin=None,
+        session=None,
     ):
 
         router = (
@@ -152,6 +207,8 @@ class RouterService:
                 router_id,
             )
         )
+
+        old_status = router.status
 
         provider = (
             ProviderFactory.get(
@@ -175,11 +232,53 @@ class RouterService:
 
         )
 
+        if admin:
+
+            AuditLogService.log_admin_action(
+
+                db=db,
+
+                admin_id=cast(
+                    int,
+                    admin.admin_user_id,
+                ),
+
+                admin_session_id=(
+                    cast(
+                        int,
+                        session.admin_session_id,
+                    )
+                    if session
+                    else None
+                ),
+
+                action=SYSTEM_UPDATED,
+
+                entity_type="Router",
+
+                entity_id=cast(int, router.router_id),
+
+                target_name=str(router.router_name),
+
+                result=AuditResult.SUCCESS,
+
+                description=(
+                    f"Refreshed router '{router.router_name}' status."
+                ),
+
+                old_values={
+                    "status": old_status.value,
+                },
+
+                new_values={
+                    "status": router.status.value,
+                },
+
+            )
+
         db.commit()
 
-        db.refresh(
-            router,
-        )
+        db.refresh(router)
 
         return router
 
@@ -249,6 +348,8 @@ class RouterService:
     @staticmethod
     def get_all_routers(
         db,
+        page=1,
+        page_size=25,
     ):
 
         return (
@@ -257,6 +358,14 @@ class RouterService:
 
             .order_by(
                 Router.router_name,
+            )
+
+            .offset(
+                (page - 1) * page_size,
+            )
+
+            .limit(
+                page_size,
             )
 
             .all()

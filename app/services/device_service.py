@@ -12,7 +12,24 @@ from app.models.device import Device
 
 from app.services.customer_service import CustomerService
 
+from sqlalchemy.orm import Session
 
+from typing import cast
+
+from app.services.audit_log_service import AuditLogService
+
+from app.constants.audit_actions import (
+    REGISTER_DEVICE,
+    APPROVE_DEVICE,
+    BLOCK_DEVICE,
+    UNBLOCK_DEVICE,
+    RENAME_DEVICE,
+    REPLACE_DEVICE,
+    ACTIVATE_DEVICE,
+    DEACTIVATE_DEVICE,
+)
+
+from app.enums.audit_result import AuditResult
 
 class DeviceService:
 
@@ -144,7 +161,21 @@ class DeviceService:
             )
 
         return device
+    
+    @staticmethod
+    def _apply_sort(
+        query,
+        *sort_columns,
+        sort_order,
+    ):
 
+        columns = [
+            column.desc() if sort_order.lower() == "desc" else column.asc()
+            for column in sort_columns
+        ]
+
+        return query.order_by(*columns)
+   
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -154,15 +185,14 @@ class DeviceService:
         db,
         customer_id,
         mac_address,
+        admin_id,
         device_name=None,
         approved_by_customer=True,
     ):
 
-        customer = (
-            CustomerService.get_customer(
-                db,
-                customer_id,
-            )
+        CustomerService.get_customer(
+            db,
+            customer_id,
         )
 
         existing_device = (
@@ -185,8 +215,9 @@ class DeviceService:
                 customer_id,
             )
         )
+
         from app.services.plan_service import PlanService
-        
+
         plan = (
             PlanService.get_plan(
                 db,
@@ -222,9 +253,51 @@ class DeviceService:
             device,
         )
 
+        db.flush()
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=REGISTER_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Registered device '{device.device_name or device.mac_address}'."
+            ),
+
+            new_values={
+                "customer_id": cast(int, device.customer_id),
+                "mac_address": cast(str, device.mac_address),
+                "device_status": device.device_status.value,
+                "approved_by_customer": cast(
+                    bool,
+                    device.approved_by_customer,
+                ),
+            },
+
+        )
+
         return (
-            DeviceService
-            ._finalize_device_change(
+            DeviceService._finalize_device_change(
                 db,
                 device,
             )
@@ -234,6 +307,7 @@ class DeviceService:
     def activate_device(
         db,
         device_id,
+        admin_id,
     ):
 
         device = (
@@ -256,7 +330,9 @@ class DeviceService:
                 device.customer_id,
             )
         )
+
         from app.services.plan_service import PlanService
+
         plan = (
             PlanService.get_plan(
                 db,
@@ -270,12 +346,53 @@ class DeviceService:
             plan,
         )
 
+        old_status = device.device_status.value
+
         device.device_status = (
             DeviceStatus.ACTIVE
         )
 
         device.last_seen = (
             datetime.now(UTC)
+        )
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=ACTIVATE_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Activated device '{device.device_name or device.mac_address}'."
+            ),
+
+            old_values={
+                "device_status": old_status,
+            },
+
+            new_values={
+                "device_status": device.device_status.value,
+            },
+
         )
 
         return (
@@ -290,6 +407,7 @@ class DeviceService:
     def deactivate_device(
         db,
         device_id,
+        admin_id,
     ):
 
         device = (
@@ -299,8 +417,49 @@ class DeviceService:
             )
         )
 
+        old_status = device.device_status.value
+
         device.device_status = (
             DeviceStatus.INACTIVE
+        )
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=DEACTIVATE_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Deactivated device '{device.device_name or device.mac_address}'."
+            ),
+
+            old_values={
+                "device_status": old_status,
+            },
+
+            new_values={
+                "device_status": device.device_status.value,
+            },
+
         )
 
         return (
@@ -317,6 +476,7 @@ class DeviceService:
         customer_id,
         old_device_id,
         new_device_id,
+        admin_id,
     ):
 
         old_device = (
@@ -344,6 +504,8 @@ class DeviceService:
                 detail="Device does not belong to this customer.",
             )
 
+        old_status = old_device.device_status
+
         old_device.device_status = (
             DeviceStatus.INACTIVE
         )
@@ -356,9 +518,54 @@ class DeviceService:
             datetime.now(UTC)
         )
 
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=REPLACE_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                new_device.device_id,
+            ),
+
+            target_name=(
+                new_device.device_name
+                or new_device.mac_address
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Replaced device "
+                f"'{old_device.device_name or old_device.mac_address}' "
+                f"with "
+                f"'{new_device.device_name or new_device.mac_address}'."
+            ),
+
+            old_values={
+                "old_device_id": old_device.device_id,
+                "old_device_name": old_device.device_name,
+                "old_status": old_status.value,
+            },
+
+            new_values={
+                "new_device_id": new_device.device_id,
+                "new_device_name": new_device.device_name,
+                "new_status": DeviceStatus.ACTIVE.value,
+            },
+
+        )
+
         return (
-            DeviceService
-            ._finalize_device_change(
+            DeviceService._finalize_device_change(
                 db,
                 new_device,
             )
@@ -368,6 +575,7 @@ class DeviceService:
     def approve_device(
         db,
         device_id,
+        admin_id,
     ):
 
         device = (
@@ -377,7 +585,48 @@ class DeviceService:
             )
         )
 
+        old_value = device.approved_by_customer
+
         device.approved_by_customer = True
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=APPROVE_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Approved device '{device.device_name or device.mac_address}'."
+            ),
+
+            old_values={
+                "approved_by_customer": old_value,
+            },
+
+            new_values={
+                "approved_by_customer": True,
+            },
+
+        )
 
         return (
             DeviceService
@@ -389,9 +638,10 @@ class DeviceService:
 
     @staticmethod
     def rename_device(
-        db,
-        device_id,
-        device_name,
+        db: Session,
+        device_id: int,
+        device_name: str,
+        admin_id: int,
     ):
 
         device = (
@@ -401,11 +651,49 @@ class DeviceService:
             )
         )
 
+        old_name = device.device_name
+
         device.device_name = device_name
 
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=RENAME_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=device_name,
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Renamed device from "
+                f"'{old_name}' to '{device_name}'."
+            ),
+
+            old_values={
+                "device_name": old_name,
+            },
+
+            new_values={
+                "device_name": device_name,
+            },
+
+        )
+
         return (
-            DeviceService
-            ._finalize_device_change(
+            DeviceService._finalize_device_change(
                 db,
                 device,
                 synchronize=False,
@@ -414,26 +702,143 @@ class DeviceService:
 
     @staticmethod
     def block_device(
-        db,
-        device_id,
+        db: Session,
+        device_id: int,
+        admin_id: int,
     ):
 
         device = (
-            DeviceService._find_device(
-                db,
-                device_id,
+            DeviceService.get_device(
+                db=db,
+                device_id=device_id,
             )
         )
 
-        device.device_status = (
-            DeviceStatus.BLOCKED
+        if device.device_status == DeviceStatus.BLOCKED:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Device is already blocked.",
+            )
+
+        old_status = device.device_status
+
+        device.device_status = DeviceStatus.BLOCKED
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=BLOCK_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Blocked device '{device.device_name or device.mac_address}'."
+            ),
+
+            old_values={
+                "device_status": old_status.value,
+            },
+
+            new_values={
+                "device_status": DeviceStatus.BLOCKED.value,
+            },
+
         )
 
         return (
-            DeviceService
-            ._finalize_device_change(
-                db,
-                device,
+            DeviceService._finalize_device_change(
+                db=db,
+                device=device,
+            )
+        )
+
+    @staticmethod
+    def unblock_device(
+        db: Session,
+        device_id: int,
+        admin_id: int,
+    ):
+
+        device = (
+            DeviceService.get_device(
+                db=db,
+                device_id=device_id,
+            )
+        )
+
+        if device.device_status != DeviceStatus.BLOCKED:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Device is not blocked.",
+            )
+
+        old_status = device.device_status
+
+        device.device_status = DeviceStatus.INACTIVE
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=UNBLOCK_DEVICE,
+
+            entity_type="Device",
+
+            entity_id=cast(
+                int,
+                device.device_id,
+            ),
+
+            target_name=cast(
+                str,
+                device.device_name or device.mac_address,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Unblocked device '{device.device_name or device.mac_address}'."
+            ),
+
+            old_values={
+                "device_status": old_status.value,
+            },
+
+            new_values={
+                "device_status": DeviceStatus.INACTIVE.value,
+            },
+
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db=db,
+                device=device,
             )
         )
 
@@ -522,13 +927,113 @@ class DeviceService:
     @staticmethod
     def get_all_devices(
         db,
+        page=1,
+        page_size=25,
+        search=None,
+        customer_id=None,
+        device_status=None,
+        sort_by="device_id",
+        sort_order="asc",
     ):
 
-        return (
+        query = (
             db.query(Device)
-            .order_by(
-                Device.customer_id,
-                Device.device_name,
+        )
+
+        if search:
+
+            query = query.filter(
+
+                Device.device_name.ilike(
+                    f"%{search}%"
+                )
+
+                |
+
+                Device.mac_address.ilike(
+                    f"%{search}%"
+                )
+
             )
+
+        if customer_id is not None:
+
+            query = query.filter(
+                Device.customer_id == customer_id,
+            )
+
+        if device_status is not None:
+
+            query = query.filter(
+                Device.device_status == device_status,
+            )
+
+        total = query.count()
+
+        sort_column = {
+
+            "device_id":
+                Device.device_id,
+
+            "device_name":
+                Device.device_name,
+
+            "last_seen":
+                Device.last_seen,
+
+        }.get(
+
+            sort_by,
+
+            Device.device_id,
+
+        )
+
+        query = DeviceService._apply_sort(
+            query,
+            Device.customer_id,
+            sort_column,
+            sort_order=sort_order,
+        )
+
+        devices = (
+
+            query
+
+            .offset(
+                (page - 1) * page_size,
+            )
+
+            .limit(
+                page_size,
+            )
+
             .all()
-        )    
+
+        )
+
+        pages = (
+
+            (total + page_size - 1)
+
+            // page_size
+
+            if total
+
+            else 0
+
+        )
+
+        return {
+
+            "items": devices,
+
+            "total": total,
+
+            "page": page,
+
+            "page_size": page_size,
+
+            "pages": pages,
+
+        }

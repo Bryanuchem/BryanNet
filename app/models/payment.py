@@ -4,7 +4,6 @@ from sqlalchemy import (
     Integer,
     DECIMAL,
     String,
-    Enum,
     TIMESTAMP,
     ForeignKey,
     Text,
@@ -18,6 +17,11 @@ from app.database.base import Base
 
 from app.enums import PaymentStatus
 
+from app.database.sqlalchemy_enum import (
+    sql_enum,
+)
+
+from app.enums.payment_provider import PaymentProvider
 
 class Payment(Base):
 
@@ -52,6 +56,14 @@ class Payment(Base):
         nullable=False,
     )
 
+    payment_provider = Column(
+        sql_enum(
+            PaymentProvider, 
+            "payment_provider"),
+        nullable=False,
+        default=PaymentProvider.MANUAL,
+    )
+
     payment_channel = Column(
         String(50),
         nullable=False,
@@ -75,7 +87,7 @@ class Payment(Base):
     )
 
     status = Column(
-        Enum(
+        sql_enum(
             PaymentStatus,
             name="payment_status",
         ),

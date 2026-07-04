@@ -1,6 +1,7 @@
 from fastapi import (
     APIRouter,
     Depends,
+    Request,
 )
 
 from sqlalchemy.orm import (
@@ -19,6 +20,9 @@ from app.services.session_service import (
     SessionService,
 )
 
+from app.core.rate_limit import (
+    limiter,
+)
 
 router = APIRouter(
     prefix="/session",
@@ -34,7 +38,11 @@ router = APIRouter(
     "/telegram/{telegram_user_id}",
     response_model=SessionResponse,
 )
+@limiter.limit(
+    "30/minute",
+)
 def get_session(
+    request: Request,
     telegram_user_id: int,
     first_login: bool = False,
     db: Session = Depends(

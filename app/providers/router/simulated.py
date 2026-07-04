@@ -1,7 +1,5 @@
 from datetime import datetime, UTC
 
-from app.domain import RouterContext
-
 from app.providers.router.base import (
     RouterProvider,
 )

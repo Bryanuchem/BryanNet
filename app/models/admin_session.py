@@ -15,6 +15,13 @@ from sqlalchemy.sql import func
 
 from app.database.base import Base
 
+from sqlalchemy import Enum
+
+from app.enums import (
+    LoginSource,
+    LogoutReason,
+)
+
 
 class AdminSession(Base):
 
@@ -55,6 +62,27 @@ class AdminSession(Base):
 
     user_agent = Column(
         Text,
+        nullable=True,
+    )
+
+    login_source = Column(
+        Enum(
+            LoginSource,
+        ),
+        nullable=False,
+        default=LoginSource.WEB,
+    )
+
+    client_name = Column(
+        String(100),
+        nullable=False,
+        default="Dashboard",
+    )
+
+    logout_reason = Column(
+        Enum(
+            LogoutReason,
+        ),
         nullable=True,
     )
 

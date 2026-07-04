@@ -14,6 +14,9 @@ from sqlalchemy.sql import func
 
 from app.database.base import Base
 
+from app.database.sqlalchemy_enum import sql_enum
+
+from app.enums.audit_result import AuditResult
 
 class AuditLog(Base):
 
@@ -28,7 +31,7 @@ class AuditLog(Base):
     admin_id = Column(
         BigInteger,
         ForeignKey("admin_users.admin_user_id"),
-        nullable=False,
+        nullable=True,
     )
 
     admin_session_id = Column(
@@ -52,6 +55,20 @@ class AuditLog(Base):
     entity_id = Column(
         BigInteger,
         nullable=True,
+    )
+
+    target_name = Column(
+        String(255),
+        nullable=True,
+    )
+    
+    result = Column(
+        sql_enum(
+            AuditResult,
+            "audit_result"
+            ),
+        nullable=False,
+        default=AuditResult.SUCCESS,
     )
 
     description = Column(

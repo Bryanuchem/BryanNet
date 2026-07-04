@@ -24,7 +24,7 @@ class ProviderFactory:
         router: Router,
     ) -> RouterProvider:
 
-        match router.provider:
+        match router.router_type:
 
             case RouterProviderType.SIMULATED:
 
@@ -42,7 +42,7 @@ class ProviderFactory:
 
                 raise ValueError(
 
-                    f"Unsupported router provider: "
-                    f"{router.provider}"
+                    f"Unsupported router type: "
+                    f"{router.router_type}"
 
                 )

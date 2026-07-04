@@ -30,18 +30,13 @@ class Plan(Base):
         unique=True,
     )
 
-    description = Column(
-        String(255),
-        nullable=True,
-    )
-
     price = Column(
         DECIMAL(12, 2),
         nullable=False,
     )
 
     duration_days = Column(
-        Integer,
+        DECIMAL(10, 4),
         nullable=False,
     )
 

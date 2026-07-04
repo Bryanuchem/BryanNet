@@ -4,8 +4,22 @@ import api from "./axios";
  * Get all customers.
  */
 export const getCustomers = async () => {
-    const response = await api.get("/customers");
-    return response.data;
+
+    const response = await api.get(
+        "/customers",
+    );
+
+    return response.data.items;
+};
+
+export const getRecentCustomers = async () => {
+
+    const response = await api.get(
+        "/customers",
+    );
+
+    return response.data.items;
+
 };
 
 /**

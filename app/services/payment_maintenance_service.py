@@ -58,6 +58,9 @@ class PaymentMaintenanceService:
 
         return {
 
+            "processed":
+                len(expired_payments),
+
             "expired_payments":
                 len(expired_payments),
 

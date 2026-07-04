@@ -2,7 +2,6 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
-    Enum,
     TIMESTAMP,
 )
 
@@ -13,6 +12,12 @@ from sqlalchemy.sql import func
 from app.database.base import Base
 
 from app.enums import RouterStatus
+
+from app.database.sqlalchemy_enum import (
+    sql_enum,
+)
+
+from app.enums import RouterProviderType
 
 class Router(Base):
 
@@ -41,18 +46,17 @@ class Router(Base):
         unique=True,
     )
 
-    api_username = Column(
-        String(100),
+    router_type = Column(
+        sql_enum(
+            RouterProviderType,
+            name="router_provider_type",
+        ),
         nullable=False,
-    )
-
-    api_password = Column(
-        String(255),
-        nullable=False,
+        default=RouterProviderType.SIMULATED,
     )
 
     status = Column(
-        Enum(
+        sql_enum(
             RouterStatus,
             name="router_status",
         ),

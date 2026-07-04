@@ -2,10 +2,17 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
 )
+
+from typing import cast
 
 from sqlalchemy.orm import (
     Session,
+)
+
+from app.core.rate_limit import (
+    limiter,
 )
 
 from app.database.dependencies import (
@@ -19,8 +26,24 @@ from app.schemas.auth import (
     LoginResponse,
 )
 
+from app.services.admin_session_service import (
+    AdminSessionService,
+)
+
 from app.services.auth_service import (
     AuthService,
+)
+
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.enums.audit_result import (
+    AuditResult,
+)
+
+from app.constants.audit_actions import (
+    LOGIN,
 )
 
 from app.utils.jwt import (
@@ -42,7 +65,11 @@ router = APIRouter(
     "/login",
     response_model=LoginResponse,
 )
+@limiter.limit(
+    "5/minute",
+)
 def login(
+    request: Request,
     credentials: LoginRequest,
     db: Session = Depends(
         get_db,
@@ -64,23 +91,71 @@ def login(
             detail="Invalid username or password.",
         )
 
-    access_token = (
-        create_access_token(
-            {
+    session = (
+        AdminSessionService.create_session(
 
-                "sub":
-                    str(
-                        admin.admin_user_id,
-                    ),
+            db=db,
 
-                "username":
-                    admin.username,
+            admin_user_id=admin.admin_user_id,
 
-                "role":
-                    admin.role.role_name,
+            ip_address=(
+                request.client.host
+                if request.client
+                else None
+            ),
 
-            }
+            user_agent=request.headers.get(
+                "user-agent",
+            ),
+
         )
+    )
+
+    admin_id = cast(int, admin.admin_user_id)
+    admin_session_id = cast(int, session.admin_session_id)
+
+    AuditLogService.log_admin_action(
+
+        db=db,
+
+        admin_id=admin_id,
+
+        admin_session_id=admin_session_id,
+
+        action=LOGIN,
+
+        description=(
+            f"Administrator '{admin.username}' logged in."
+        ),
+
+        entity_type="AdminUser",
+
+        entity_id=admin_id,
+
+        target_name=str(
+            admin.username,
+        ),
+
+        result=AuditResult.SUCCESS,
+
+        ip_address=(
+            request.client.host
+            if request.client
+            else None
+        ),
+
+        user_agent=request.headers.get(
+            "user-agent",
+        ),
+
+    )
+    
+    db.commit()
+
+    access_token = create_access_token(
+        admin_user_id=admin_id,
+        admin_session_id=admin_session_id,
+        role=admin.role.role_name,
     )
 
     return LoginResponse(

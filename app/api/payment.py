@@ -14,6 +14,8 @@ from app.database.dependencies import (
 
 from app.enums import (
     PaymentProvider,
+    PaymentStatus,
+    PaymentChannel,
 )
 
 from app.schemas.payment import (
@@ -25,6 +27,14 @@ from app.schemas.payment import (
 
 from app.services.payment_service import (
     PaymentService,
+)
+
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.schemas.pagination import (
+    PaginatedResponse,
 )
 
 
@@ -61,6 +71,8 @@ def create_payment(
             payment_provider=PaymentProvider(
                 payment.payment_provider,
             ),
+            payment_channel=payment.payment_channel,
+            admin_id=admin.admin_user_id,
             payment_method=payment.payment_method,
         )
     )
@@ -85,6 +97,7 @@ def complete_payment(
         PaymentService.complete_payment(
             db=db,
             payment_reference=payment_reference,
+            admin_id=admin.admin_user_id,
             gateway_transaction_id=gateway_transaction_id,
         )
     )
@@ -108,6 +121,7 @@ def cancel_payment(
         PaymentService.cancel_payment(
             db=db,
             payment_reference=payment_reference,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -130,6 +144,7 @@ def refund_payment(
         PaymentService.refund_payment(
             db=db,
             payment_reference=payment_reference,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -152,6 +167,7 @@ def expire_payment(
         PaymentService.expire_payment(
             db=db,
             payment_reference=payment_reference,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -162,20 +178,56 @@ def expire_payment(
 
 @router.get(
     "/",
-    response_model=list[PaymentListItem],
+    response_model=PaginatedResponse[
+        PaymentListItem
+    ],
 )
-def get_all_payments(
+def get_payments(
+
+    customer_id: int | None = None,
+
+    payment_provider: PaymentProvider | None = None,
+
+    payment_channel: PaymentChannel | None = None,
+
+    payment_method: str | None = None,
+
+    status: PaymentStatus | None = None,
+
+    sort_by: str = "created_at",
+
+    sort_order: str = "desc",
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
         PaymentService.get_all_payments(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
+            customer_id=customer_id,
+
+            payment_provider=payment_provider,
+
+            payment_channel=payment_channel,
+
+            payment_method=payment_method,
+
+            status=status,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
     )
 

@@ -28,7 +28,7 @@ class NotificationSchedulingService:
         ).date()
 
         end_date = (
-            subscription.end_date.date()
+            subscription.expiry_date.date()
         )
 
         return (
@@ -107,6 +107,9 @@ class NotificationSchedulingService:
                 expired_sent += 1
 
         return {
+
+            "processed":
+                len(subscriptions),
 
             "subscriptions_checked":
                 len(subscriptions),

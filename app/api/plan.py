@@ -21,6 +21,9 @@ from app.services.plan_service import (
     PlanService,
 )
 
+from app.schemas.page import (
+    PageRequest,
+)
 
 router = APIRouter(
     prefix="/plans",
@@ -51,6 +54,7 @@ def create_plan(
         PlanService.create_plan(
             db=db,
             plan_data=plan,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -75,6 +79,7 @@ def update_plan(
             db=db,
             plan_id=plan_id,
             plan_data=plan,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -97,6 +102,7 @@ def activate_plan(
         PlanService.activate_plan(
             db=db,
             plan_id=plan_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -119,6 +125,7 @@ def deactivate_plan(
         PlanService.deactivate_plan(
             db=db,
             plan_id=plan_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -131,21 +138,26 @@ def deactivate_plan(
     "/",
     response_model=list[PlanResponse],
 )
-def get_all_plans(
+def get_plans(
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
         PlanService.get_all_plans(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
         )
     )
-
 
 @router.get(
     "/active",

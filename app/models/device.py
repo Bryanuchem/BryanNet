@@ -2,10 +2,10 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
-    Enum,
     Boolean,
     DateTime,
     TIMESTAMP,
+    Enum,
     ForeignKey,
 )
 
@@ -16,6 +16,10 @@ from sqlalchemy.sql import func
 from app.database.base import Base
 
 from app.enums import DeviceStatus
+
+from app.database.sqlalchemy_enum import (
+    sql_enum,
+)
 
 class Device(Base):
 
@@ -60,7 +64,7 @@ class Device(Base):
     )
 
     device_status = Column(
-        Enum(
+        sql_enum(
             DeviceStatus,
             name="device_status",
         ),

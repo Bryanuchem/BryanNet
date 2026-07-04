@@ -161,6 +161,9 @@ class RouterMaintenanceService:
 
         return {
 
+            "processed":
+                checked,
+
             "routers_checked":
                 checked,
 
@@ -170,4 +173,4 @@ class RouterMaintenanceService:
             "offline":
                 offline,
 
-        }        
+        }     

@@ -1,8 +1,8 @@
-import api from "../api/axios";
+import client from "../api/client";
 
 const authService = {
     login: async (credentials) => {
-        const response = await api.post(
+        const response = await client.post(
             "/auth/login",
             credentials
         );
@@ -11,7 +11,7 @@ const authService = {
     },
 
     getCurrentAdmin: async () => {
-        const response = await api.get(
+        const response = await client.get(
             "/auth/me"
         );
 

@@ -1,6 +1,7 @@
 from fastapi import (
     APIRouter,
     Depends,
+    Request,
 )
 
 from sqlalchemy.orm import (
@@ -27,6 +28,21 @@ from app.services.subscription_service import (
     SubscriptionService,
 )
 
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.enums import (
+    SubscriptionStatus,
+)
+
+from app.schemas.common import (
+    JobResultResponse,
+)
+
+from app.core.rate_limit import (
+    limiter,
+)
 
 router = APIRouter(
     prefix="/subscriptions",
@@ -47,6 +63,9 @@ def purchase_subscription(
     db: Session = Depends(
         get_db,
     ),
+    admin=Depends(
+        get_current_admin,
+    ),
 ):
 
     return (
@@ -54,7 +73,12 @@ def purchase_subscription(
             db=db,
             customer_id=purchase.customer_id,
             plan_id=purchase.plan_id,
-        )
+            admin_id=(
+            admin.admin_user_id
+            if admin
+            else None
+        ),
+    )
     )
 
 
@@ -76,14 +100,20 @@ def cancel_subscription(
         SubscriptionService.cancel_queued_subscription(
             db=db,
             subscription_id=subscription_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
 
 @router.post(
     "/process",
+    response_model=JobResultResponse,
+)
+@limiter.limit(
+    "10/minute",
 )
 def process_subscription_jobs(
+    request: Request,
     db: Session = Depends(
         get_db,
     ),
@@ -92,10 +122,15 @@ def process_subscription_jobs(
     ),
 ):
 
-    return (
+    result = (
         AutomationService.run_subscription_jobs(
             db,
         )
+    )
+
+    return JobResultResponse(
+        processed=result["subscriptions_checked"],
+        message="Subscription maintenance completed.",
     )
 
 
@@ -107,18 +142,44 @@ def process_subscription_jobs(
     "/",
     response_model=list[SubscriptionAdminResponse],
 )
-def get_all_subscriptions(
+def get_subscriptions(
+
+    customer_id: int | None = None,
+
+    plan_id: int | None = None,
+
+    status: SubscriptionStatus | None = None,
+
+    sort_by: str = "created_at",
+
+    sort_order: str = "desc",
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
         SubscriptionService.get_all_subscriptions(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
+            customer_id=customer_id,
+
+            plan_id=plan_id,
+
+            status=status,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
     )
 

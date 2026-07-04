@@ -14,6 +14,7 @@ from app.database.dependencies import (
 
 from app.schemas.customer import (
     CustomerCreate,
+    CustomerListItem,
     CustomerOnboardingStart,
     CustomerResponse,
     CustomerUpdate,
@@ -25,6 +26,17 @@ from app.services.customer_service import (
     CustomerService,
 )
 
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.schemas.pagination import (
+    PaginatedResponse,
+)
+
+from app.schemas.types import (
+    PhoneNumber,
+)
 
 router = APIRouter(
     prefix="/customers",
@@ -55,7 +67,6 @@ def register_customer(
             db=db,
             phone_number=customer.phone_number,
             full_name=customer.full_name,
-            telegram_user_id=customer.telegram_user_id,
         )
     )
 
@@ -193,21 +204,43 @@ def update_phone_number(
 
 @router.get(
     "/",
-    response_model=list[CustomerResponse],
+    response_model=PaginatedResponse[
+        CustomerListItem,
+    ],
 )
 def get_all_customers(
+
+    search: str | None = None,
+
+    sort_by: str = "customer_id",
+
+    sort_order: str = "asc",
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
+
         CustomerService.get_all_customers(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
+            search=search,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
+
     )
 
 
@@ -238,7 +271,7 @@ def get_customer(
     response_model=CustomerResponse,
 )
 def get_customer_by_phone(
-    phone_number: str,
+    phone_number: PhoneNumber,
     db: Session = Depends(
         get_db,
     ),

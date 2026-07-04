@@ -2,8 +2,8 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
-    Enum,
     TIMESTAMP,
+    Enum,
     ForeignKey
 )
 

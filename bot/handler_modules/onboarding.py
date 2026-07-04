@@ -6,7 +6,6 @@ from telegram.ext import (
     ContextTypes
 )
 
-from bot.config import API_BASE_URL
 from bot.session import render_session
 from bot.services.customer_service import CustomerService
 from bot.services.session_service import SessionService

@@ -2,9 +2,12 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
-    Enum,
     Boolean,
     TIMESTAMP,
+)
+
+from app.database.sqlalchemy_enum import (
+    sql_enum,
 )
 
 from sqlalchemy.sql import func
@@ -37,12 +40,6 @@ class Customer(Base):
         nullable=True,
     )
 
-    email = Column(
-        String(255),
-        unique=True,
-        nullable=True,
-    )
-
     whatsapp_enabled = Column(
         Boolean,
         default=True,
@@ -50,7 +47,7 @@ class Customer(Base):
     )
 
     status = Column(
-        Enum(
+        sql_enum(
             CustomerStatus,
             name="customer_status",
         ),
@@ -77,7 +74,7 @@ class Customer(Base):
     )
 
     registration_step = Column(
-        Enum(
+        sql_enum(
             NextAction,
             name="customer_registration_step",
         ),

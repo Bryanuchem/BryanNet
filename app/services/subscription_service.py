@@ -1,4 +1,12 @@
-from datetime import datetime, timedelta, UTC
+import math
+
+from datetime import (
+    datetime,
+    timedelta,
+)
+
+from sqlalchemy.orm import joinedload
+
 
 from fastapi import HTTPException
 
@@ -6,18 +14,84 @@ from app.enums import SubscriptionStatus
 
 from app.models.subscription import Subscription
 
+from app.schemas.subscription import SubscriptionAdminResponse
 from app.services.customer_service import CustomerService
 from app.services.plan_service import PlanService
 from app.services.router_account_service import (
     RouterAccountService,
 )
 
+from typing import cast
+
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.enums.audit_result import (
+    AuditResult,
+)
+
+from app.constants.audit_actions import (
+    PURCHASE_SUBSCRIPTION,
+    CANCEL_SUBSCRIPTION,
+    RENEW_SUBSCRIPTION,
+    EXPIRE_SUBSCRIPTION,
+)
 
 class SubscriptionService:
 
     # ==========================================================
     # Private Helpers
     # ==========================================================
+
+    @staticmethod
+    def _build_admin_response(
+        subscription: Subscription,
+    ) -> SubscriptionAdminResponse:
+
+        now = datetime.now()
+
+        remaining_days = max(
+            0,
+            math.ceil(
+                (
+                    subscription.expiry_date - now
+                ).total_seconds()
+                / 86400
+            ),
+        )
+
+        return SubscriptionAdminResponse(
+
+            subscription_id=subscription.subscription_id,
+
+            customer_id=subscription.customer_id,
+
+            customer_name=subscription.customer.full_name,
+
+            plan_id=subscription.plan_id,
+
+            plan_name=subscription.plan.plan_name,
+
+            price=subscription.plan.price,
+
+            start_date=subscription.start_date,
+
+            activated_at=subscription.activated_at,
+
+            expiry_date=subscription.expiry_date,
+
+            activation_sequence=subscription.activation_sequence,
+
+            status=subscription.status,
+
+            remaining_days=remaining_days,
+
+            created_at=subscription.created_at,
+
+            updated_at=subscription.updated_at,
+
+        )
 
     @staticmethod
     def _has_active_subscription(
@@ -82,7 +156,7 @@ class SubscriptionService:
         expiry_date = (
             start_date
             + timedelta(
-                days=duration_days,
+                days=float(duration_days),
             )
         )
 
@@ -117,6 +191,23 @@ class SubscriptionService:
 
         )
 
+    @staticmethod
+    def _apply_sort(
+        query,
+        sort_column,
+        sort_order,
+    ):
+
+        if sort_order.lower() == "desc":
+
+            return query.order_by(
+                sort_column.desc(),
+            )
+
+        return query.order_by(
+            sort_column.asc(),
+        )
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -126,6 +217,7 @@ class SubscriptionService:
         db,
         customer_id,
         plan_id,
+        admin_id=None,
     ):
 
         customer = (
@@ -171,10 +263,9 @@ class SubscriptionService:
         else:
 
             start_date = (
-                datetime.now(
-                    UTC,
-                )
+                datetime.now()
             )
+
             status = (
                 SubscriptionStatus.ACTIVE
             )
@@ -224,6 +315,51 @@ class SubscriptionService:
                 commit=False,
             )
 
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=(
+                cast(int, admin_id)
+            ),
+
+            action=PURCHASE_SUBSCRIPTION,
+
+            entity_type="Subscription",
+
+            entity_id=cast(
+                int,
+                subscription.subscription_id,
+            ),
+
+            target_name=str(
+                customer.full_name,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Created {status.value.lower()} subscription "
+                f"for '{customer.full_name}' "
+                f"using plan '{plan.plan_name}'."
+            ),
+
+            new_values={
+                "plan": str(plan.plan_name),
+                "status": status.value,
+                "activation_sequence": int(
+                    activation_sequence,
+                ),
+                "start_date": (
+                    start_date.isoformat()
+                ),
+                "expiry_date": (
+                    expiry_date.isoformat()
+                ),
+            },
+
+        )
+
         db.commit()
 
         db.refresh(
@@ -236,40 +372,7 @@ class SubscriptionService:
         )
 
         return subscription
-    
-    
-    @staticmethod
-    def activate_subscription(
-        db,
-        subscription,
-        commit=True,
-    ):
 
-        subscription.status = (
-            SubscriptionStatus.ACTIVE
-        )
-
-        subscription.activated_at = (
-            datetime.now(
-                UTC,
-            )
-        )
-
-        if commit:
-
-            db.commit()
-
-            db.refresh(
-                subscription,
-            )
-
-            RouterAccountService.synchronize_customer_access(
-                db,
-                subscription.customer_id,
-            )
-
-        return subscription
-    
     @staticmethod
     def expire_subscription(
         db,
@@ -277,8 +380,44 @@ class SubscriptionService:
         commit=True,
     ):
 
+        old_status = subscription.status
+
         subscription.status = (
             SubscriptionStatus.EXPIRED
+        )
+
+        AuditLogService.log_system_action(
+
+            db=db,
+
+            action=EXPIRE_SUBSCRIPTION,
+
+            entity_type="Subscription",
+
+            entity_id=cast(
+                int,
+                subscription.subscription_id,
+            ),
+
+            target_name=str(
+                subscription.customer.full_name,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Expired subscription for "
+                f"'{subscription.customer.full_name}'."
+            ),
+
+            old_values={
+                "status": old_status.value,
+            },
+
+            new_values={
+                "status": subscription.status.value,
+            },
+
         )
 
         if commit:
@@ -297,38 +436,79 @@ class SubscriptionService:
         return subscription
 
     @staticmethod
-    def activate_next_subscription(
+    def activate_subscription(
         db,
-        customer_id,
+        subscription,
         commit=True,
     ):
 
-        subscription = (
-            db.query(Subscription)
-            .filter(
-                Subscription.customer_id == customer_id,
-                Subscription.status == SubscriptionStatus.QUEUED,
-            )
-            .order_by(
-                Subscription.activation_sequence
-            )
-            .first()
+        old_status = subscription.status
+
+        subscription.status = (
+            SubscriptionStatus.ACTIVE
         )
 
-        if not subscription:
+        subscription.activated_at = (
+            datetime.now()
+        )
 
-            return None
+        AuditLogService.log_system_action(
 
-        return SubscriptionService.activate_subscription(
             db=db,
-            subscription=subscription,
-            commit=commit,
+
+            action=RENEW_SUBSCRIPTION,
+
+            entity_type="Subscription",
+
+            entity_id=cast(
+                int,
+                subscription.subscription_id,
+            ),
+
+            target_name=str(
+                subscription.customer.full_name,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Activated subscription for "
+                f"'{subscription.customer.full_name}'."
+            ),
+
+            old_values={
+                "status": old_status.value,
+            },
+
+            new_values={
+                "status": subscription.status.value,
+                "activated_at": (
+                    subscription.activated_at.isoformat()
+                ),
+            },
+
         )
+
+        if commit:
+
+            db.commit()
+
+            db.refresh(
+                subscription,
+            )
+
+            RouterAccountService.synchronize_customer_access(
+                db,
+                subscription.customer_id,
+            )
+
+        return subscription
 
     @staticmethod
     def cancel_queued_subscription(
         db,
         subscription_id,
+        admin_id,
     ):
 
         subscription = (
@@ -360,8 +540,49 @@ class SubscriptionService:
                 ),
             )
 
+        old_status = subscription.status
+
         subscription.status = (
             SubscriptionStatus.CANCELLED
+        )
+
+        AuditLogService.log_admin_action(
+
+            db=db,
+
+            admin_id=cast(
+                int,
+                admin_id,
+            ),
+
+            action=CANCEL_SUBSCRIPTION,
+
+            entity_type="Subscription",
+
+            entity_id=cast(
+                int,
+                subscription.subscription_id,
+            ),
+
+            target_name=str(
+                subscription.customer.full_name,
+            ),
+
+            result=AuditResult.SUCCESS,
+
+            description=(
+                f"Cancelled queued subscription "
+                f"for '{subscription.customer.full_name}'."
+            ),
+
+            old_values={
+                "status": old_status.value,
+            },
+
+            new_values={
+                "status": subscription.status.value,
+            },
+
         )
 
         db.commit()
@@ -383,7 +604,17 @@ class SubscriptionService:
     ):
 
         subscription = (
-            db.query(Subscription)
+            db.query(
+                Subscription,
+            )
+            .options(
+                joinedload(
+                    Subscription.customer,
+                ),
+                joinedload(
+                    Subscription.plan,
+                ),
+            )
             .filter(
                 Subscription.subscription_id
                 == subscription_id
@@ -398,7 +629,9 @@ class SubscriptionService:
                 detail="Subscription not found.",
             )
 
-        return subscription
+        return SubscriptionService._build_admin_response(
+            subscription,
+        )
 
     @staticmethod
     def get_active_subscription(
@@ -443,18 +676,47 @@ class SubscriptionService:
         customer_id,
     ):
 
-        return (
-            db.query(Subscription)
+        subscriptions = (
+
+            db.query(
+                Subscription,
+            )
+
+            .options(
+
+                joinedload(
+                    Subscription.customer,
+                ),
+
+                joinedload(
+                    Subscription.plan,
+                ),
+
+            )
+
             .filter(
                 Subscription.customer_id
                 == customer_id
             )
+
             .order_by(
                 Subscription.activation_sequence
             )
+
             .all()
+
         )
 
+        return [
+
+            SubscriptionService._build_admin_response(
+                subscription,
+            )
+
+            for subscription in subscriptions
+
+        ]
+    
     @staticmethod
     def get_customer_subscription_status(
         db,
@@ -506,12 +768,102 @@ class SubscriptionService:
     @staticmethod
     def get_all_subscriptions(
         db,
+        page=1,
+        page_size=25,
+        customer_id=None,
+        plan_id=None,
+        status=None,
+        sort_by="created_at",
+        sort_order="desc",
     ):
 
-        return (
-            db.query(Subscription)
-            .order_by(
-                Subscription.created_at.desc()
+        query = (
+
+            db.query(
+                Subscription,
             )
+
+            .options(
+
+                joinedload(
+                    Subscription.customer,
+                ),
+
+                joinedload(
+                    Subscription.plan,
+                ),
+
+            )
+
+        )
+
+        if customer_id is not None:
+
+            query = query.filter(
+                Subscription.customer_id == customer_id,
+            )
+
+        if plan_id is not None:
+
+            query = query.filter(
+                Subscription.plan_id == plan_id,
+            )
+
+        if status is not None:
+
+            query = query.filter(
+                Subscription.status == status,
+            )
+
+        sort_column = {
+
+            "created_at":
+                Subscription.created_at,
+
+            "expiry_date":
+                Subscription.expiry_date,
+
+            "activation_sequence":
+                Subscription.activation_sequence,
+
+        }.get(
+
+            sort_by,
+
+            Subscription.created_at,
+
+        )
+
+        query = (
+            SubscriptionService._apply_sort(
+                query,
+                sort_column,
+                sort_order,
+            )
+        )
+
+        subscriptions = (
+
+            query
+
+            .offset(
+                (page - 1) * page_size,
+            )
+
+            .limit(
+                page_size,
+            )
+
             .all()
-        )       
+
+        )
+
+        return [
+
+            SubscriptionService._build_admin_response(
+                subscription,
+            )
+
+            for subscription in subscriptions
+
+        ]

@@ -20,6 +20,13 @@ from app.schemas.admin_session import (
     AdminSessionResponse,
 )
 
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.schemas.common import (
+    JobResultResponse,
+)
 
 router = APIRouter(
     prefix="/admin-sessions",
@@ -77,6 +84,7 @@ def close_session(
 
 @router.patch(
     "/close-all/{admin_user_id}",
+    response_model=JobResultResponse,
 )
 def close_all_sessions(
     admin_user_id: int,
@@ -88,11 +96,16 @@ def close_all_sessions(
     ),
 ):
 
-    return (
+    result = (
         AdminSessionService.close_all_sessions(
             db=db,
             admin_user_id=admin_user_id,
         )
+    )
+
+    return JobResultResponse(
+        processed=result["closed_sessions"],
+        message="Admin sessions closed successfully.",
     )
 
 
@@ -105,17 +118,39 @@ def close_all_sessions(
     response_model=list[AdminSessionResponse],
 )
 def get_all_sessions(
+
+    admin_user_id: int | None = None,
+
+    is_active: bool | None = None,
+
+    sort_by: str = "login_time",
+
+    sort_order: str = "desc",
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
         AdminSessionService.get_all_sessions(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
+            admin_user_id=admin_user_id,
+
+            is_active=is_active,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
     )
 

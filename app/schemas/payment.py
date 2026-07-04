@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.enums import (
     PaymentProvider,
     PaymentStatus,
+    PaymentChannel,
 )
 
 
@@ -21,7 +22,9 @@ class PaymentCreate(BaseModel):
 
     payment_provider: PaymentProvider
 
-    payment_method: str | None = None
+    payment_channel: PaymentChannel
+
+    payment_method: str
 
 
 class PaymentFilter(BaseModel):
@@ -78,9 +81,15 @@ class PaymentListItem(BaseModel):
 
     plan_id: int
 
+    plan_name: str
+
     amount: Decimal
 
     payment_provider: PaymentProvider
+
+    payment_channel: PaymentChannel
+
+    payment_method: str | None
 
     status: PaymentStatus
 
@@ -91,7 +100,6 @@ class PaymentListItem(BaseModel):
     class Config:
 
         from_attributes = True
-
 
 class PaymentStatsResponse(BaseModel):
 

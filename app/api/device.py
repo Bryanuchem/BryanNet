@@ -12,12 +12,10 @@ from app.database.dependencies import (
     get_db,
 )
 
-from app.schemas.common import (
-    MessageResponse,
-)
 
 from app.schemas.device import (
     DeviceCreate,
+    DeviceListItem,
     DeviceRenameRequest,
     DeviceReplacementRequest,
     DeviceResponse,
@@ -27,6 +25,15 @@ from app.services.device_service import (
     DeviceService,
 )
 
+from app.enums import DeviceStatus
+
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.schemas.pagination import (
+    PaginatedResponse,
+)
 
 router = APIRouter(
     prefix="/devices",
@@ -58,7 +65,8 @@ def register_device(
             customer_id=device.customer_id,
             device_name=device.device_name,
             mac_address=device.mac_address,
-        )
+            admin_id=admin.admin_user_id,
+        )   
     )
 
 
@@ -80,6 +88,7 @@ def activate_device(
         DeviceService.activate_device(
             db=db,
             device_id=device_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -102,6 +111,7 @@ def deactivate_device(
         DeviceService.deactivate_device(
             db=db,
             device_id=device_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -124,6 +134,7 @@ def approve_device(
         DeviceService.approve_device(
             db=db,
             device_id=device_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -146,9 +157,31 @@ def block_device(
         DeviceService.block_device(
             db=db,
             device_id=device_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
+@router.patch(
+    "/{device_id}/unblock",
+    response_model=DeviceResponse,
+)
+def unblock_device(
+    device_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+        DeviceService.unblock_device(
+            db=db,
+            device_id=device_id,
+            admin_id=admin.admin_user_id,
+        )
+    )
 
 @router.patch(
     "/{device_id}/rename",
@@ -170,6 +203,7 @@ def rename_device(
             db=db,
             device_id=device_id,
             device_name=request.device_name,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -194,6 +228,7 @@ def replace_device(
             customer_id=request.customer_id,
             old_device_id=request.old_device_id,
             new_device_id=request.new_device_id,
+            admin_id=admin.admin_user_id,
         )
     )
 
@@ -204,23 +239,50 @@ def replace_device(
 
 @router.get(
     "/",
-    response_model=list[DeviceResponse],
+    response_model=PaginatedResponse[
+        DeviceListItem,
+    ],
 )
 def get_all_devices(
+
+    search: str | None = None,
+
+    customer_id: int | None = None,
+
+    device_status: DeviceStatus | None = None,
+
+    sort_by: str = "device_id",
+
+    sort_order: str = "asc",
+
+    page: PageRequest = Depends(),
+
     db: Session = Depends(
         get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
     ),
 ):
 
     return (
         DeviceService.get_all_devices(
-            db,
+
+            db=db,
+
+            page=page.page,
+
+            page_size=page.page_size,
+
+            search=search,
+
+            customer_id=customer_id,
+
+            device_status=device_status,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
     )
-
 
 @router.get(
     "/{device_id}",

@@ -2,6 +2,10 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.enums import (
+    LoginSource,
+    LogoutReason,
+)
 
 class AdminSessionResponse(BaseModel):
 
@@ -18,6 +22,12 @@ class AdminSessionResponse(BaseModel):
     ip_address: str | None
 
     user_agent: str | None
+
+    login_source: LoginSource
+
+    client_name: str
+
+    logout_reason: LogoutReason | None
 
     is_active: bool
 

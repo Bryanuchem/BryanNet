@@ -3,8 +3,8 @@ from sqlalchemy import (
     BigInteger,
     String,
     Text,
-    Enum,
     Boolean,
+    Enum,
     TIMESTAMP,
 )
 
