@@ -73,6 +73,27 @@ class PlanService:
                 detail="A plan with this name already exists.",
             )
 
+    @staticmethod
+    def _apply_sort(
+        query,
+        *sort_columns,
+        sort_order,
+    ):
+
+        columns = [
+
+            column.desc()
+
+            if sort_order.lower() == "desc"
+
+            else column.asc()
+
+            for column in sort_columns
+
+        ]
+
+        return query.order_by(*columns)
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -120,12 +141,12 @@ class PlanService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Created plan '{plan.plan_name}'."
+                f"Plan '{plan.plan_name}' was created."
             ),
 
             new_values={
                 "price": float(cast(float, plan.price)),
-                "duration_days": plan.duration_days,
+                "duration_days": float(cast(float, plan.duration_days)),
                 "speed_limit_mbps": plan.speed_limit_mbps,
                 "max_devices": plan.max_devices,
                 "concurrent_devices": plan.concurrent_devices,
@@ -164,7 +185,7 @@ class PlanService:
         old_values = {
             "plan_name": plan.plan_name,
             "price": float(plan.price),
-            "duration_days": plan.duration_days,
+            "duration_days": float(plan.duration_days),
             "speed_limit_mbps": plan.speed_limit_mbps,
             "max_devices": plan.max_devices,
             "concurrent_devices": plan.concurrent_devices,
@@ -195,7 +216,7 @@ class PlanService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Updated plan '{plan.plan_name}'."
+                f"Plan '{plan.plan_name}' was updated."
             ),
 
             old_values=old_values,
@@ -203,7 +224,7 @@ class PlanService:
             new_values={
                 "plan_name": plan.plan_name,
                 "price": float(plan.price),
-                "duration_days": plan.duration_days,
+                "duration_days": float(plan.duration_days),
                 "speed_limit_mbps": plan.speed_limit_mbps,
                 "max_devices": plan.max_devices,
                 "concurrent_devices": plan.concurrent_devices,
@@ -250,8 +271,20 @@ class PlanService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Activated plan '{plan.plan_name}'."
+                f"Plan '{plan.plan_name}' was activated."
             ),
+
+            old_values={
+
+                "is_active": False,
+
+            },
+
+            new_values={
+
+                "is_active": True,
+
+            },
 
         )
 
@@ -294,8 +327,20 @@ class PlanService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Deactivated plan '{plan.plan_name}'."
+                f"Plan '{plan.plan_name}' was deactivated."
             ),
+
+            old_values={
+
+                "is_active": True,
+
+            },
+
+            new_values={
+
+                "is_active": False,
+
+            },
 
         )
 
@@ -343,15 +388,75 @@ class PlanService:
         db,
         page=1,
         page_size=25,
+        search=None,
+        is_active=None,
+        sort_by="price",
+        sort_order="asc",
     ):
 
-        return (
+        query = db.query(Plan)
 
-            db.query(Plan)
+        if search:
 
-            .order_by(
-                Plan.price,
+            query = query.filter(
+
+                Plan.plan_name.ilike(
+                    f"%{search}%"
+                )
+
             )
+
+        if is_active is not None:
+
+            query = query.filter(
+
+                Plan.is_active == is_active
+
+            )
+
+        total = query.count()
+
+        sort_column = {
+
+            "plan_name":
+                Plan.plan_name,
+
+            "price":
+                Plan.price,
+
+            "duration_days":
+                Plan.duration_days,
+
+            "speed_limit_mbps":
+                Plan.speed_limit_mbps,
+
+            "max_devices":
+                Plan.max_devices,
+
+            "concurrent_devices":
+                Plan.concurrent_devices,
+
+        }.get(
+
+            sort_by,
+
+            Plan.price,
+
+        )
+
+        query = PlanService._apply_sort(
+
+            query,
+
+            sort_column,
+
+            sort_order=sort_order,
+
+        )
+
+        plans = (
+
+            query
 
             .offset(
                 (page - 1) * page_size,
@@ -364,3 +469,29 @@ class PlanService:
             .all()
 
         )
+
+        pages = (
+
+            (total + page_size - 1)
+
+            // page_size
+
+            if total
+
+            else 0
+
+        )
+
+        return {
+
+            "items": plans,
+
+            "total": total,
+
+            "page": page,
+
+            "page_size": page_size,
+
+            "pages": pages,
+
+        }

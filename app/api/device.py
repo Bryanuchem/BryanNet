@@ -7,11 +7,18 @@ from sqlalchemy.orm import (
     Session,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
 from app.database.dependencies import (
     get_current_admin,
     get_db,
 )
 
+from app.database.permission_dependencies import (
+    require_permission,
+)
 
 from app.schemas.device import (
     DeviceCreate,
@@ -57,6 +64,11 @@ def register_device(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_REGISTER,
+        ),
+    ),
 ):
 
     return (
@@ -66,7 +78,7 @@ def register_device(
             device_name=device.device_name,
             mac_address=device.mac_address,
             admin_id=admin.admin_user_id,
-        )   
+        )
     )
 
 
@@ -81,6 +93,11 @@ def activate_device(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_ACTIVATE,
+        ),
     ),
 ):
 
@@ -105,6 +122,11 @@ def deactivate_device(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_DEACTIVATE,
+        ),
+    ),
 ):
 
     return (
@@ -127,6 +149,11 @@ def approve_device(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_APPROVE,
+        ),
     ),
 ):
 
@@ -151,6 +178,11 @@ def block_device(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_BLOCK,
+        ),
+    ),
 ):
 
     return (
@@ -160,6 +192,7 @@ def block_device(
             admin_id=admin.admin_user_id,
         )
     )
+
 
 @router.patch(
     "/{device_id}/unblock",
@@ -173,6 +206,11 @@ def unblock_device(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_UNBLOCK,
+        ),
+    ),
 ):
 
     return (
@@ -182,6 +220,7 @@ def unblock_device(
             admin_id=admin.admin_user_id,
         )
     )
+
 
 @router.patch(
     "/{device_id}/rename",
@@ -195,6 +234,11 @@ def rename_device(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_RENAME,
+        ),
     ),
 ):
 
@@ -219,6 +263,11 @@ def replace_device(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_REPLACE,
+        ),
     ),
 ):
 
@@ -260,6 +309,17 @@ def get_all_devices(
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -284,6 +344,7 @@ def get_all_devices(
         )
     )
 
+
 @router.get(
     "/{device_id}",
     response_model=DeviceResponse,
@@ -295,6 +356,11 @@ def get_device(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_VIEW,
+        ),
     ),
 ):
 
@@ -318,6 +384,11 @@ def get_customer_devices(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -339,6 +410,11 @@ def get_active_devices(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.DEVICES_VIEW,
+        ),
     ),
 ):
 

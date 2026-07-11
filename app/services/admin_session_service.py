@@ -9,6 +9,18 @@ from app.enums import (
     LogoutReason,
 )
 
+from sqlalchemy.orm import (
+    joinedload,
+)
+
+from app.models.admin_user import (
+    AdminUser,
+)
+
+from app.schemas.admin_session import (
+    AdminSessionResponse,
+)
+
 class AdminSessionService:
 
     # ==========================================================
@@ -47,9 +59,13 @@ class AdminSessionService:
 
         return (
             db.query(AdminSession)
+            .options(
+                joinedload(
+                    AdminSession.admin_user,
+                ),
+            )
             .filter(
                 AdminSession.admin_session_id == admin_session_id,
-                AdminSession.admin_user_id == admin_user_id,
             )
             .first()
         )
@@ -69,6 +85,49 @@ class AdminSessionService:
 
         return query.order_by(
             sort_column.asc(),
+        )
+
+    @staticmethod
+    def _build_session_response(
+        session,
+    ):
+
+        return AdminSessionResponse(
+
+            admin_session_id=session.admin_session_id,
+
+            admin_user_id=session.admin_user_id,
+
+            administrator=(
+
+                session.admin_user.username
+
+                if session.admin_user
+
+                else "-"
+
+            ),
+
+            login_time=session.login_time,
+
+            last_activity=session.last_activity,
+
+            logout_time=session.logout_time,
+
+            ip_address=session.ip_address,
+
+            user_agent=session.user_agent,
+
+            login_source=session.login_source,
+
+            client_name=session.client_name,
+
+            logout_reason=session.logout_reason,
+
+            is_active=session.is_active,
+
+            created_at=session.created_at,
+
         )
 
     # ==========================================================
@@ -248,11 +307,27 @@ class AdminSessionService:
         admin_session_id,
     ):
 
-        return (
+        session = (
+
             AdminSessionService._find_session(
+
                 db,
+
                 admin_session_id,
+
             )
+
+        )
+
+        return (
+
+            AdminSessionService
+            ._build_session_response(
+
+                session,
+
+            )
+
         )
 
     @staticmethod
@@ -330,29 +405,122 @@ class AdminSessionService:
 
     @staticmethod
     def get_all_sessions(
+
         db,
+
         page=1,
+
         page_size=25,
+
+        search=None,
+
         admin_user_id=None,
+
         is_active=None,
+
+        device=None,
+
+        browser=None,
+
         sort_by="login_time",
+
         sort_order="desc",
+
     ):
 
         query = (
-            db.query(AdminSession)
+
+            db.query(
+                AdminSession,
+            )
+
+            .join(
+
+                AdminUser,
+
+                AdminSession.admin_user_id
+                == AdminUser.admin_user_id,
+
+            )
+
+            .options(
+
+                joinedload(
+                    AdminSession.admin_user,
+                ),
+
+            )
+
         )
+
+        if search:
+
+            query = query.filter(
+
+                (
+
+                    AdminUser.username.ilike(
+                        f"%{search}%",
+                    )
+
+                )
+
+                |
+
+                (
+
+                    AdminSession.ip_address.ilike(
+                        f"%{search}%",
+                    )
+
+                )
+
+                |
+
+                (
+
+                    AdminSession.client_name.ilike(
+                        f"%{search}%",
+                    )
+
+                )
+
+            )
 
         if admin_user_id is not None:
 
             query = query.filter(
-                AdminSession.admin_user_id == admin_user_id,
+
+                AdminSession.admin_user_id
+                == admin_user_id,
+
             )
 
         if is_active is not None:
 
             query = query.filter(
-                AdminSession.is_active == is_active,
+
+                AdminSession.is_active
+                == is_active,
+
+            )
+
+        if device:
+
+            query = query.filter(
+
+                AdminSession.client_name
+                == device,
+
+            )
+
+        if browser:
+
+            query = query.filter(
+
+                AdminSession.login_source
+                == browser,
+
             )
 
         sort_column = {
@@ -372,14 +540,22 @@ class AdminSessionService:
         )
 
         query = (
+
             AdminSessionService._apply_sort(
+
                 query,
+
                 sort_column,
+
                 sort_order,
+
             )
+
         )
 
-        return (
+        total = query.count()
+
+        sessions = (
 
             query
 
@@ -394,3 +570,40 @@ class AdminSessionService:
             .all()
 
         )
+
+        pages = (
+
+            (total + page_size - 1)
+
+            // page_size
+
+            if total
+
+            else 0
+
+        )
+
+        return {
+
+            "items": [
+
+                AdminSessionService
+                ._build_session_response(
+
+                    session,
+
+                )
+
+                for session in sessions
+
+            ],
+
+            "total": total,
+
+            "page": page,
+
+            "page_size": page_size,
+
+            "pages": pages,
+
+        }

@@ -21,13 +21,14 @@ def get_customer_by_telegram_id(
 def get_all_plans():
 
     response = requests.get(
-        f"{API_BASE_URL}/plans"
+        f"{API_BASE_URL}/plans/public"
     )
 
     if response.status_code != 200:
         return None
 
     return response.json()
+
 
 def format_duration(
     duration

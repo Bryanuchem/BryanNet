@@ -3,13 +3,25 @@ from fastapi import (
     Depends,
 )
 
+from fastapi.responses import (
+    StreamingResponse,
+)
+
 from sqlalchemy.orm import (
     Session,
+)
+
+from app.constants.permissions import (
+    Permissions,
 )
 
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.enums import (
@@ -22,11 +34,15 @@ from app.schemas.payment import (
     PaymentCreate,
     PaymentListItem,
     PaymentResponse,
-    PaymentStatsResponse,
+    PaymentStatsResponse
 )
 
 from app.services.payment_service import (
     PaymentService,
+)
+
+from app.services.payment_document_service import (
+    PaymentDocumentService,
 )
 
 from app.schemas.page import (
@@ -36,7 +52,6 @@ from app.schemas.page import (
 from app.schemas.pagination import (
     PaginatedResponse,
 )
-
 
 router = APIRouter(
     prefix="/payments",
@@ -60,6 +75,11 @@ def create_payment(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_CREATE,
+        ),
     ),
 ):
 
@@ -91,6 +111,11 @@ def complete_payment(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_COMPLETE,
+        ),
+    ),
 ):
 
     return (
@@ -115,6 +140,11 @@ def cancel_payment(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_CANCEL,
+        ),
+    ),
 ):
 
     return (
@@ -137,6 +167,11 @@ def refund_payment(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_REFUND,
+        ),
     ),
 ):
 
@@ -161,6 +196,11 @@ def expire_payment(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_EXPIRE,
+        ),
+    ),
 ):
 
     return (
@@ -184,6 +224,8 @@ def expire_payment(
 )
 def get_payments(
 
+    search: str | None = None,
+
     customer_id: int | None = None,
 
     payment_provider: PaymentProvider | None = None,
@@ -203,6 +245,17 @@ def get_payments(
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -213,6 +266,8 @@ def get_payments(
             page=page.page,
 
             page_size=page.page_size,
+
+            search=search,
 
             customer_id=customer_id,
 
@@ -233,6 +288,52 @@ def get_payments(
 
 
 @router.get(
+    "/{payment_reference}/receipt",
+)
+def get_payment_receipt(
+    payment_reference: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_VIEW,
+        ),
+    ),
+):
+
+    pdf = (
+        PaymentDocumentService.generate_receipt_pdf(
+            db=db,
+            payment_reference=payment_reference,
+        )
+    )
+
+    return StreamingResponse(
+
+        pdf,
+
+        media_type="application/pdf",
+
+        headers={
+
+            "Content-Disposition": (
+
+                f'inline; '
+
+                f'filename="{payment_reference}.pdf"'
+
+            ),
+
+        },
+
+    )
+
+
+@router.get(
     "/summary",
     response_model=PaymentStatsResponse,
 )
@@ -242,6 +343,11 @@ def get_payment_summary(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_VIEW,
+        ),
     ),
 ):
 
@@ -264,6 +370,11 @@ def get_payment(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -285,6 +396,11 @@ def get_customer_payments(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PAYMENTS_VIEW,
+        ),
     ),
 ):
 

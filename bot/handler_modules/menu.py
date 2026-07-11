@@ -146,7 +146,7 @@ async def menu_callback(
     elif query.data == "buy":
 
         response = requests.get(
-            f"{API_BASE_URL}/plans"
+            f"{API_BASE_URL}/plans/public"
         )
 
         plans = response.json()
@@ -178,7 +178,7 @@ async def menu_callback(
         )
 
         response = requests.get(
-            f"{API_BASE_URL}/plans"
+            f"{API_BASE_URL}/plans/public"
         )
 
         if response.status_code != 200:
@@ -323,7 +323,7 @@ async def menu_callback(
         subscription = purchase_response.json()
 
         response = requests.get(
-            f"{API_BASE_URL}/plans"
+            f"{API_BASE_URL}/plans/public"
         )
 
         plans = response.json()

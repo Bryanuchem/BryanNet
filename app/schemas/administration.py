@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class AdministrationMetrics(BaseModel):
     admin_users: int
-    active_sessions: int
+    login_sessions_today: int
     roles: int
     audit_events_today: int
     system_events_today: int
@@ -34,8 +34,11 @@ class ActiveSessionItem(BaseModel):
 class SystemActivityItem(BaseModel):
     id: int
     timestamp: datetime
-    title: str
-    description: str
+    administrator: str
+    action: str
+    module: str
+    target: str
+    status: str
 
 
 class AdministrationOverviewResponse(BaseModel):

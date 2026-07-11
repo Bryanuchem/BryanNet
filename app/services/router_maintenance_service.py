@@ -6,6 +6,14 @@ from app.models.router import (
     Router,
 )
 
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.constants.audit_actions import (
+    AUTOMATION_DEVICES,
+)
+
 from app.services.notification_service import (
     NotificationService,
 )
@@ -106,6 +114,8 @@ class RouterMaintenanceService:
     @staticmethod
     def run(
         db,
+        admin=None,
+        session=None,
     ):
 
         routers = (
@@ -159,7 +169,7 @@ class RouterMaintenanceService:
 
                 offline += 1
 
-        return {
+        result = {
 
             "processed":
                 checked,
@@ -173,4 +183,38 @@ class RouterMaintenanceService:
             "offline":
                 offline,
 
-        }     
+        }
+
+        AuditLogService.log_system_action(
+
+            db=db,
+
+            admin=admin,
+
+            session=session,
+
+            action=AUTOMATION_DEVICES,
+
+            description=(
+
+                "Router maintenance checked "
+
+                f"{result['routers_checked']} router(s): "
+
+                f"{result['online']} online, "
+
+                f"{result['offline']} offline."
+
+            ),
+
+            entity_type="System",
+
+            target_name="Routers",
+
+            new_values=result,
+
+        )
+
+        db.commit()
+
+        return result 

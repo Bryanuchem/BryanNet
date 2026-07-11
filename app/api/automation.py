@@ -8,9 +8,17 @@ from sqlalchemy.orm import (
     Session,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.services.automation_service import (
@@ -65,6 +73,11 @@ def run_all_jobs(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.AUTOMATION_RUN,
+        ),
+    ),
 ):
 
     result = (
@@ -114,6 +127,11 @@ def run_payment_jobs(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.AUTOMATION_RUN,
+        ),
     ),
 ):
 
@@ -168,6 +186,11 @@ def run_subscription_jobs(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.AUTOMATION_RUN,
+        ),
+    ),
 ):
 
     result = (
@@ -221,6 +244,11 @@ def run_router_jobs(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.AUTOMATION_RUN,
+        ),
+    ),
 ):
 
     result = (
@@ -273,6 +301,11 @@ def run_notification_jobs(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.AUTOMATION_RUN,
+        ),
     ),
 ):
 

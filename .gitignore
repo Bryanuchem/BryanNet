@@ -45,4 +45,4 @@ dist/
 *.tmp
 
 #Read Me
-.md
+*.md

@@ -371,18 +371,36 @@ class RouterAccountService:
         customer_id,
     ):
 
-        context = (
+        try:
 
-            RouterAccountService
-            .build_router_context(
+            context = (
 
-                db,
+                RouterAccountService
+                .build_router_context(
 
-                customer_id,
+                    db,
+
+                    customer_id,
+
+                )
 
             )
 
-        )
+        except HTTPException as exception:
+
+            if (
+
+                exception.status_code == 404
+
+                and
+
+                exception.detail == "Router account not found."
+
+            ):
+
+                return None
+
+            raise
 
         return (
 

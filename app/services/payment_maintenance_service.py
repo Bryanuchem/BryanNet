@@ -2,6 +2,14 @@ from datetime import datetime, timedelta, UTC
 
 from sqlalchemy import func
 
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.constants.audit_actions import (
+    AUTOMATION_PAYMENTS,
+)
+
 from app.enums import PaymentStatus
 
 from app.models.payment import Payment
@@ -233,11 +241,56 @@ class PaymentMaintenanceService:
     @staticmethod
     def run(
         db,
+        admin=None,
+        session=None,
     ):
 
-        return (
+        result = (
+
             PaymentMaintenanceService
+
             .expire_pending_payments(
+
                 db,
+
             )
-        )        
+
+        )
+
+        AuditLogService.log_system_action(
+
+            db=db,
+            
+            admin=admin,
+
+            session=session,
+
+            action=AUTOMATION_PAYMENTS,
+
+            description=(
+
+                "Payment maintenance expired "
+
+                f"{result['expired_payments']} "
+
+                "pending payment(s)."
+
+            ),
+
+            entity_type="System",
+
+            target_name="Payments",
+
+            new_values={
+
+                "processed": result["processed"],
+
+                "expired_payments": result["expired_payments"],
+
+            },
+
+        )
+
+        db.commit()
+
+        return result      

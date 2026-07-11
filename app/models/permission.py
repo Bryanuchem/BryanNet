@@ -3,7 +3,6 @@ from sqlalchemy import (
     BigInteger,
     String,
     Text,
-    Boolean,
     TIMESTAMP,
 )
 
@@ -14,37 +13,35 @@ from sqlalchemy.sql import func
 from app.database.base import Base
 
 
-class Role(Base):
+class Permission(Base):
 
-    __tablename__ = "roles"
+    __tablename__ = "permissions"
 
-    role_id = Column(
+    permission_id = Column(
         BigInteger,
         primary_key=True,
         autoincrement=True,
     )
 
-    role_name = Column(
-        String(100),
+    permission_key = Column(
+        String(150),
         unique=True,
+        nullable=False,
+    )
+
+    module = Column(
+        String(100),
+        nullable=False,
+    )
+
+    action = Column(
+        String(100),
         nullable=False,
     )
 
     description = Column(
         Text,
         nullable=True,
-    )
-
-    is_system_role = Column(
-        Boolean,
-        nullable=False,
-        default=False,
-    )
-
-    is_active = Column(
-        Boolean,
-        nullable=False,
-        default=True,
     )
 
     created_at = Column(
@@ -60,13 +57,8 @@ class Role(Base):
         nullable=False,
     )
 
-    admin_users = relationship(
-        "AdminUser",
-        back_populates="role",
-    )
-
     role_permissions = relationship(
         "RolePermission",
-        back_populates="role",
+        back_populates="permission",
         cascade="all, delete-orphan",
-    )   
+    )

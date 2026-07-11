@@ -41,6 +41,8 @@ class DeviceResponse(BaseModel):
     device_id: int
 
     customer_id: int
+    
+    customer_name: str
 
     device_name: str
 
@@ -57,6 +59,8 @@ class DeviceListItem(BaseModel):
     device_id: int
 
     customer_id: int
+    
+    customer_name: str
 
     device_name: str | None = None
 

@@ -39,8 +39,8 @@ PhoneNumber = Annotated[
     str,
     Field(
         min_length=11,
-        max_length=15,
-        pattern=r"^\+?[0-9]+$",
+        max_length=20,
+        pattern=r"^[0-9+\-\s()]+$",
     ),
 ]
 

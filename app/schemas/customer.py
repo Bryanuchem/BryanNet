@@ -51,6 +51,8 @@ class CustomerResponse(BaseModel):
     telegram_user_id: int | None = None
 
     is_registered: bool
+    
+    status: str
 
     registration_step: str
 
@@ -69,6 +71,8 @@ class CustomerListItem(BaseModel):
     telegram_user_id: int | None = None
 
     is_registered: bool
+    
+    status: str
 
     registration_step: str
 

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import EmailStr
 
 from app.schemas.types import (
     Password,
@@ -26,8 +27,10 @@ class CurrentAdminResponse(BaseModel):
 
     username: str
 
-    email: str
+    email: EmailStr
 
     role: str
+    
+    permissions: list[str]
 
     is_active: bool

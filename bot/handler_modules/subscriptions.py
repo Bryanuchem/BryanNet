@@ -22,6 +22,14 @@ from bot.services.helpers import (
 BUY_PLAN = 5
 CONFIRM_PURCHASE = 6
 
+def get_active_plans():
+
+    url = f"{API_BASE_URL}/plans/public"
+
+    response = requests.get(url)
+
+    return response.json() if response.status_code == 200 else None
+
 async def plans(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
@@ -35,19 +43,15 @@ async def send_plans(
     message
 ):
 
-    response = requests.get(
-        f"{API_BASE_URL}/plans"
-    )
+    plans = get_active_plans()
 
-    if response.status_code != 200:
+    if plans is None:
 
         await message.reply_text(
             "Unable to retrieve plans."
         )
 
         return
-
-    plans = response.json()
 
     text = "🌐 Available Plans\n\n"
 
@@ -167,19 +171,15 @@ async def buy_start(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    response = requests.get(
-        f"{API_BASE_URL}/plans"
-    )
+    plans = get_active_plans()
 
-    if response.status_code != 200:
+    if plans is None:
 
         await update.message.reply_text(
             "Unable to retrieve plans."
         )
 
         return ConversationHandler.END
-
-    plans = response.json()
 
     context.user_data["plans"] = plans
 
@@ -376,19 +376,15 @@ async def buy_keyboard(
     update: Update
 ):
 
-    response = requests.get(
-        f"{API_BASE_URL}/plans"
-    )
+    plans = get_active_plans()
 
-    if response.status_code != 200:
+    if plans is None:
 
         await update.message.reply_text(
             "Unable to retrieve plans."
         )
 
         return
-
-    plans = response.json()
 
     keyboard = []
 

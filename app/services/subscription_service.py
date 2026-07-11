@@ -3,6 +3,7 @@ import math
 from datetime import (
     datetime,
     timedelta,
+    
 )
 
 from sqlalchemy.orm import joinedload
@@ -12,6 +13,8 @@ from fastapi import HTTPException
 
 from app.enums import SubscriptionStatus
 
+from app.models.customer import Customer
+from app.models.plan import Plan
 from app.models.subscription import Subscription
 
 from app.schemas.subscription import SubscriptionAdminResponse
@@ -339,9 +342,10 @@ class SubscriptionService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Created {status.value.lower()} subscription "
+                f"{status.value.title()} subscription "
                 f"for '{customer.full_name}' "
-                f"using plan '{plan.plan_name}'."
+                f"was purchased using plan "
+                f"'{plan.plan_name}'."
             ),
 
             new_values={
@@ -406,8 +410,9 @@ class SubscriptionService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Expired subscription for "
-                f"'{subscription.customer.full_name}'."
+                f"Subscription for "
+                f"'{subscription.customer.full_name}' "
+                f"expired."
             ),
 
             old_values={
@@ -472,8 +477,9 @@ class SubscriptionService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Activated subscription for "
-                f"'{subscription.customer.full_name}'."
+                f"Subscription for "
+                f"'{subscription.customer.full_name}' "
+                f"was renewed."
             ),
 
             old_values={
@@ -571,8 +577,9 @@ class SubscriptionService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Cancelled queued subscription "
-                f"for '{subscription.customer.full_name}'."
+                f"Queued subscription for "
+                f"'{subscription.customer.full_name}' "
+                f"was cancelled."
             ),
 
             old_values={
@@ -770,6 +777,7 @@ class SubscriptionService:
         db,
         page=1,
         page_size=25,
+        search=None,
         customer_id=None,
         plan_id=None,
         status=None,
@@ -780,22 +788,58 @@ class SubscriptionService:
         query = (
 
             db.query(
+
                 Subscription,
+
+                Customer.full_name.label(
+                    "customer_name",
+                ),
+
+                Plan.plan_name.label(
+                    "plan_name",
+                ),
+
+                Plan.price.label(
+                    "price",
+                ),
+
             )
 
-            .options(
+            .join(
 
-                joinedload(
-                    Subscription.customer,
-                ),
+                Customer,
 
-                joinedload(
-                    Subscription.plan,
-                ),
+                Customer.customer_id
+                == Subscription.customer_id,
+
+            )
+
+            .join(
+
+                Plan,
+
+                Plan.plan_id
+                == Subscription.plan_id,
 
             )
 
         )
+
+        if search:
+
+            query = query.filter(
+
+                Customer.full_name.ilike(
+                    f"%{search}%"
+                )
+
+                |
+
+                Plan.plan_name.ilike(
+                    f"%{search}%"
+                )
+
+            )
 
         if customer_id is not None:
 
@@ -815,6 +859,8 @@ class SubscriptionService:
                 Subscription.status == status,
             )
 
+        total = query.count()
+
         sort_column = {
 
             "created_at":
@@ -823,8 +869,14 @@ class SubscriptionService:
             "expiry_date":
                 Subscription.expiry_date,
 
-            "activation_sequence":
-                Subscription.activation_sequence,
+            "customer_name":
+                Customer.full_name,
+
+            "plan_name":
+                Plan.plan_name,
+
+            "status":
+                Subscription.status,
 
         }.get(
 
@@ -834,15 +886,17 @@ class SubscriptionService:
 
         )
 
-        query = (
-            SubscriptionService._apply_sort(
-                query,
-                sort_column,
-                sort_order,
-            )
+        query = SubscriptionService._apply_sort(
+
+            query,
+
+            sort_column,
+
+            sort_order=sort_order,
+
         )
 
-        subscriptions = (
+        results = (
 
             query
 
@@ -858,12 +912,125 @@ class SubscriptionService:
 
         )
 
-        return [
+        pages = (
 
-            SubscriptionService._build_admin_response(
-                subscription,
+            (total + page_size - 1)
+
+            // page_size
+
+            if total
+
+            else 0
+
+        )
+        now = datetime.now()
+        
+        subscriptions = [
+
+            SubscriptionAdminResponse(
+
+                subscription_id=
+                    subscription.subscription_id,
+
+                customer_id=
+                    subscription.customer_id,
+
+                customer_name=
+                    customer_name,
+
+                plan_id=
+                    subscription.plan_id,
+
+                plan_name=
+                    plan_name,
+
+                price=float(price),
+
+                start_date=
+                    subscription.start_date,
+
+                expiry_date=
+                    subscription.expiry_date,
+
+                remaining_days=(
+
+                    max(
+
+                        0,
+
+                        (
+                            subscription.expiry_date
+                            - now
+                        ).days,
+
+                    )
+
+                    if subscription.status
+                    == SubscriptionStatus.ACTIVE
+
+                    else
+
+                    max(
+
+                        0,
+
+                        (
+                            subscription.expiry_date
+                            - subscription.start_date
+                        ).days,
+
+                    )
+
+                    if subscription.status
+                    == SubscriptionStatus.QUEUED
+
+                    else
+
+                    0
+
+                ),
+
+                activation_sequence=
+                    subscription.activation_sequence,
+
+                status=
+                    subscription.status,
+
+                activated_at=
+                    subscription.activated_at,
+
+                created_at=
+                    subscription.created_at,
+
+                updated_at=
+                    subscription.updated_at,
+
             )
 
-            for subscription in subscriptions
+            for (
+
+                subscription,
+
+                customer_name,
+
+                plan_name,
+
+                price,
+
+            ) in results
 
         ]
+
+        return {
+
+            "items": subscriptions,
+
+            "total": total,
+
+            "page": page,
+
+            "page_size": page_size,
+
+            "pages": pages,
+
+        }

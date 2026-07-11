@@ -7,9 +7,17 @@ from sqlalchemy.orm import (
     Session,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.schemas.customer import (
@@ -22,10 +30,6 @@ from app.schemas.customer import (
     CustomerUpdatePhone,
 )
 
-from app.services.customer_service import (
-    CustomerService,
-)
-
 from app.schemas.page import (
     PageRequest,
 )
@@ -36,6 +40,10 @@ from app.schemas.pagination import (
 
 from app.schemas.types import (
     PhoneNumber,
+)
+
+from app.services.customer_service import (
+    CustomerService,
 )
 
 router = APIRouter(
@@ -59,6 +67,11 @@ def register_customer(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_CREATE,
+        ),
     ),
 ):
 
@@ -84,6 +97,11 @@ def update_customer(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_EDIT,
+        ),
+    ),
 ):
 
     return (
@@ -107,6 +125,11 @@ def activate_customer(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_EDIT,
+        ),
+    ),
 ):
 
     return (
@@ -129,6 +152,11 @@ def deactivate_customer(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_EDIT,
+        ),
+    ),
 ):
 
     return (
@@ -138,6 +166,10 @@ def deactivate_customer(
         )
     )
 
+
+# ==========================================================
+# Public Onboarding
+# ==========================================================
 
 @router.post(
     "/onboarding/start",
@@ -221,6 +253,17 @@ def get_all_customers(
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -256,6 +299,11 @@ def get_customer(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -277,6 +325,11 @@ def get_customer_by_phone(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_VIEW,
+        ),
     ),
 ):
 

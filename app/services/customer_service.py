@@ -18,6 +18,10 @@ from app.constants.audit_actions import (
     DEACTIVATE_CUSTOMER,
 )
 
+from app.utils.phone import (
+    normalize_nigerian_phone_number,
+)
+
 from app.enums.audit_result import AuditResult
 
 class CustomerService:
@@ -28,6 +32,10 @@ class CustomerService:
         phone_number,
         full_name,
     ):
+
+        phone_number = normalize_nigerian_phone_number(
+            phone_number,
+        )
 
         existing_customer = (
             db.query(Customer)
@@ -75,7 +83,13 @@ class CustomerService:
             result=AuditResult.SUCCESS,
 
             description=(
-                "Customer registered by administrator."
+
+                f"Customer "
+
+                f"'{customer.full_name}' "
+
+                f"was registered."
+
             ),
 
             new_values={
@@ -186,6 +200,10 @@ class CustomerService:
         phone_number,
     ):
 
+        phone_number = normalize_nigerian_phone_number(
+            phone_number,
+        )
+
         existing_customer = (
             db.query(Customer)
             .filter(
@@ -266,6 +284,12 @@ class CustomerService:
         customer_data,
     ):
 
+        customer_data.phone_number = (
+            normalize_nigerian_phone_number(
+                customer_data.phone_number,
+            )
+        )
+
         customer = (
             db.query(Customer)
             .filter(
@@ -318,7 +342,13 @@ class CustomerService:
             result=AuditResult.SUCCESS,
 
             description=(
-                "Customer details updated."
+
+                f"Customer "
+
+                f"'{customer.full_name}' "
+
+                f"details were updated."
+
             ),
 
             old_values=old_values,
@@ -373,8 +403,26 @@ class CustomerService:
             result=AuditResult.SUCCESS,
 
             description=(
-                "Customer activated."
+
+                f"Customer "
+
+                f"'{customer.full_name}' "
+
+                f"was activated."
+
             ),
+
+            old_values={
+
+                "status": CustomerStatus.SUSPENDED.value,
+
+            },
+
+            new_values={
+
+                "status": CustomerStatus.ACTIVE.value,
+
+            },
 
         )
 
@@ -420,9 +468,26 @@ class CustomerService:
             result=AuditResult.SUCCESS,
 
             description=(
-                "Customer suspended."
-            ),
 
+                f"Customer "
+
+                f"'{customer.full_name}' "
+
+                f"was suspended."
+
+            ),
+            
+            old_values={
+
+                "status": CustomerStatus.ACTIVE.value,
+
+            },
+
+            new_values={
+
+                "status": CustomerStatus.SUSPENDED.value,
+
+            },
         )
 
         db.commit()
@@ -458,6 +523,9 @@ class CustomerService:
         db,
         phone_number,
     ):
+        phone_number = normalize_nigerian_phone_number(
+            phone_number,
+        )
 
         customer = (
             db.query(Customer)

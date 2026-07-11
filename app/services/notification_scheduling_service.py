@@ -7,6 +7,14 @@ from app.models.subscription import (
     Subscription,
 )
 
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.constants.audit_actions import (
+    AUTOMATION_REMINDERS,
+)
+
 from app.services.notification_service import (
     NotificationService,
 )
@@ -46,6 +54,8 @@ class NotificationSchedulingService:
     @staticmethod
     def run(
         db,
+        admin=None,
+        session=None,
     ):
 
         subscriptions = (
@@ -106,7 +116,7 @@ class NotificationSchedulingService:
 
                 expired_sent += 1
 
-        return {
+        result = {
 
             "processed":
                 len(subscriptions),
@@ -121,6 +131,40 @@ class NotificationSchedulingService:
                 expired_sent,
 
         }
+
+        AuditLogService.log_system_action(
+
+            db=db,
+            
+            admin=admin,
+
+            session=session,
+
+            action=AUTOMATION_REMINDERS,
+
+            description=(
+
+                "Notification scheduler checked "
+
+                f"{result['subscriptions_checked']} subscription(s): "
+
+                f"{result['expiry_reminders_sent']} reminder(s) sent, "
+
+                f"{result['expired_notifications_sent']} expiration notification(s) sent."
+
+            ),
+
+            entity_type="System",
+
+            target_name="Notifications",
+
+            new_values=result,
+
+        )
+
+        db.commit()
+
+        return result
 
     @staticmethod
     def send_daily_admin_summary(

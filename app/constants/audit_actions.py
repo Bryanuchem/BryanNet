@@ -23,6 +23,8 @@ DEACTIVATE_ADMIN = "DEACTIVATE_ADMIN"
 
 CHANGE_ROLE = "CHANGE_ROLE"
 
+RESET_ADMIN_PASSWORD = "RESET_ADMIN_PASSWORD"
+
 
 # ==========================================================
 # Customers

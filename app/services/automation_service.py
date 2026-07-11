@@ -38,74 +38,72 @@ class AutomationService:
     @staticmethod
     def run_payment_jobs(
         db,
+        admin=None,
+        session=None,
     ):
 
         return (
-            AutomationService
-            ._run_job(
-
-                PaymentMaintenanceService
-                .run,
-
+            PaymentMaintenanceService
+            .run(
                 db,
-
+                admin=admin,
+                session=session,
             )
         )
 
     @staticmethod
     def run_subscription_jobs(
         db,
+        admin=None,
+        session=None,
     ):
 
         return (
-            AutomationService
-            ._run_job(
-
-                SubscriptionMaintenanceService
-                .run,
-
+            SubscriptionMaintenanceService
+            .run(
                 db,
-
+                admin=admin,
+                session=session,
             )
         )
 
     @staticmethod
     def run_router_jobs(
         db,
+        admin=None,
+        session=None,
     ):
 
         return (
-            AutomationService
-            ._run_job(
-
-                RouterMaintenanceService
-                .run,
-
+            RouterMaintenanceService
+            .run(
                 db,
-
+                admin=admin,
+                session=session,
             )
         )
 
     @staticmethod
     def run_notification_jobs(
         db,
+        admin=None,
+        session=None,
     ):
 
         return (
-            AutomationService
-            ._run_job(
-
-                NotificationSchedulingService
-                .run,
-
+            NotificationSchedulingService
+            .run(
                 db,
-
+                admin=admin,
+                session=session,
             )
         )
 
     @staticmethod
     def run_all_jobs(
         db,
+        admin=None,
+        session=None,
     ):
 
         return {
@@ -115,6 +113,8 @@ class AutomationService:
                 AutomationService
                 .run_payment_jobs(
                     db,
+                    admin=admin,
+                    session=session,
                 )
 
             ),
@@ -124,6 +124,8 @@ class AutomationService:
                 AutomationService
                 .run_subscription_jobs(
                     db,
+                    admin=admin,
+                    session=session,
                 )
 
             ),
@@ -133,6 +135,8 @@ class AutomationService:
                 AutomationService
                 .run_router_jobs(
                     db,
+                    admin=admin,
+                    session=session,
                 )
 
             ),
@@ -142,6 +146,8 @@ class AutomationService:
                 AutomationService
                 .run_notification_jobs(
                     db,
+                    admin=admin,
+                    session=session,
                 )
 
             ),

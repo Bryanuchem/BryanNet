@@ -8,9 +8,17 @@ from sqlalchemy.orm import (
     Session,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.schemas.subscription import (
@@ -28,16 +36,20 @@ from app.services.subscription_service import (
     SubscriptionService,
 )
 
-from app.schemas.page import (
-    PageRequest,
-)
-
 from app.enums import (
     SubscriptionStatus,
 )
 
 from app.schemas.common import (
     JobResultResponse,
+)
+
+from app.schemas.page import (
+    PageRequest,
+)
+
+from app.schemas.pagination import (
+    PaginatedResponse,
 )
 
 from app.core.rate_limit import (
@@ -66,6 +78,11 @@ def purchase_subscription(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_PURCHASE,
+        ),
+    ),
 ):
 
     return (
@@ -74,11 +91,11 @@ def purchase_subscription(
             customer_id=purchase.customer_id,
             plan_id=purchase.plan_id,
             admin_id=(
-            admin.admin_user_id
-            if admin
-            else None
-        ),
-    )
+                admin.admin_user_id
+                if admin
+                else None
+            ),
+        )
     )
 
 
@@ -93,6 +110,11 @@ def cancel_subscription(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_CANCEL,
+        ),
     ),
 ):
 
@@ -120,6 +142,11 @@ def process_subscription_jobs(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_PROCESS,
+        ),
+    ),
 ):
 
     result = (
@@ -140,9 +167,13 @@ def process_subscription_jobs(
 
 @router.get(
     "/",
-    response_model=list[SubscriptionAdminResponse],
+    response_model=PaginatedResponse[
+        SubscriptionAdminResponse
+    ],
 )
 def get_subscriptions(
+
+    search: str | None = None,
 
     customer_id: int | None = None,
 
@@ -159,6 +190,17 @@ def get_subscriptions(
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -169,6 +211,8 @@ def get_subscriptions(
             page=page.page,
 
             page_size=page.page_size,
+
+            search=search,
 
             customer_id=customer_id,
 
@@ -196,6 +240,11 @@ def get_subscription(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -208,7 +257,9 @@ def get_subscription(
 
 @router.get(
     "/customer/{customer_id}",
-    response_model=list[SubscriptionAdminResponse],
+    response_model=list[
+        SubscriptionAdminResponse
+    ],
 )
 def get_customer_subscriptions(
     customer_id: int,
@@ -217,6 +268,11 @@ def get_customer_subscriptions(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_VIEW,
+        ),
     ),
 ):
 
@@ -240,6 +296,11 @@ def get_active_subscription(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -252,7 +313,9 @@ def get_active_subscription(
 
 @router.get(
     "/customer/{customer_id}/queued",
-    response_model=list[SubscriptionResponse],
+    response_model=list[
+        SubscriptionResponse
+    ],
 )
 def get_queued_subscriptions(
     customer_id: int,
@@ -261,6 +324,11 @@ def get_queued_subscriptions(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.SUBSCRIPTIONS_VIEW,
+        ),
     ),
 ):
 

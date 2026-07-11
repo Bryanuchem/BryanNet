@@ -14,6 +14,14 @@ from app.database.dependencies import (
     get_db,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
+)
+
 from app.schemas.dashboard import (
     DashboardSummaryResponse,
     RevenueOverviewItem,
@@ -44,9 +52,17 @@ def get_dashboard_summary(
     db: Session = Depends(
         get_db,
     ),
+    
     admin=Depends(
         get_current_admin,
     ),
+
+    _=Depends(
+        require_permission(
+            Permissions.DASHBOARD_VIEW,
+        ),
+    ),
+    
 ):
 
     return (
@@ -74,9 +90,17 @@ def get_revenue_overview(
     db: Session = Depends(
         get_db,
     ),
+    
     admin=Depends(
         get_current_admin,
     ),
+        
+    _=Depends(
+        require_permission(
+            Permissions.DASHBOARD_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -99,9 +123,17 @@ def get_subscription_breakdown(
     db: Session = Depends(
         get_db,
     ),
+    
     admin=Depends(
         get_current_admin,
     ),
+        
+    _=Depends(
+        require_permission(
+            Permissions.DASHBOARD_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -124,9 +156,17 @@ def get_recent_activity(
     db: Session = Depends(
         get_db,
     ),
+    
     admin=Depends(
         get_current_admin,
     ),
+    
+    _=Depends(
+        require_permission(
+            Permissions.DASHBOARD_VIEW,
+        ),
+    ),
+    
 ):
 
     return (

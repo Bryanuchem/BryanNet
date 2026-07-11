@@ -2,11 +2,23 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+
+    Session,
+
+    joinedload,
+
+)
 
 from app.models.audit_log import AuditLog
 
+from app.schemas.audit_log import (
+    AuditLogResponse,
+)
+
 from app.enums.audit_result import AuditResult
+
+
 
 class AuditLogService:
 
@@ -21,21 +33,87 @@ class AuditLogService:
     ) -> AuditLog:
 
         audit_log = (
-            db.query(AuditLog)
-            .filter(
-                AuditLog.audit_log_id == audit_log_id,
+
+            db.query(
+                AuditLog,
             )
+
+            .options(
+
+                joinedload(
+                    AuditLog.admin_user,
+                ),
+
+            )
+
+            .filter(
+
+                AuditLog.audit_log_id == audit_log_id,
+
+            )
+
             .first()
+
         )
 
         if audit_log is None:
 
             raise HTTPException(
+
                 status_code=404,
+
                 detail="Audit log not found.",
+
             )
 
         return audit_log
+
+    @staticmethod
+    def _build_audit_log_response(
+        audit_log: AuditLog,
+    ) -> AuditLogResponse:
+
+        return AuditLogResponse(
+
+            audit_log_id=audit_log.audit_log_id,
+
+            admin_id=audit_log.admin_id,
+
+            administrator=(
+
+                audit_log.admin_user.username
+
+                if audit_log.admin_user
+
+                else "System"
+
+            ),
+
+            admin_session_id=audit_log.admin_session_id,
+
+            action=audit_log.action,
+
+            entity_type=audit_log.entity_type,
+
+            entity_id=audit_log.entity_id,
+
+            target_name=audit_log.target_name,
+
+            result=audit_log.result,
+
+            description=audit_log.description,
+
+            old_values=audit_log.old_values,
+
+            new_values=audit_log.new_values,
+
+            ip_address=audit_log.ip_address,
+
+            user_agent=audit_log.user_agent,
+
+            created_at=audit_log.created_at,
+
+        )
 
     @staticmethod
     def log_admin_action(
@@ -135,6 +213,8 @@ class AuditLogService:
 
         )
 
+
+
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -194,28 +274,125 @@ class AuditLogService:
     # ==========================================================
 
     @staticmethod
-    def get_log(
+    def get_audit_log(
         db: Session,
         audit_log_id: int,
-    ) -> AuditLog:
+    ) -> AuditLogResponse:
 
-        return AuditLogService._find_log(
-            db=db,
-            audit_log_id=audit_log_id,
+        audit_log = (
+
+            AuditLogService._find_log(
+
+                db=db,
+
+                audit_log_id=audit_log_id,
+
+            )
+
+        )
+
+        return (
+
+            AuditLogService._build_audit_log_response(
+
+                audit_log,
+
+            )
+
         )
 
     @staticmethod
-    def get_logs(
-        db: Session,
-    ) -> list[AuditLog]:
+    def get_all_logs(
 
-        return (
-            db.query(AuditLog)
-            .order_by(
-                AuditLog.created_at.desc(),
+        db: Session,
+
+        search: str | None = None,
+
+        action: str | None = None,
+
+        result: str | None = None,
+
+        admin_id: int | None = None,
+
+    ) -> list[AuditLogResponse]:
+
+        query = (
+
+            db.query(
+                AuditLog,
             )
-            .all()
+
+            .options(
+
+                joinedload(
+                    AuditLog.admin_user,
+                ),
+
+            )
+
         )
+
+        if search:
+
+            query = query.filter(
+
+                AuditLog.description.ilike(
+                    f"%{search}%",
+                )
+
+            )
+
+        if action:
+
+            query = query.filter(
+
+                AuditLog.action == action,
+
+            )
+
+        if result:
+
+            query = query.filter(
+
+                AuditLog.result == result,
+
+            )
+
+        if admin_id is not None:
+
+            query = query.filter(
+
+                AuditLog.admin_id == admin_id,
+
+            )
+
+        audit_logs = (
+
+            query
+
+            .order_by(
+
+                AuditLog.created_at.desc(),
+
+            )
+
+            .all()
+
+        )
+
+        return [
+
+            AuditLogService
+
+            ._build_audit_log_response(
+
+                audit_log,
+
+            )
+
+            for audit_log in audit_logs
+
+        ]
 
     @staticmethod
     def get_logs_by_admin(

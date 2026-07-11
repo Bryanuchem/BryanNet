@@ -10,6 +10,13 @@ from app.models.subscription import Subscription
 
 from app.models.device import Device
 
+from app.models.customer import Customer
+
+from app.schemas.device import (
+    DeviceListItem,
+    DeviceResponse,
+)
+
 from app.services.customer_service import CustomerService
 
 from sqlalchemy.orm import Session
@@ -175,7 +182,33 @@ class DeviceService:
         ]
 
         return query.order_by(*columns)
-   
+
+    @staticmethod
+    def _build_device_response(
+        db,
+        device,
+    ):
+
+        customer = CustomerService.get_customer(
+            db,
+            device.customer_id,
+        )
+
+        return DeviceResponse(
+
+            device_id=device.device_id,
+
+            customer_id=device.customer_id,
+
+            customer_name=customer.full_name,
+
+            device_name=device.device_name,
+
+            mac_address=device.mac_address,
+
+            device_status=device.device_status,
+
+        )
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -281,7 +314,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Registered device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was registered."
             ),
 
             new_values={
@@ -296,11 +329,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService._finalize_device_change(
-                db,
-                device,
-            )
+        device = DeviceService._finalize_device_change(
+            db,
+            device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -382,7 +418,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Activated device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was activated."
             ),
 
             old_values={
@@ -395,12 +431,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService
-            ._finalize_device_change(
-                db,
-                device,
-            )
+        device = DeviceService._finalize_device_change(
+            db,
+            device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -449,7 +487,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Deactivated device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was deactivated."
             ),
 
             old_values={
@@ -462,12 +500,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService
-            ._finalize_device_change(
-                db,
-                device,
-            )
+        device = DeviceService._finalize_device_change(
+            db,
+            device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -544,9 +584,9 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Replaced device "
+                f"Device "
                 f"'{old_device.device_name or old_device.mac_address}' "
-                f"with "
+                f"was replaced with "
                 f"'{new_device.device_name or new_device.mac_address}'."
             ),
 
@@ -564,11 +604,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService._finalize_device_change(
-                db,
-                new_device,
-            )
+        new_device = DeviceService._finalize_device_change(
+            db,
+            new_device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            new_device,
         )
     
     @staticmethod
@@ -615,7 +658,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Approved device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was approved."
             ),
 
             old_values={
@@ -628,12 +671,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService
-            ._finalize_device_change(
-                db,
-                device,
-            )
+        device = DeviceService._finalize_device_change(
+            db,
+            device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -678,8 +723,9 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Renamed device from "
-                f"'{old_name}' to '{device_name}'."
+                f"Device was renamed "
+                f"from '{old_name}' "
+                f"to '{device_name}'."
             ),
 
             old_values={
@@ -692,12 +738,15 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService._finalize_device_change(
-                db,
-                device,
-                synchronize=False,
-            )
+        device = DeviceService._finalize_device_change(
+            db,
+            device,
+            synchronize=False,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -751,7 +800,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Blocked device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was blocked."
             ),
 
             old_values={
@@ -764,11 +813,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService._finalize_device_change(
-                db=db,
-                device=device,
-            )
+        device = DeviceService._finalize_device_change(
+            db=db,
+            device=device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -822,7 +874,7 @@ class DeviceService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Unblocked device '{device.device_name or device.mac_address}'."
+                f"Device '{device.device_name or device.mac_address}' was unblocked."
             ),
 
             old_values={
@@ -835,11 +887,14 @@ class DeviceService:
 
         )
 
-        return (
-            DeviceService._finalize_device_change(
-                db=db,
-                device=device,
-            )
+        device = DeviceService._finalize_device_change(
+            db=db,
+            device=device,
+        )
+
+        return DeviceService._build_device_response(
+            db,
+            device,
         )
 
     @staticmethod
@@ -882,10 +937,17 @@ class DeviceService:
         device_id,
     ):
 
-        return (
+        device = (
             DeviceService._find_device(
                 db,
                 device_id,
+            )
+        )
+
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
             )
         )
 
@@ -937,9 +999,27 @@ class DeviceService:
     ):
 
         query = (
-            db.query(Device)
-        )
 
+            db.query(
+
+                Device,
+
+                Customer.full_name.label(
+                    "customer_name",
+                ),
+
+            )
+
+            .join(
+
+                Customer,
+
+                Customer.customer_id
+                == Device.customer_id,
+
+            )
+
+        )
         if search:
 
             query = query.filter(
@@ -996,7 +1076,7 @@ class DeviceService:
             sort_order=sort_order,
         )
 
-        devices = (
+        results = (
 
             query
 
@@ -1011,6 +1091,34 @@ class DeviceService:
             .all()
 
         )
+
+        devices = [
+
+            DeviceListItem(
+
+                device_id=device.device_id,
+
+                customer_id=device.customer_id,
+
+                customer_name=customer_name,
+
+                device_name=device.device_name,
+
+                mac_address=device.mac_address,
+
+                device_status=device.device_status,
+
+                approved_by_customer=device.approved_by_customer,
+
+                first_seen=device.first_seen,
+
+                last_seen=device.last_seen,
+
+            )
+
+            for device, customer_name in results
+
+        ]
 
         pages = (
 

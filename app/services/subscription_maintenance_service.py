@@ -10,6 +10,14 @@ from app.models.subscription import (
     Subscription,
 )
 
+from app.services.audit_log_service import (
+    AuditLogService,
+)
+
+from app.constants.audit_actions import (
+    AUTOMATION_SUBSCRIPTIONS,
+)
+
 from app.services.notification_service import (
     NotificationService,
 )
@@ -176,6 +184,8 @@ class SubscriptionMaintenanceService:
     @staticmethod
     def run(
         db,
+        admin=None,
+        session=None,
     ):
 
         now = datetime.now(
@@ -238,7 +248,7 @@ class SubscriptionMaintenanceService:
 
                 activated += 1
 
-        return {
+        result = {
 
             "processed":
                 len(
@@ -256,4 +266,38 @@ class SubscriptionMaintenanceService:
             "activated":
                 activated,
 
-        } 
+        }
+
+        AuditLogService.log_system_action(
+
+            db=db,
+            
+            admin=admin,
+
+            session=session,
+
+            action=AUTOMATION_SUBSCRIPTIONS,
+
+            description=(
+
+                "Subscription maintenance processed "
+
+                f"{result['processed']} subscription(s): "
+
+                f"{result['expired']} expired, "
+
+                f"{result['activated']} activated."
+
+            ),
+
+            entity_type="System",
+
+            target_name="Subscriptions",
+
+            new_values=result,
+
+        )
+
+        db.commit()
+
+        return result

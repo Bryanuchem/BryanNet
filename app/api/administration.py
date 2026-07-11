@@ -12,6 +12,14 @@ from app.database.dependencies import (
     get_db,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
+)
+
 from app.schemas.administration import (
     AdministrationOverviewResponse,
 )
@@ -41,6 +49,11 @@ def get_administration_overview(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.ADMINISTRATION_VIEW,
+        ),
     ),
 ):
 

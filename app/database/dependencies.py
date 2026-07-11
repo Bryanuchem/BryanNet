@@ -6,10 +6,6 @@ from fastapi import (
     status,
 )
 
-from app.core.logging import (
-    get_logger,
-)
-
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -17,19 +13,22 @@ from fastapi.security import (
 
 from sqlalchemy.orm import (
     Session,
-    joinedload,
+)
+
+from app.core.logging import (
+    get_logger,
 )
 
 from app.database.database import (
     SessionLocal,
 )
 
-from app.models.admin_user import (
-    AdminUser,
-)
-
 from app.services.admin_session_service import (
     AdminSessionService,
+)
+
+from app.services.admin_user_service import (
+    AdminUserService,
 )
 
 from app.utils.jwt import (
@@ -42,6 +41,7 @@ security = HTTPBearer()
 logger = get_logger(
     "auth",
 )
+
 
 # ==========================================================
 # Database
@@ -119,24 +119,11 @@ def get_current_admin(
     )
 
     admin = (
-        db.query(AdminUser)
-        .options(
-            joinedload(
-                AdminUser.role,
-            )
+        AdminUserService.get_admin(
+            db,
+            admin_user_id,
         )
-        .filter(
-            AdminUser.admin_user_id == admin_user_id,
-        )
-        .first()
     )
-
-    if admin is None:
-
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin not found.",
-        )
 
     is_active = cast(
         bool,

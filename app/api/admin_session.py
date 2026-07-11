@@ -12,101 +12,34 @@ from app.database.dependencies import (
     get_db,
 )
 
-from app.services.admin_session_service import (
-    AdminSessionService,
+from app.constants.permissions import (
+    Permissions,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.schemas.admin_session import (
     AdminSessionResponse,
 )
 
+from app.services.admin_session_service import (
+    AdminSessionService,
+)
+
 from app.schemas.page import (
     PageRequest,
 )
 
-from app.schemas.common import (
-    JobResultResponse,
+from app.schemas.pagination import (
+    PaginatedResponse,
 )
 
 router = APIRouter(
-    prefix="/admin-sessions",
-    tags=["Admin Sessions"],
+    prefix="/sessions",
+    tags=["Login Sessions"],
 )
-
-
-# ==========================================================
-# Business Commands
-# ==========================================================
-
-@router.patch(
-    "/{admin_session_id}/activity",
-    response_model=AdminSessionResponse,
-)
-def update_activity(
-    admin_session_id: int,
-    db: Session = Depends(
-        get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
-    ),
-):
-
-    return (
-        AdminSessionService.update_activity(
-            db=db,
-            admin_session_id=admin_session_id,
-        )
-    )
-
-
-@router.patch(
-    "/{admin_session_id}/close",
-    response_model=AdminSessionResponse,
-)
-def close_session(
-    admin_session_id: int,
-    db: Session = Depends(
-        get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
-    ),
-):
-
-    return (
-        AdminSessionService.close_session(
-            db=db,
-            admin_session_id=admin_session_id,
-        )
-    )
-
-
-@router.patch(
-    "/close-all/{admin_user_id}",
-    response_model=JobResultResponse,
-)
-def close_all_sessions(
-    admin_user_id: int,
-    db: Session = Depends(
-        get_db,
-    ),
-    admin=Depends(
-        get_current_admin,
-    ),
-):
-
-    result = (
-        AdminSessionService.close_all_sessions(
-            db=db,
-            admin_user_id=admin_user_id,
-        )
-    )
-
-    return JobResultResponse(
-        processed=result["closed_sessions"],
-        message="Admin sessions closed successfully.",
-    )
 
 
 # ==========================================================
@@ -115,13 +48,19 @@ def close_all_sessions(
 
 @router.get(
     "/",
-    response_model=list[AdminSessionResponse],
+    response_model=PaginatedResponse[
+        AdminSessionResponse,
+    ],
 )
-def get_all_sessions(
+def get_sessions(
 
-    admin_user_id: int | None = None,
+    search: str | None = None,
 
     is_active: bool | None = None,
+
+    device: str | None = None,
+
+    browser: str | None = None,
 
     sort_by: str = "login_time",
 
@@ -132,9 +71,21 @@ def get_all_sessions(
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.LOGIN_SESSIONS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
+
         AdminSessionService.get_all_sessions(
 
             db=db,
@@ -143,29 +94,45 @@ def get_all_sessions(
 
             page_size=page.page_size,
 
-            admin_user_id=admin_user_id,
+            search=search,
 
             is_active=is_active,
+
+            device=device,
+
+            browser=browser,
 
             sort_by=sort_by,
 
             sort_order=sort_order,
 
         )
+
     )
 
 
 @router.get(
     "/active",
-    response_model=list[AdminSessionResponse],
+    response_model=list[
+        AdminSessionResponse,
+    ],
 )
 def get_active_sessions(
+
     db: Session = Depends(
         get_db,
     ),
+
     admin=Depends(
         get_current_admin,
     ),
+
+    _=Depends(
+        require_permission(
+            Permissions.LOGIN_SESSIONS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -180,62 +147,98 @@ def get_active_sessions(
     response_model=AdminSessionResponse,
 )
 def get_session(
+
     admin_session_id: int,
+
     db: Session = Depends(
         get_db,
     ),
+
     admin=Depends(
         get_current_admin,
     ),
+
+    _=Depends(
+        require_permission(
+            Permissions.LOGIN_SESSIONS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
         AdminSessionService.get_session(
-            db=db,
-            admin_session_id=admin_session_id,
+            db,
+            admin_session_id,
         )
     )
 
 
 @router.get(
     "/admin/{admin_user_id}",
-    response_model=list[AdminSessionResponse],
+    response_model=list[
+        AdminSessionResponse,
+    ],
 )
 def get_admin_sessions(
+
     admin_user_id: int,
+
     db: Session = Depends(
         get_db,
     ),
+
     admin=Depends(
         get_current_admin,
     ),
+
+    _=Depends(
+        require_permission(
+            Permissions.LOGIN_SESSIONS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
         AdminSessionService.get_admin_sessions(
-            db=db,
-            admin_user_id=admin_user_id,
+            db,
+            admin_user_id,
         )
     )
 
 
-@router.get(
-    "/admin/{admin_user_id}/active",
-    response_model=AdminSessionResponse | None,
+# ==========================================================
+# Business Commands
+# ==========================================================
+
+@router.patch(
+    "/{admin_session_id}/revoke",
+    response_model=AdminSessionResponse,
 )
-def get_active_session(
-    admin_user_id: int,
+def revoke_session(
+
+    admin_session_id: int,
+
     db: Session = Depends(
         get_db,
     ),
+
     admin=Depends(
         get_current_admin,
     ),
+
+    _=Depends(
+        require_permission(
+            Permissions.LOGIN_SESSIONS_REVOKE,
+        ),
+    ),
+
 ):
 
     return (
-        AdminSessionService.get_active_session(
-            db=db,
-            admin_user_id=admin_user_id,
+        AdminSessionService.close_session(
+            db,
+            admin_session_id,
         )
     )

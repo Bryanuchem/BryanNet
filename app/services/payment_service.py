@@ -15,6 +15,10 @@ from app.models.payment import Payment
 from app.models.customer import Customer
 from app.models.plan import Plan
 
+from app.schemas.payment import (
+    PaymentListItem,
+)
+
 from app.services.customer_service import CustomerService
 from app.services.plan_service import PlanService
 from app.services.subscription_service import (
@@ -240,7 +244,7 @@ class PaymentService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Created payment '{payment.payment_reference}'."
+                f"Payment '{payment.payment_reference}' was created."
             ),
 
             new_values={
@@ -344,8 +348,7 @@ class PaymentService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Completed payment "
-                f"'{payment.payment_reference}'."
+                f"Payment '{payment.payment_reference}' was verified."
             ),
 
             old_values={
@@ -434,8 +437,7 @@ class PaymentService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Cancelled payment "
-                f"'{payment.payment_reference}'."
+                f"Payment '{payment.payment_reference}' was cancelled."
             ),
 
             old_values={
@@ -512,8 +514,7 @@ class PaymentService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Refunded payment "
-                f"'{payment.payment_reference}'."
+                f"Payment '{payment.payment_reference}' was refunded."
             ),
 
             old_values={
@@ -590,8 +591,7 @@ class PaymentService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Expired payment "
-                f"'{payment.payment_reference}'."
+                f"Payment '{payment.payment_reference}' expired."
             ),
 
             old_values={
@@ -656,6 +656,7 @@ class PaymentService:
         db,
         page=1,
         page_size=25,
+        search=None,
         customer_id=None,
         payment_provider=None,
         payment_channel=None,
@@ -692,6 +693,28 @@ class PaymentService:
             )
 
         )
+        
+        if search:
+
+            query = query.filter(
+
+                Customer.full_name.ilike(
+                    f"%{search}%"
+                )
+
+                |
+
+                Plan.plan_name.ilike(
+                    f"%{search}%"
+                )
+
+                |
+
+                Payment.payment_reference.ilike(
+                    f"%{search}%"
+                )
+
+            )        
 
         # ==========================================================
         # Filters
@@ -732,20 +755,33 @@ class PaymentService:
         # ==========================================================
 
         sort_column = {
+            
+            "created_at":
+                Payment.created_at,
 
-            "created_at": Payment.created_at,
+            "payment_date":
+                Payment.payment_date,
 
-            "payment_date": Payment.payment_date,
+            "customer_name":
+                Customer.full_name,
 
-            "amount": Payment.amount,
+            "plan_name":
+                Plan.plan_name,
 
-            "provider": Payment.payment_provider,
+            "amount":
+                Payment.amount,
 
-            "channel": Payment.payment_channel,
+            "provider":
+                Payment.payment_provider,
 
-            "method": Payment.payment_method,
+            "channel":
+                Payment.payment_channel,
 
-            "status": Payment.status,
+            "method":
+                Payment.payment_method,
+
+            "status":
+                Payment.status,
 
         }.get(
 
@@ -793,35 +829,55 @@ class PaymentService:
 
         payments = [
 
-            {
+            PaymentListItem(
 
-                "payment_reference": payment.payment_reference,
+                payment_reference=
+                    payment.payment_reference,
 
-                "customer_id": payment.customer_id,
+                customer_id=
+                    payment.customer_id,
 
-                "customer_name": customer_name,
+                customer_name=
+                    customer_name,
 
-                "plan_id": payment.plan_id,
+                plan_id=
+                    payment.plan_id,
 
-                "plan_name": plan_name,
+                plan_name=
+                    plan_name,
 
-                "amount": payment.amount,
+                amount=
+                    payment.amount,
 
-                "payment_provider": payment.payment_provider,
+                payment_provider=
+                    payment.payment_provider,
 
-                "payment_channel": payment.payment_channel,
+                payment_channel=
+                    payment.payment_channel,
 
-                "payment_method": payment.payment_method,
+                payment_method=
+                    payment.payment_method,
 
-                "status": payment.status,
+                status=
+                    payment.status,
 
-                "payment_date": payment.payment_date,
+                payment_date=
+                    payment.payment_date,
 
-                "created_at": payment.created_at,
+                created_at=
+                    payment.created_at,
 
-            }
+            )
 
-            for payment, customer_name, plan_name in results
+            for (
+
+                payment,
+
+                customer_name,
+
+                plan_name,
+
+            ) in results
 
         ]
 

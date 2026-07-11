@@ -1,9 +1,22 @@
 from io import BytesIO
+from decimal import Decimal
+from datetime import datetime
 
 from fastapi import HTTPException
 
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.styles import (
+    getSampleStyleSheet,
+)
 from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from app.enums import PaymentStatus
 
@@ -13,6 +26,7 @@ from app.services.payment_service import (
     PaymentService,
 )
 
+COMPANY_NAME = "BryanNet ISP"
 
 class PaymentDocumentService:
 
@@ -53,60 +67,299 @@ class PaymentDocumentService:
             )
 
     @staticmethod
+    def _format_currency(
+        value,
+    ):
+
+        if value is None:
+
+            return "-"
+
+        return (
+            f"₦{Decimal(value):,.2f}"
+        )
+
+    @staticmethod
+    def _format_datetime(
+        value,
+    ):
+
+        if value is None:
+
+            return "-"
+
+        if isinstance(
+            value,
+            datetime,
+        ):
+
+            return value.strftime(
+                "%d %b %Y %H:%M",
+            )
+
+        return str(
+            value,
+        )
+
+    @staticmethod
+    def _format_date(
+        value,
+    ):
+
+        if value is None:
+
+            return "-"
+
+        if isinstance(
+            value,
+            datetime,
+        ):
+
+            return value.strftime(
+                "%d %b %Y",
+            )
+
+        return str(
+            value,
+        )
+
+    @staticmethod
+    def _format_enum(
+        value,
+    ):
+
+        if value is None:
+
+            return "-"
+
+        if hasattr(
+            value,
+            "value",
+        ):
+
+            value = value.value
+
+        return (
+            str(value)
+            .replace(
+                "_",
+                " ",
+            )
+            .title()
+        )
+
+    @staticmethod
+    def _build_table(
+        rows,
+    ):
+
+        table = Table(
+            rows,
+            colWidths=[
+                2.2 * inch,
+                4.1 * inch,
+            ],
+        )
+
+        table.setStyle(
+
+            TableStyle(
+
+                [
+
+                    (
+                        "BOTTOMPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        6,
+                    ),
+
+                    (
+                        "TOPPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        6,
+                    ),
+
+                    (
+                        "LINEBELOW",
+                        (0, -1),
+                        (-1, -1),
+                        0.25,
+                        colors.lightgrey,
+                    ),
+
+                    (
+                        "VALIGN",
+                        (0, 0),
+                        (-1, -1),
+                        "TOP",
+                    ),
+
+                    (
+                        "FONTNAME",
+                        (0, 0),
+                        (0, -1),
+                        "Helvetica-Bold",
+                    ),
+
+                ]
+
+            )
+
+        )
+
+        return table
+
+    @staticmethod
     def _render_pdf(
         title,
-        document,
+        sections,
     ):
 
         buffer = BytesIO()
 
-        pdf = canvas.Canvas(
+        document = SimpleDocTemplate(
             buffer,
+            rightMargin=0.6 * inch,
+            leftMargin=0.6 * inch,
+            topMargin=0.6 * inch,
+            bottomMargin=0.6 * inch,
         )
 
-        y = 10.5 * inch
+        styles = getSampleStyleSheet()
 
-        pdf.setFont(
-            "Helvetica-Bold",
-            18,
-        )
+        heading = styles["Heading1"]
+        heading.alignment = TA_CENTER
 
-        pdf.drawString(
-            inch,
-            y,
-            f"BryanNet ISP - {title}",
-        )
+        sub_heading = styles["Heading2"]
 
-        y -= 0.5 * inch
+        normal = styles["BodyText"]
 
-        pdf.setFont(
-            "Helvetica",
-            11,
-        )
+        story = [
 
-        for key, value in document.items():
+            Paragraph(
+                COMPANY_NAME,
+                heading,
+            ),
 
-            pdf.drawString(
+            Paragraph(
+                title,
+                sub_heading,
+            ),
 
-                inch,
+            Spacer(
+                1,
+                0.30 * inch,
+            ),
 
-                y,
+        ]
 
-                (
-                    f"{key.replace('_', ' ').title()}: "
-                    f"{value}"
-                ),
+        for section_title, rows in sections:
+
+            story.append(
+
+                Paragraph(
+                    section_title,
+                    sub_heading,
+                )
 
             )
 
-            y -= 0.3 * inch
+            story.append(
+                Spacer(
+                    1,
+                    0.08 * inch,
+                )
+            )
 
-        pdf.save()
+            story.append(
 
-        buffer.seek(0)
+                PaymentDocumentService
+                ._build_table(
+                    rows,
+                )
+
+            )
+
+            story.append(
+
+                Spacer(
+                    1,
+                    0.22 * inch,
+                )
+
+            )
+
+        story.append(
+
+            Paragraph(
+
+                (
+                    f"Thank you for choosing "
+                    f"<b>{COMPANY_NAME}</b>."
+                ),
+
+                normal,
+
+            )
+
+        )
+
+        story.append(
+
+            Paragraph(
+
+                (
+                    "This receipt serves as proof "
+                    "of payment."
+                ),
+
+                normal,
+
+            )
+
+        )
+
+        story.append(
+
+            Paragraph(
+
+                (
+                    "Generated: "
+                    f"{datetime.utcnow().strftime('%d %b %Y %H:%M UTC')}"
+                ),
+
+                normal,
+
+            )
+
+        )
+
+        story.append(
+
+            Paragraph(
+
+                (
+                    f"&copy; {COMPANY_NAME}"
+                ),
+
+                normal,
+
+            )
+
+        )
+
+        document.build(
+            story,
+        )
+
+        buffer.seek(
+            0,
+        )
 
         return buffer
-
+    
     # ==========================================================
     # Document Generation
     # ==========================================================
@@ -137,56 +390,217 @@ class PaymentDocumentService:
             payment.subscription
         )
 
-        return {
+        sections = [
 
-            "receipt_number":
-                payment.payment_reference,
+            (
 
-            "payment_reference":
-                payment.payment_reference,
+                "Receipt Information",
 
-            "customer_name":
-                customer.full_name,
+                [
 
-            "phone_number":
-                customer.phone_number,
+                    (
 
-            "plan_name":
-                plan.plan_name,
+                        "Receipt Number",
 
-            "speed":
-                plan.speed_limit_mbps,
+                        payment.payment_reference,
 
-            "payment_provider":
-                payment.payment_provider,
+                    ),
 
-            "payment_method":
-                payment.payment_method,
+                    (
 
-            "amount":
-                payment.amount,
+                        "Payment Reference",
 
-            "paid_at":
-                payment.payment_date,
+                        payment.payment_reference,
 
-            "subscription_start":
-                (
-                    subscription.start_date
-                    if subscription
-                    else None
-                ),
+                    ),
 
-            "subscription_end":
-                (
-                    subscription.end_date
-                    if subscription
-                    else None
-                ),
+                    (
 
-            "status":
-                payment.status,
+                        "Gateway Reference",
 
-        }
+                        (
+                            payment.gateway_transaction_id
+                            or "-"
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Customer",
+
+                [
+
+                    (
+
+                        "Customer Name",
+
+                        customer.full_name,
+
+                    ),
+
+                    (
+
+                        "Phone Number",
+
+                        customer.phone_number,
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Subscription",
+
+                [
+
+                    (
+
+                        "Plan",
+
+                        plan.plan_name,
+
+                    ),
+
+                    (
+
+                        "Speed",
+
+                        (
+                            f"{plan.speed_limit_mbps} Mbps"
+                        ),
+
+                    ),
+
+                    (
+
+                        "Start Date",
+
+                        PaymentDocumentService
+                        ._format_date(
+
+                            subscription.start_date
+                            if subscription
+                            else None
+
+                        ),
+
+                    ),
+
+                    (
+
+                        "Expiry Date",
+
+                        PaymentDocumentService
+                        ._format_date(
+
+                            subscription.expiry_date
+                            if subscription
+                            else None
+
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Payment",
+
+                [
+
+                    (
+
+                        "Amount",
+
+                        PaymentDocumentService
+                        ._format_currency(
+                            payment.amount,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Provider",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.payment_provider,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Channel",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.payment_channel,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Method",
+
+                        payment.payment_method
+                        or "-",
+
+                    ),
+
+                    (
+
+                        "Status",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.status,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Paid At",
+
+                        PaymentDocumentService
+                        ._format_datetime(
+                            payment.payment_date,
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+        ]
+
+        return (
+
+            PaymentDocumentService
+            ._render_pdf(
+
+                "PAYMENT RECEIPT",
+
+                sections,
+
+            )
+
+        )
 
     @staticmethod
     def generate_invoice(
@@ -210,57 +624,207 @@ class PaymentDocumentService:
             payment.subscription
         )
 
-        return {
+        sections = [
 
-            "invoice_number":
-                payment.payment_reference,
+            (
 
-            "payment_reference":
-                payment.payment_reference,
+                "Invoice Information",
 
-            "customer_name":
-                customer.full_name,
+                [
 
-            "phone_number":
-                customer.phone_number,
+                    (
 
-            "plan_name":
-                plan.plan_name,
+                        "Invoice Number",
 
-            "speed":
-                plan.speed_limit_mbps,
+                        payment.payment_reference,
 
-            "payment_provider":
-                payment.payment_provider,
+                    ),
 
-            "payment_method":
-                payment.payment_method,
+                    (
 
-            "amount":
-                payment.amount,
+                        "Payment Reference",
 
-            "generated_at":
-                payment.created_at,
+                        payment.payment_reference,
 
-            "subscription_start":
-                (
-                    subscription.start_date
-                    if subscription
-                    else None
-                ),
+                    ),
 
-            "subscription_end":
-                (
-                    subscription.end_date
-                    if subscription
-                    else None
-                ),
+                    (
 
-            "payment_status":
-                payment.status,
+                        "Generated",
 
-        }
-        
+                        PaymentDocumentService
+                        ._format_datetime(
+                            payment.created_at,
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Customer",
+
+                [
+
+                    (
+
+                        "Customer Name",
+
+                        customer.full_name,
+
+                    ),
+
+                    (
+
+                        "Phone Number",
+
+                        customer.phone_number,
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Subscription",
+
+                [
+
+                    (
+
+                        "Plan",
+
+                        plan.plan_name,
+
+                    ),
+
+                    (
+
+                        "Speed",
+
+                        (
+                            f"{plan.speed_limit_mbps} Mbps"
+                        ),
+
+                    ),
+
+                    (
+
+                        "Start Date",
+
+                        PaymentDocumentService
+                        ._format_date(
+
+                            subscription.start_date
+                            if subscription
+                            else None
+
+                        ),
+
+                    ),
+
+                    (
+
+                        "Expiry Date",
+
+                        PaymentDocumentService
+                        ._format_date(
+
+                            subscription.expiry_date
+                            if subscription
+                            else None
+
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+            (
+
+                "Payment",
+
+                [
+
+                    (
+
+                        "Amount",
+
+                        PaymentDocumentService
+                        ._format_currency(
+                            payment.amount,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Provider",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.payment_provider,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Channel",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.payment_channel,
+                        ),
+
+                    ),
+
+                    (
+
+                        "Method",
+
+                        payment.payment_method
+                        or "-",
+
+                    ),
+
+                    (
+
+                        "Status",
+
+                        PaymentDocumentService
+                        ._format_enum(
+                            payment.status,
+                        ),
+
+                    ),
+
+                ],
+
+            ),
+
+        ]
+
+        return (
+
+            PaymentDocumentService
+            ._render_pdf(
+
+                "PAYMENT INVOICE",
+
+                sections,
+
+            )
+
+        )
+
     # ==========================================================
     # PDF Generation
     # ==========================================================
@@ -271,20 +835,17 @@ class PaymentDocumentService:
         payment_reference,
     ):
 
-        receipt = (
+        return (
+
             PaymentDocumentService
             .generate_receipt(
-                db,
-                payment_reference,
-            )
-        )
 
-        return (
-            PaymentDocumentService
-            ._render_pdf(
-                "Receipt",
-                receipt,
+                db,
+
+                payment_reference,
+
             )
+
         )
 
     @staticmethod
@@ -293,22 +854,19 @@ class PaymentDocumentService:
         payment_reference,
     ):
 
-        invoice = (
+        return (
+
             PaymentDocumentService
             .generate_invoice(
+
                 db,
+
                 payment_reference,
-            )
-        )
 
-        return (
-            PaymentDocumentService
-            ._render_pdf(
-                "Invoice",
-                invoice,
             )
-        )
 
+        )
+        
     # ==========================================================
     # Query Methods
     # ==========================================================
@@ -321,7 +879,9 @@ class PaymentDocumentService:
 
         return (
 
-            db.query(Payment)
+            db.query(
+                Payment,
+            )
 
             .filter(
                 Payment.customer_id
@@ -344,7 +904,9 @@ class PaymentDocumentService:
 
         return (
 
-            db.query(Payment)
+            db.query(
+                Payment,
+            )
 
             .filter(
 
@@ -362,4 +924,4 @@ class PaymentDocumentService:
 
             .all()
 
-        )       
+        )            

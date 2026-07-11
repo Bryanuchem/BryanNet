@@ -7,9 +7,17 @@ from sqlalchemy.orm import (
     Session,
 )
 
+from app.constants.permissions import (
+    Permissions,
+)
+
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.database.permission_dependencies import (
+    require_permission,
 )
 
 from app.schemas.plan import (
@@ -23,6 +31,10 @@ from app.services.plan_service import (
 
 from app.schemas.page import (
     PageRequest,
+)
+
+from app.schemas.pagination import (
+    PaginatedResponse,
 )
 
 router = APIRouter(
@@ -48,6 +60,11 @@ def create_plan(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_CREATE,
+        ),
+    ),
 ):
 
     return (
@@ -71,6 +88,11 @@ def update_plan(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_EDIT,
+        ),
     ),
 ):
 
@@ -96,6 +118,11 @@ def activate_plan(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_ACTIVATE,
+        ),
+    ),
 ):
 
     return (
@@ -119,6 +146,11 @@ def deactivate_plan(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_DEACTIVATE,
+        ),
+    ),
 ):
 
     return (
@@ -131,20 +163,54 @@ def deactivate_plan(
 
 
 # ==========================================================
+# Public Customer APIs
+# ==========================================================    
+@router.get(
+    "/public",
+    response_model=list[PlanResponse],
+)
+def get_public_plans(
+    db: Session = Depends(get_db),
+):
+
+    return PlanService.get_active_plans(db)
+
+# ==========================================================
 # Query Methods
 # ==========================================================
 
 @router.get(
     "/",
-    response_model=list[PlanResponse],
+    response_model=PaginatedResponse[
+        PlanResponse,
+    ],
 )
 def get_plans(
+
+    search: str | None = None,
+
+    is_active: bool | None = None,
+
+    sort_by: str = "price",
+
+    sort_order: str = "asc",
 
     page: PageRequest = Depends(),
 
     db: Session = Depends(
         get_db,
     ),
+
+    admin=Depends(
+        get_current_admin,
+    ),
+
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_VIEW,
+        ),
+    ),
+
 ):
 
     return (
@@ -156,8 +222,17 @@ def get_plans(
 
             page_size=page.page_size,
 
+            search=search,
+
+            is_active=is_active,
+
+            sort_by=sort_by,
+
+            sort_order=sort_order,
+
         )
     )
+
 
 @router.get(
     "/active",
@@ -170,6 +245,11 @@ def get_active_plans(
     admin=Depends(
         get_current_admin,
     ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_VIEW,
+        ),
+    ),
 ):
 
     return (
@@ -177,7 +257,6 @@ def get_active_plans(
             db,
         )
     )
-
 
 @router.get(
     "/{plan_id}",
@@ -190,6 +269,11 @@ def get_plan(
     ),
     admin=Depends(
         get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.PLANS_VIEW,
+        ),
     ),
 ):
 

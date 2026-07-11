@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -5,10 +7,12 @@ from fastapi import (
     Request,
 )
 
-from typing import cast
-
 from sqlalchemy.orm import (
     Session,
+)
+
+from app.constants.audit_actions import (
+    LOGIN,
 )
 
 from app.core.rate_limit import (
@@ -18,6 +22,10 @@ from app.core.rate_limit import (
 from app.database.dependencies import (
     get_current_admin,
     get_db,
+)
+
+from app.enums.audit_result import (
+    AuditResult,
 )
 
 from app.schemas.auth import (
@@ -30,20 +38,12 @@ from app.services.admin_session_service import (
     AdminSessionService,
 )
 
-from app.services.auth_service import (
-    AuthService,
-)
-
 from app.services.audit_log_service import (
     AuditLogService,
 )
 
-from app.enums.audit_result import (
-    AuditResult,
-)
-
-from app.constants.audit_actions import (
-    LOGIN,
+from app.services.auth_service import (
+    AuthService,
 )
 
 from app.utils.jwt import (
@@ -111,8 +111,15 @@ def login(
         )
     )
 
-    admin_id = cast(int, admin.admin_user_id)
-    admin_session_id = cast(int, session.admin_session_id)
+    admin_id = cast(
+        int,
+        admin.admin_user_id,
+    )
+
+    admin_session_id = cast(
+        int,
+        session.admin_session_id,
+    )
 
     AuditLogService.log_admin_action(
 
@@ -149,13 +156,17 @@ def login(
         ),
 
     )
-    
+
     db.commit()
 
     access_token = create_access_token(
+
         admin_user_id=admin_id,
+
         admin_session_id=admin_session_id,
+
         role=admin.role.role_name,
+
     )
 
     return LoginResponse(
@@ -185,7 +196,9 @@ def get_current_admin_details(
 
         email=current_admin.email,
 
-        role=current_admin.role.role_name,
+        role=current_admin.role_name,
+        
+        permissions=current_admin.permissions,
 
         is_active=current_admin.is_active,
 
