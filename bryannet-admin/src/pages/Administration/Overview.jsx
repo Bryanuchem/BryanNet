@@ -3,7 +3,7 @@ import PageHeader from "../../components/common/PageHeader";
 import OverviewMetricsSection from "../../components/admin/overview/OverviewMetricsSection";
 import AdministrationModulesSection from "../../components/admin/overview/AdministrationModulesSection";
 import RecentAuditLogsSection from "../../components/admin/overview/RecentAuditLogsSection";
-import ActiveSessionsSection from "../../components/admin/overview/ActiveSessionsSection";
+import RecentLoginSessionsSection from "../../components/admin/overview/RecentLoginSessionsSection";
 import SystemActivitySection from "../../components/admin/overview/SystemActivitySection";
 
 import { useAdministrationOverview } from "../../hooks/useAdministrationOverview";
@@ -28,20 +28,27 @@ export default function Overview() {
 
             <AdministrationModulesSection />
 
-            <RecentAuditLogsSection
-                logs={data?.recent_audit_logs}
-                loading={isLoading}
-            />
+            <div style={{ marginBottom: 32 }}>
+                <RecentAuditLogsSection
+                    logs={data?.recent_audit_logs}
+                    loading={isLoading}
+                />
+            </div>
 
-            <ActiveSessionsSection
-                sessions={data?.active_sessions}
-                loading={isLoading}
-            />
+            <div style={{ marginBottom: 32 }}>
+                <RecentLoginSessionsSection
+                    sessions={data?.active_sessions}
+                    loading={isLoading}
+                />
+            </div>
+            
+            <div style={{ marginBottom: 32 }}>
+                <SystemActivitySection
+                    activity={data?.system_activity}
+                    loading={isLoading}
+                />
 
-            <SystemActivitySection
-                activity={data?.system_activity}
-                loading={isLoading}
-            />
+            </div>
         </>
     );
 }

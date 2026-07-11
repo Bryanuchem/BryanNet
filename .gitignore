@@ -43,3 +43,6 @@ dist/
 
 # Temporary files
 *.tmp
+
+#Read Me
+.md

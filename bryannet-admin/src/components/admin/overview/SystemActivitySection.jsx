@@ -1,36 +1,73 @@
 import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
+import {
+
+    useCurrentPermissions,
+
+} from "../../../hooks/useCurrentPermissions";
+
 import SectionHeader from "../common/SectionHeader";
-import SystemActivityTimeline from "./SystemActivityTimeline";
+import RecentSystemActivityTable from "./RecentSystemActivityTable";
 
 export default function SystemActivitySection({
     activity,
     loading,
 }) {
+
     const navigate = useNavigate();
 
-    return (
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
+
+    return hasPermission(
+
+        "system_activity.view",
+
+    ) ? (
+
         <>
+
             <SectionHeader
-                title="Today's System Activity"
-                subtitle="Recent background events across the platform."
+
+                title="Recent System Activity"
+
+                subtitle="Last 5 system events across the platform."
+
                 action={
+
                     <Button
+
                         size="small"
+
                         onClick={() =>
+
                             navigate("/administration/system-activity")
+
                         }
+
                     >
+
                         View All
+
                     </Button>
+
                 }
+
             />
 
-            <SystemActivityTimeline
-                activity={activity}
+            <RecentSystemActivityTable
+
+                activities={activity}
+
                 loading={loading}
+
             />
+
         </>
-    );
+
+    ) : null;
 }

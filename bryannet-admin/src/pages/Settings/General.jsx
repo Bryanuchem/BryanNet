@@ -1,102 +1,347 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import PlatformInformationCard from "../../components/settings/general/PlatformInformationCard";
-import RegionalSettingsCard from "../../components/settings/general/RegionalSettingsCard";
-import OrganizationDetailsCard from "../../components/settings/general/OrganizationDetailsCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  platformName: "BryanNet ISP Platform",
-  platformDescription:
-    "ISP Management and Customer Administration Platform",
+import GeneralSettingsForm from "../../components/settings/general/GeneralSettingsForm";
+import GeneralSettingsInfoCard from "../../components/settings/general/GeneralSettingsInfoCard";
 
-  companyName: "BryanNet",
-  companyEmail: "admin@bryannet.com",
-  companyPhone: "+234 800 000 0000",
+import {
 
-  timeZone: "Africa/Lagos",
-  language: "English",
-  dateFormat: "DD/MM/YYYY",
-  timeFormat: "24 Hour",
-  currency: "NGN",
+    useGeneralSettings,
 
-  address: "123 BryanNet Avenue",
-  city: "Asaba",
-  state: "Delta",
-  country: "Nigeria",
-  postalCode: "320001",
+    useUpdateGeneralSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    platform_name: "",
+
+    company_name: "",
+
+    company_email: "",
+
+    company_phone: "",
+
+    company_address: "",
+
+    company_website: "",
+
+    default_timezone: "UTC",
+
+    default_currency: "NGN",
+
+    date_format: "DD/MM/YYYY",
+
+    time_format: "24 Hour",
+
 };
 
 export default function General() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving General Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="General Settings"
-        subtitle="Manage the basic configuration of the BryanNet ISP Platform."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useGeneralSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateGeneralSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "General settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update general settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <PlatformInformationCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <RegionalSettingsCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <OrganizationDetailsCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+        <>
+
+            <PageHeader
+
+                title="General Settings"
+
+                subtitle="Configure the primary information and regional preferences for the BryanNet ISP Platform."
+
+            />
+
+            <Stack spacing={3}>
+
+                <GeneralSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <GeneralSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

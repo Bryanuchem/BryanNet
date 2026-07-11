@@ -15,7 +15,23 @@ import DashboardSection from "../common/DashboardSection";
 
 import { useCustomers } from "../../hooks/useCustomers";
 
+import { useNavigate } from "react-router-dom";
+
+import {
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
+
 function RecentCustomers() {
+
+    const navigate = useNavigate();
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
 
     const {
         data: customers = [],
@@ -32,15 +48,43 @@ function RecentCustomers() {
     return (
 
         <DashboardSection
+
             title="Recent Customers"
+
             action={
-                <Button
-                    size="small"
-                    variant="text"
-                >
-                    View All
-                </Button>
+
+                hasPermission(
+
+                    "customers.view",
+
+                ) && (
+
+                    <Button
+
+                        size="small"
+
+                        variant="text"
+
+                        onClick={() =>
+
+                            navigate(
+
+                                "/customers",
+
+                            )
+
+                        }
+
+                    >
+
+                        View All
+
+                    </Button>
+
+                )
+
             }
+
         >
 
             <TableContainer>

@@ -3,6 +3,8 @@ import {
 } from "react";
 
 import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button"
 
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 
@@ -14,73 +16,129 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import PaymentFilters from "../../components/payments/PaymentFilters";
 import PaymentsTable from "../../components/payments/PaymentsTable";
 import PaymentDialog from "../../components/payments/PaymentDialog";
-import PaymentDetailsDialog from "../../components/payments/PaymentDetailsDialog";
+import PaymentDetailsDrawer from "../../components/payments/PaymentDetailsDrawer";
 
 import {
     usePayments,
-    usePaymentStats,
-    useCreatePayment,
-    useUpdatePayment,
-    useDeletePayment,
+    usePaymentSummary,
 } from "../../hooks/usePayments";
+
+import {
+    useCreatePayment,
+} from "../../hooks/useCreatePayment";
+
+import {
+    useCompletePayment,
+} from "../../hooks/useCompletePayment";
+
+import {
+    useCancelPayment,
+} from "../../hooks/useCancelPayment";
+
+import {
+    useRefundPayment,
+} from "../../hooks/useRefundPayment";
+
+import {
+    useExpirePayment,
+} from "../../hooks/useExpirePayment";
+
+import {
+    usePaymentReceipt,
+} from "../../hooks/usePaymentReceipt";
+
+import {
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
 
 function Payments() {
 
-    const [
+    const {
 
+        hasPermission,
+
+    } = useCurrentPermissions();
+
+    const [
+        page,
+        setPage,
+    ] = useState(0);
+
+    const [
+        rowsPerPage,
+        setRowsPerPage,
+    ] = useState(10);
+
+    const [
         search,
-
         setSearch,
-
     ] = useState("");
 
     const [
-
         paymentChannel,
-
         setPaymentChannel,
-
     ] = useState("");
 
     const [
-
         status,
-
         setStatus,
-
     ] = useState("");
 
     const {
 
-        data: payments = [],
+        data,
 
         isLoading,
 
+        refetch,
+
     } = usePayments({
+
+        page: page + 1,
+
+        pageSize: rowsPerPage,
 
         search,
 
         payment_channel:
-            paymentChannel,
+            paymentChannel || undefined,
 
-        status,
+        status:
+            status || undefined,
 
     });
+
+    const payments =
+        data?.items ?? [];
+
+    const total =
+        data?.total ?? 0;
 
     const {
 
         data: stats,
 
-    } = usePaymentStats();
+    } = usePaymentSummary();
 
-    const createPaymentMutation =
+    const createPayment =
         useCreatePayment();
 
-    const updatePaymentMutation =
-        useUpdatePayment();
+    const completePayment =
+        useCompletePayment();
 
-    const deletePaymentMutation =
-        useDeletePayment();
+    const cancelPayment =
+        useCancelPayment();
+
+    const refundPayment =
+        useRefundPayment();
+
+    const expirePayment =
+        useExpirePayment();
+
+    const printReceipt =
+        usePaymentReceipt();
 
     const [
 
@@ -92,19 +150,29 @@ function Payments() {
 
     const [
 
-        paymentDetailsOpen,
+        drawerOpen,
 
-        setPaymentDetailsOpen,
+        setDrawerOpen,
 
     ] = useState(false);
 
     const [
 
-        confirmDeleteOpen,
+        confirmDialog,
 
-        setConfirmDeleteOpen,
+        setConfirmDialog,
 
-    ] = useState(false);
+    ] = useState({
+
+        open: false,
+
+        title: "",
+
+        message: "",
+
+        action: null,
+
+    });
 
     const [
 
@@ -130,45 +198,65 @@ function Payments() {
 
     });
 
+    const handleChangePage = (
+        event,
+        newPage,
+    ) => {
+
+        setPage(
+            newPage,
+        );
+
+    };
+
+    const handleChangeRowsPerPage = (
+        event,
+    ) => {
+
+        setRowsPerPage(
+
+            parseInt(
+                event.target.value,
+                10,
+            ),
+
+        );
+
+        setPage(0);
+
+    };
+
     const handleCreate = () => {
 
-        setSelectedPayment(null);
+        if (
 
-        setPaymentDialogOpen(true);
+            !hasPermission(
 
-    };
+                "payments.create",
 
-    const handleView = (
-        payment,
-    ) => {
+            )
 
-        setSelectedPayment(payment);
+        ) {
 
-        setPaymentDetailsOpen(true);
+            return;
 
-    };
+        }
 
-    const handleEdit = (
-        payment,
-    ) => {
+        setSelectedPayment(
 
-        setSelectedPayment(payment);
+            null,
 
-        setPaymentDialogOpen(true);
+        );
 
-    };
+        setPaymentDialogOpen(
 
-    const handleDelete = (
-        payment,
-    ) => {
+            true,
 
-        setSelectedPayment(payment);
-
-        setConfirmDeleteOpen(true);
+        );
 
     };
 
-    const handleClosePaymentDialog = () => {
+    const handleCloseDialog = () => {
 
         setPaymentDialogOpen(false);
 
@@ -176,31 +264,26 @@ function Payments() {
 
     };
 
-    const handleClosePaymentDetails = () => {
 
-        setPaymentDetailsOpen(false);
+    const handleOpenDrawer = (
+        payment,
+    ) => {
 
-        setSelectedPayment(null);
+        setSelectedPayment(
+            payment,
+        );
+
+        setDrawerOpen(
+            true,
+        );
 
     };
 
-    const handleCloseDeleteDialog = () => {
+    const handleCloseDrawer = () => {
 
-        setConfirmDeleteOpen(false);
+        setDrawerOpen(false);
 
         setSelectedPayment(null);
-
-    };
-
-    const handleCloseSnackbar = () => {
-
-        setSnackbar((previous) => ({
-
-            ...previous,
-
-            open: false,
-
-        }));
 
     };
 
@@ -210,83 +293,8 @@ function Payments() {
 
         try {
 
-            if (selectedPayment) {
-
-                await updatePaymentMutation.mutateAsync({
-
-                    paymentId:
-                        selectedPayment.payment_id,
-
-                    data:
-                        paymentData,
-
-                });
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "success",
-
-                    message:
-                        "Payment updated successfully.",
-
-                });
-
-            } else {
-
-                await createPaymentMutation.mutateAsync(
-
-                    paymentData,
-
-                );
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "success",
-
-                    message:
-                        "Payment recorded successfully.",
-
-                });
-
-            }
-
-            handleClosePaymentDialog();
-
-        } catch {
-
-            setSnackbar({
-
-                open: true,
-
-                severity: "error",
-
-                message:
-                    "Unable to save payment.",
-
-            });
-
-        }
-
-    };
-
-    const handleConfirmDelete = async () => {
-
-        if (!selectedPayment) {
-
-            return;
-
-        }
-
-        try {
-
-            await deletePaymentMutation.mutateAsync(
-
-                selectedPayment.payment_id,
-
+            await createPayment.mutateAsync(
+                paymentData,
             );
 
             setSnackbar({
@@ -296,11 +304,13 @@ function Payments() {
                 severity: "success",
 
                 message:
-                    "Payment deleted successfully.",
+                    "Payment recorded successfully.",
 
             });
 
-        } catch {
+            handleCloseDialog();
+
+        } catch (error) {
 
             setSnackbar({
 
@@ -309,13 +319,78 @@ function Payments() {
                 severity: "error",
 
                 message:
-                    "Unable to delete payment.",
+
+                    error.response?.data?.detail ??
+
+                    "Unable to record payment.",
 
             });
 
         }
 
-        handleCloseDeleteDialog();
+    };
+
+    const openConfirmation = (
+        title,
+        message,
+        action,
+    ) => {
+
+        setConfirmDialog({
+
+            open: true,
+
+            title,
+
+            message,
+
+            action,
+
+        });
+
+    };
+
+    const handleCloseConfirmation = () => {
+
+        setConfirmDialog({
+
+            open: false,
+
+            title: "",
+
+            message: "",
+
+            action: null,
+
+        });
+
+    };
+
+    const handleCloseSnackbar = () => {
+
+        setSnackbar(
+
+            (previous) => ({
+
+                ...previous,
+
+                open: false,
+
+            }),
+
+        );
+
+    };
+
+    const handleClearFilters = () => {
+
+        setSearch("");
+
+        setPaymentChannel("");
+
+        setStatus("");
+
+        setPage(0);
 
     };
 
@@ -326,24 +401,51 @@ function Payments() {
         >
 
             <PageHeader
-
                 title="Payments"
-
                 subtitle="Manage customer payments and payment history."
-
-                icon={
-
-                    <PaymentsRoundedIcon
-                        color="primary"
-                    />
-
-                }
-
-                actionLabel="Record Payment"
-
-                onAction={handleCreate}
-
             />
+
+            {hasPermission(
+
+                "payments.create",
+
+            ) && (
+
+                <Box
+
+                    sx={{
+
+                        mb: 3,
+
+                    }}
+
+                >
+
+                    <Button
+
+                        variant="contained"
+
+                        startIcon={
+
+                            <PaymentsRoundedIcon />
+
+                        }
+
+                        onClick={
+
+                            handleCreate
+
+                        }
+
+                    >
+
+                        Record Payment
+
+                    </Button>
+
+                </Box>
+
+            )}      
 
             <Stack
 
@@ -359,173 +461,444 @@ function Payments() {
 
             >
 
+            <Box sx={{ flex: 1 }}>
                 <StatCard
-
                     title="Total Payments"
-
-                    value={
-                        stats?.total_payments ?? 0
-                    }
-
+                    value={stats?.total_payments ?? 0}
                 />
+            </Box>
 
+            <Box sx={{ flex: 1 }}>
                 <StatCard
-
                     title="Revenue"
-
                     value={`₦${Number(
                         stats?.total_revenue ?? 0,
                     ).toLocaleString()}`}
-
                 />
+            </Box>
 
+            <Box sx={{ flex: 1 }}>
                 <StatCard
-
                     title="Successful"
-
-                    value={
-                        stats?.successful_payments ?? 0
-                    }
-
+                    value={stats?.successful_payments ?? 0}
                 />
+            </Box>
 
+            <Box sx={{ flex: 1 }}>
                 <StatCard
-
                     title="Pending"
-
-                    value={
-                        stats?.pending_payments ?? 0
-                    }
-
+                    value={stats?.pending_payments ?? 0}
                 />
-
-            </Stack>
+            </Box>
+        </Stack>
 
             <PaymentFilters
 
                 search={search}
 
-                onSearchChange={setSearch}
+                onSearchChange={(
+                    event,
+                ) => {
+
+                    setSearch(
+                        event.target.value,
+                    );
+
+                    setPage(0);
+
+                }}
 
                 paymentChannel={
                     paymentChannel
                 }
 
-                onPaymentChannelChange={(event) =>
+                onPaymentChannelChange={(
+                    event,
+                ) => {
 
                     setPaymentChannel(
                         event.target.value,
-                    )
+                    );
 
+                    setPage(0);
+
+                }}
+
+                status={
+                    status
                 }
 
-                status={status}
-
-                onStatusChange={(event) =>
+                onStatusChange={(
+                    event,
+                ) => {
 
                     setStatus(
                         event.target.value,
-                    )
+                    );
 
+                    setPage(0);
+
+                }}
+
+                onRefresh={
+                    refetch
                 }
 
-                onClear={() => {
-
-                    setSearch("");
-
-                    setPaymentChannel("");
-
-                    setStatus("");
-
-                }}
-
-                onRefresh={() => {
-
-                    window.location.reload();
-
-                }}
+                onClear={
+                    handleClearFilters
+                }
 
             />
 
             <PaymentsTable
 
-                payments={payments}
-
-                loading={isLoading}
-
-                onView={handleView}
-
-                onEdit={handleEdit}
-
-                onDelete={handleDelete}
-
-            />
-
-            <PaymentDialog
-
-                open={paymentDialogOpen}
+                payments={
+                    payments
+                }
 
                 loading={
+                    isLoading
+                }
 
-                    createPaymentMutation.isPending ||
+                page={
+                    page
+                }
 
-                    updatePaymentMutation.isPending
+                rowsPerPage={
+                    rowsPerPage
+                }
+
+                total={
+                    total
+                }
+
+                onPageChange={
+                    handleChangePage
+                }
+
+                onRowsPerPageChange={
+                    handleChangeRowsPerPage
+                }
+
+                onView={
+                    handleOpenDrawer
+                }
+
+                onRowClick={
+                    handleOpenDrawer
+                }
+
+                onPrintReceipt={(
+                    payment,
+                ) =>
+
+                    printReceipt.mutate(
+                        payment.payment_reference,
+                    )
 
                 }
 
-                initialValues={
-                    selectedPayment
+                onComplete={(
+                    payment,
+                ) =>
+
+                    openConfirmation(
+
+                        "Complete Payment",
+
+                        `Complete payment "${payment.payment_reference}"?`,
+
+                async () => {
+
+                    await completePayment.mutateAsync({
+
+                        paymentReference:
+                            payment.payment_reference,
+
+                    });
+
+                    await refetch({
+                        throwOnError: true,
+                    });
+
+                    setSelectedPayment(null);
+
+                    setDrawerOpen(false);
+
+                    setSnackbar({
+
+                        open: true,
+
+                        severity: "success",
+
+                        message:
+                            "Payment completed successfully.",
+
+                    });
+
+                },
+                    )
+
                 }
 
-                onClose={
-                    handleClosePaymentDialog
+                onCancel={(
+                    payment,
+                ) =>
+
+                    openConfirmation(
+
+                        "Cancel Payment",
+
+                        `Cancel payment "${payment.payment_reference}"?`,
+
+                        async () => {
+
+                            await cancelPayment.mutateAsync(
+                                payment.payment_reference,
+                            );
+
+                            await refetch({
+                                throwOnError: true,
+                            });
+
+                            setSelectedPayment(null);
+
+                            setDrawerOpen(false);
+
+                            setSnackbar({
+
+                                open: true,
+
+                                severity: "success",
+
+                                message:
+                                    "Payment cancelled successfully.",
+
+                            });
+
+                        },
+
+                    )
+
                 }
 
-                onSubmit={
-                    handleSubmit
+                onRefund={(
+                    payment,
+                ) =>
+
+                    openConfirmation(
+
+                        "Refund Payment",
+
+                        `Refund payment "${payment.payment_reference}"?`,
+
+                        async () => {
+
+                            await refundPayment.mutateAsync(
+                                payment.payment_reference,
+                            );
+
+                            await refetch({
+                                throwOnError: true,
+                            });
+                            setSelectedPayment(null);
+
+                            setDrawerOpen(false);
+
+                            setSnackbar({
+
+                                open: true,
+
+                                severity: "success",
+
+                                message:
+                                    "Payment refunded successfully.",
+
+                            });
+
+                        },
+
+                    )
+
+                }
+
+                onExpire={(
+                    payment,
+                ) =>
+
+                    openConfirmation(
+
+                        "Expire Payment",
+
+                        `Expire payment "${payment.payment_reference}"?`,
+
+                        async () => {
+
+                            await expirePayment.mutateAsync(
+                                payment.payment_reference,
+                            );
+
+                            await refetch({
+                                throwOnError: true,
+                            });
+
+                            setSelectedPayment(null);
+
+                            setDrawerOpen(false);
+
+                            setSnackbar({
+
+                                open: true,
+
+                                severity: "success",
+
+                                message:
+                                    "Payment expired successfully.",
+
+                            });
+
+                        },
+
+                    )
+
                 }
 
             />
 
-            <PaymentDetailsDialog
+            {hasPermission(
 
-                open={paymentDetailsOpen}
+                "payments.create",
 
-                payment={
-                    selectedPayment
-                }
+            ) && (
 
-                onClose={
-                    handleClosePaymentDetails
-                }
+                <PaymentDialog
 
-            />
+                    open={
+
+                        paymentDialogOpen
+
+                    }
+
+                    loading={
+
+                        createPayment.isPending
+
+                    }
+
+                    onClose={
+
+                        handleCloseDialog
+
+                    }
+
+                    onSubmit={
+
+                        handleSubmit
+
+                    }
+
+                />
+
+            )}
+            
+            {hasPermission(
+
+                "payments.view",
+
+            ) && (
+
+                <PaymentDetailsDrawer
+
+                    open={
+
+                        drawerOpen
+
+                    }
+
+                    payment={
+
+                        selectedPayment
+
+                    }
+
+                    onClose={
+
+                        handleCloseDrawer
+
+                    }
+
+                />
+
+            )}
+
 
             <ConfirmDialog
 
-                open={confirmDeleteOpen}
+                open={
+                    confirmDialog.open
+                }
 
-                title="Delete Payment"
+                title={
+                    confirmDialog.title
+                }
 
-                message={`Are you sure you want to delete payment "${selectedPayment?.payment_reference ?? ""}"? This action cannot be undone.`}
+                message={
+                    confirmDialog.message
+                }
 
-                confirmText="Delete"
-
-                confirmColor="error"
+                confirmText="Confirm"
 
                 loading={
 
-                    deletePaymentMutation.isPending
+                    completePayment.isPending ||
+
+                    cancelPayment.isPending ||
+
+                    refundPayment.isPending ||
+
+                    expirePayment.isPending
 
                 }
 
                 onClose={
-                    handleCloseDeleteDialog
+                    handleCloseConfirmation
                 }
 
-                onConfirm={
-                    handleConfirmDelete
-                }
+                onConfirm={async () => {
+
+                    if (
+                        !confirmDialog.action
+                    ) {
+
+                        return;
+
+                    }
+
+                    try {
+
+                        await confirmDialog.action();
+
+                    } catch (error) {
+
+                        setSnackbar({
+
+                            open: true,
+
+                            severity: "error",
+
+                            message:
+
+                                error.response?.data?.detail ??
+
+                                "Operation failed.",
+
+                        });
+
+                    }
+
+                    handleCloseConfirmation();
+
+                }}
 
             />
 
@@ -555,4 +928,4 @@ function Payments() {
 
 }
 
-export default Payments;
+export default Payments;                

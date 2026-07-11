@@ -1,20 +1,44 @@
-import { useMemo, useState } from "react";
+import {
+    useMemo,
+    useState,
+} from "react";
 
 import {
     Alert,
     Box,
-    Snackbar,
+    Button,
+    CircularProgress,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
+import SyncIcon from "@mui/icons-material/Sync";
 
 import PageHeader from "../../components/common/PageHeader";
-import TableToolbar from "../../components/common/TableToolbar";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+import AppSnackbar from "../../components/common/AppSnackbar";
+import FilterToolbar from "../../components/common/FilterToolbar";
+import SearchBar from "../../components/common/SearchBar";
+import ExportCsvButton from "../../components/common/ExportCsvButton";
 
+import SubscriptionFilters from "../../components/subscriptions/SubscriptionFilters";
 import SubscriptionTable from "../../components/subscriptions/SubscriptionTable";
-import SubscriptionDialog from "../../components/subscriptions/SubscriptionDialog";
 import SubscriptionPurchaseDialog from "../../components/subscriptions/SubscriptionPurchaseDialog";
+import SubscriptionDetailsDrawer from "../../components/subscriptions/SubscriptionDetailsDrawer";
+
+import {
+    useSubscriptions,
+} from "../../hooks/useSubscriptions";
+
+import {
+    usePurchaseSubscription,
+} from "../../hooks/usePurchaseSubscription";
+
+import {
+    useCancelSubscription,
+} from "../../hooks/useCancelSubscription";
+
+import {
+    useProcessSubscriptions,
+} from "../../hooks/useProcessSubscriptions";
 
 import {
     useCustomers,
@@ -25,101 +49,18 @@ import {
 } from "../../hooks/usePlans";
 
 import {
-    useDeleteSubscription,
-    useRenewSubscription,
-    useSubscriptions,
-    useUpdateSubscription,
-    useUpdateSubscriptionStatus,
-    usePurchaseSubscription,
-} from "../../hooks/useSubscriptions";
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
 
 function Subscriptions() {
 
     const {
-        data: customers = [],
-    } = useCustomers();
 
-    const {
-        data: plans = [],
-    } = usePlans();
+        hasPermission,
 
-    const {
-        data: subscriptions = [],
-        isLoading,
-        refetch,
-    } = useSubscriptions();
-
-    const purchaseSubscription =
-        usePurchaseSubscription();
-
-    const updateSubscription =
-        useUpdateSubscription();
-
-    const updateSubscriptionStatus =
-        useUpdateSubscriptionStatus();
-
-    const renewSubscription =
-        useRenewSubscription();
-
-    const deleteSubscription =
-        useDeleteSubscription();
-
-    const [search, setSearch] =
-        useState("");
-
-    const [
-        statusFilter,
-        setStatusFilter,
-    ] = useState("all");
-
-    const [
-        dialogOpen,
-        setDialogOpen,
-    ] = useState(false);
-
-    const [
-        purchaseDialogOpen,
-        setPurchaseDialogOpen,
-    ] = useState(false);
-
-    const [
-        dialogMode,
-        setDialogMode,
-    ] = useState("view");
-
-    const [
-        selectedSubscription,
-        setSelectedSubscription,
-    ] = useState(null);
-
-    const [
-        confirmOpen,
-        setConfirmOpen,
-    ] = useState(false);
-
-    const [
-        confirmTitle,
-        setConfirmTitle,
-    ] = useState("");
-
-    const [
-        confirmMessage,
-        setConfirmMessage,
-    ] = useState("");
-
-    const [
-        confirmAction,
-        setConfirmAction,
-    ] = useState(null);
-
-    const [
-        snackbar,
-        setSnackbar,
-    ] = useState({
-        open: false,
-        severity: "success",
-        message: "",
-    });
+    } = useCurrentPermissions();
 
     const [
         page,
@@ -131,618 +72,785 @@ function Subscriptions() {
         setRowsPerPage,
     ] = useState(10);
 
-    const filteredSubscriptions =
-        useMemo(() => {
+    const [
+        searchTerm,
+        setSearchTerm,
+    ] = useState("");
 
-            return subscriptions.filter(
-                (subscription) => {
+    const [
+        customerFilter,
+        setCustomerFilter,
+    ] = useState("");
 
-                    const searchTerm =
-                        search.toLowerCase();
+    const [
+        planFilter,
+        setPlanFilter,
+    ] = useState("");
 
-                    const matchesSearch =
+    const [
+        statusFilter,
+        setStatusFilter,
+    ] = useState("");
 
-                        subscription.customer_name
-                            ?.toLowerCase()
-                            .includes(searchTerm)
+    const {
+        data,
+        isLoading,
+        error,
+        refetch,
+    } = useSubscriptions({
 
-                        ||
+        page: page + 1,
 
-                        subscription.plan_name
-                            ?.toLowerCase()
-                            .includes(searchTerm)
+        pageSize: rowsPerPage,
 
-                        ||
+        search: searchTerm,
 
-                        String(
-                            subscription.subscription_id
-                        ).includes(searchTerm);
+        customerId:
+            customerFilter || undefined,
 
-                    let matchesStatus = true;
+        planId:
+            planFilter || undefined,
 
-                    switch (statusFilter) {
+        status:
+            statusFilter || undefined,
 
-                        case "active":
-                        case "queued":
-                        case "expired":
-                        case "suspended":
-                        case "cancelled":
+    });
 
-                            matchesStatus =
-                                subscription.status ===
-                                statusFilter;
+    const subscriptions =
+        data?.items ?? [];
 
-                            break;
+    const total =
+        data?.total ?? 0;
 
-                        case "expiring":
+    const {
+        data: customersData,
+    } = useCustomers();
 
-                            matchesStatus =
+    const {
+        data: plansData,
+    } = usePlans();
 
-                                subscription.status ===
-                                "active"
+    const purchaseSubscription =
+        usePurchaseSubscription();
 
-                                &&
+    const cancelSubscription =
+        useCancelSubscription();
 
-                                subscription.remaining_days <= 7;
+    const processSubscriptions =
+        useProcessSubscriptions();
 
-                            break;
+    const [
+        purchaseDialogOpen,
+        setPurchaseDialogOpen,
+    ] = useState(false);
 
-                        default:
+    const [
+        drawerOpen,
+        setDrawerOpen,
+    ] = useState(false);
 
-                            matchesStatus = true;
+    const [
+        selectedSubscription,
+        setSelectedSubscription,
+    ] = useState(null);
 
-                    }
+    const [
+        snackbar,
+        setSnackbar,
+    ] = useState({
 
-                    return (
-                        matchesSearch &&
-                        matchesStatus
-                    );
+        open: false,
 
-                }
+        severity: "success",
+
+        message: "",
+
+    });
+
+    const customers = useMemo(() => {
+
+        return (
+            customersData?.items ??
+            customersData ??
+            []
+        );
+
+    }, [customersData]);
+
+    const plans = useMemo(() => {
+
+        return (
+            plansData?.items ??
+            plansData ??
+            []
+        );
+
+    }, [plansData]);
+
+    const sortedCustomers = useMemo(() => {
+
+        return [...customers].sort(
+            (a, b) =>
+                (a.full_name ?? "").localeCompare(
+                    b.full_name ?? "",
+                ),
+        );
+
+    }, [customers]);
+
+    const sortedPlans = useMemo(() => {
+
+        return [...plans].sort(
+            (a, b) =>
+                (a.plan_name ?? "").localeCompare(
+                    b.plan_name ?? "",
+                ),
+        );
+
+    }, [plans]);
+
+    const handleOpenPurchaseDialog =
+        () => {
+
+            if (
+
+                !hasPermission(
+
+                    "subscriptions.purchase",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            setPurchaseDialogOpen(
+
+                true,
 
             );
 
-        }, [
-            subscriptions,
-            search,
-            statusFilter,
-        ]);
+        };
 
-    const filters = [
+    const handleClosePurchaseDialog =
+        () => {
 
-        {
-            value: "all",
-            label: "All",
-        },
+            setPurchaseDialogOpen(
+                false,
+            );
 
-        {
-            value: "active",
-            label: "Active",
-        },
+        };
 
-        {
-            value: "queued",
-            label: "Queued",
-        },
+    const handleOpenDrawer = (
 
-        {
-            value: "expired",
-            label: "Expired",
-        },
-
-        {
-            value: "suspended",
-            label: "Suspended",
-        },
-
-        {
-            value: "cancelled",
-            label: "Cancelled",
-        },
-
-        {
-            value: "expiring",
-            label: "Expiring Soon",
-        },
-
-    ];
-
-    const handleCreate = () => {
-
-        setSelectedSubscription({
-
-            customer_id: "",
-
-            plan_id: "",
-
-        });
-
-        setPurchaseDialogOpen(true);
-
-    };
-
-    const handleView = (
-        subscription
-    ) => {
-
-        setSelectedSubscription(
-            subscription
-        );
-
-        setDialogMode("view");
-
-        setDialogOpen(true);
-
-    };
-
-    const handleEdit = (
-        subscription
-    ) => {
-
-        setSelectedSubscription({
-
-            ...subscription,
-
-        });
-
-        setDialogMode("edit");
-
-        setDialogOpen(true);
-
-    };
-
-    const handleDialogChange = (
-        event
-    ) => {
-
-        const {
-            name,
-            value,
-        } = event.target;
-
-        setSelectedSubscription(
-            (previous) => ({
-
-                ...previous,
-
-                [name]: value,
-
-            })
-        );
-
-    };
-
-    const handleDialogClose = () => {
-
-        setDialogOpen(false);
-
-        setSelectedSubscription(null);
-
-    };
-
-    const handlePurchaseDialogClose = () => {
-
-        setPurchaseDialogOpen(false);
-
-        setSelectedSubscription(null);
-
-    };
-
-    const handleSave = async () => {
-
-        try {
-
-            await updateSubscription.mutateAsync({
-
-                subscriptionId:
-                    selectedSubscription.subscription_id,
-
-                data: {
-
-                    plan_id:
-                        selectedSubscription.plan_id,
-
-                    start_date:
-                        selectedSubscription.start_date,
-
-                    expiry_date:
-                        selectedSubscription.expiry_date,
-
-                    activation_sequence:
-                        selectedSubscription.activation_sequence,
-
-                },
-
-            });
-
-            setSnackbar({
-
-                open: true,
-
-                severity: "success",
-
-                message:
-                    "Subscription updated successfully.",
-
-            });
-
-            handleDialogClose();
-
-            refetch();
-
-        } catch {
-
-            setSnackbar({
-
-                open: true,
-
-                severity: "error",
-
-                message:
-                    "Failed to update subscription.",
-
-            });
-
-        }
-
-    };
-
-    const handlePurchase = async () => {
-
-        try {
-
-            await purchaseSubscription.mutateAsync({
-
-                customer_id:
-                    selectedSubscription.customer_id,
-
-                plan_id:
-                    selectedSubscription.plan_id,
-
-            });
-
-            setSnackbar({
-
-                open: true,
-
-                severity: "success",
-
-                message:
-                    "Subscription created successfully.",
-
-            });
-
-            handlePurchaseDialogClose();
-
-            refetch();
-
-        } catch {
-
-            setSnackbar({
-
-                open: true,
-
-                severity: "error",
-
-                message:
-                    "Failed to create subscription.",
-
-            });
-
-        }
-
-    };
-
-    const handleStatusChange = (
         subscription,
-        status
+
     ) => {
 
-        setConfirmTitle(
-            "Update Subscription"
-        );
+        if (
 
-        setConfirmMessage(
-            `Change subscription status to "${status}"?`
-        );
+            !hasPermission(
 
-        setConfirmAction(() => async () => {
+                "subscriptions.view",
 
-            try {
+            )
 
-                await updateSubscriptionStatus.mutateAsync({
+        ) {
 
-                    subscriptionId:
-                        subscription.subscription_id,
-
-                    status,
-
-                });
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "success",
-
-                    message:
-                        "Subscription status updated.",
-
-                });
-
-                refetch();
-
-            } catch {
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "error",
-
-                    message:
-                        "Unable to update subscription.",
-
-                });
-
-            }
-
-        });
-
-        setConfirmOpen(true);
-
-    };
-
-
-    const handleRenew = (
-        subscription
-    ) => {
-
-        setConfirmTitle(
-            "Renew Subscription"
-        );
-
-        setConfirmMessage(
-            `Queue another "${subscription.plan_name}" subscription for ${subscription.customer_name}?`
-        );
-
-        setConfirmAction(() => async () => {
-
-            try {
-
-                await renewSubscription.mutateAsync(
-                    subscription.subscription_id
-                );
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "success",
-
-                    message:
-                        "Subscription renewed successfully.",
-
-                });
-
-                refetch();
-
-            } catch {
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "error",
-
-                    message:
-                        "Failed to renew subscription.",
-
-                });
-
-            }
-
-        });
-
-        setConfirmOpen(true);
-
-    };
-
-
-    const handleDelete = (
-        subscription
-    ) => {
-
-        setConfirmTitle(
-            "Delete Subscription"
-        );
-
-        setConfirmMessage(
-            `Delete subscription #${subscription.subscription_id}?`
-        );
-
-        setConfirmAction(() => async () => {
-
-            try {
-
-                await deleteSubscription.mutateAsync(
-                    subscription.subscription_id
-                );
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "success",
-
-                    message:
-                        "Subscription deleted.",
-
-                });
-
-                refetch();
-
-            } catch {
-
-                setSnackbar({
-
-                    open: true,
-
-                    severity: "error",
-
-                    message:
-                        "Unable to delete subscription.",
-
-                });
-
-            }
-
-        });
-
-        setConfirmOpen(true);
-
-    };
-
-    const handleConfirm = async () => {
-
-        if (confirmAction) {
-
-            await confirmAction();
+            return;
 
         }
 
-        setConfirmOpen(false);
+        setSelectedSubscription(
+
+            subscription,
+
+        );
+
+        setDrawerOpen(
+
+            true,
+
+        );
 
     };
 
+    const handleCloseDrawer =
+        () => {
 
-    const handleClear = () => {
+            setSelectedSubscription(
+                null,
+            );
 
-        setSearch("");
+            setDrawerOpen(false);
 
-        setStatusFilter("all");
+        };
+
+    const handlePurchase =
+        async (formData) => {
+
+            try {
+
+                await purchaseSubscription.mutateAsync(
+                    formData,
+                );
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity:
+                        "success",
+
+                    message:
+                        "Subscription purchased successfully.",
+
+                });
+
+                handleClosePurchaseDialog();
+
+            } catch (error) {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity:
+                        "error",
+
+                    message:
+
+                        error.response?.data
+                            ?.detail ??
+
+                        "Purchase failed.",
+
+                });
+
+            }
+
+        };
+
+    const handleCancel =
+        async (
+
+            subscriptionId,
+
+        ) => {
+
+            if (
+
+                !hasPermission(
+
+                    "subscriptions.cancel",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await cancelSubscription.mutateAsync(
+
+                    subscriptionId,
+
+                );
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Subscription cancelled successfully.",
+
+                });
+
+            } catch (error) {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error.response?.data?.detail ??
+
+                        "Cancellation failed.",
+
+                });
+
+            }
+
+        };
+
+    const handleProcessSubscriptions =
+        async () => {
+
+            if (
+
+                !hasPermission(
+
+                    "subscriptions.process",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await processSubscriptions.mutateAsync();
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Subscription processing completed.",
+
+                });
+
+            } catch (error) {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error.response?.data?.detail ??
+
+                        "Processing failed.",
+
+                });
+
+            }
+
+        };
+
+    const handleClearFilters =
+        () => {
+
+            setSearchTerm("");
+
+            setCustomerFilter("");
+
+            setPlanFilter("");
+
+            setStatusFilter("");
+
+            setPage(0);
+
+        };
+
+    const handleCloseSnackbar =
+        () => {
+
+            setSnackbar(
+                (previous) => ({
+
+                    ...previous,
+
+                    open: false,
+
+                }),
+            );
+
+        };
+
+    const handleChangePage = (
+        event,
+        newPage,
+    ) => {
+
+        setPage(newPage);
 
     };
 
+    const handleChangeRowsPerPage = (
+        event,
+    ) => {
 
-    const handleSnackbarClose = () => {
+        setRowsPerPage(
+            parseInt(
+                event.target.value,
+                10,
+            ),
+        );
 
-        setSnackbar((previous) => ({
-
-            ...previous,
-
-            open: false,
-
-        }));
+        setPage(0);
 
     };
 
+    if (isLoading) {
+
+        return (
+
+            <Box
+                display="flex"
+                justifyContent="center"
+                py={8}
+            >
+
+                <CircularProgress />
+
+            </Box>
+
+        );
+
+    }
+
+    if (error) {
+
+        return (
+
+            <Alert severity="error">
+
+                Failed to load subscriptions.
+
+            </Alert>
+
+        );
+
+    }
 
     return (
 
-        <Box>
+        <>
 
             <PageHeader
                 title="Subscriptions"
-                subtitle="Manage customer subscriptions, renew plans, suspend services and monitor subscription status."
-                actionLabel="New Subscription"
-                actionIcon={<AddIcon />}
-                onAction={handleCreate}
+                subtitle="Manage customer subscriptions."
             />
 
-            <TableToolbar
-                search={search}
-                onSearchChange={setSearch}
-                filter={statusFilter}
-                onFilterChange={setStatusFilter}
-                filters={filters}
-                searchPlaceholder="Search by customer, plan or subscription ID..."
-                onRefresh={refetch}
-                onClear={handleClear}
-            />
-
-            <SubscriptionTable
-                subscriptions={filteredSubscriptions}
-                loading={isLoading}
-                searchTerm={search}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                onPageChange={(event, newPage) =>
-                    setPage(newPage)
-                }
-                onRowsPerPageChange={(event) => {
-
-                    setRowsPerPage(
-                        parseInt(
-                            event.target.value,
-                            10
-                        )
-                    );
-
-                    setPage(0);
-
-                }}
-                onView={handleView}
-                onEdit={handleEdit}
-                onRenew={handleRenew}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-            />
-
-            <SubscriptionDialog
-                open={dialogOpen}
-                mode={dialogMode}
-                subscription={selectedSubscription}
-                onClose={handleDialogClose}
-                onSave={handleSave}
-                onChange={handleDialogChange}
-            />
-
-            <SubscriptionPurchaseDialog
-                open={purchaseDialogOpen}
-                customers={customers}
-                plans={plans}
-                subscription={selectedSubscription}
-                onChange={handleDialogChange}
-                onClose={handlePurchaseDialogClose}
-                onPurchase={handlePurchase}
-            />            
-
-            <ConfirmDialog
-                open={confirmOpen}
-                title={confirmTitle}
-                message={confirmMessage}
-                onCancel={() =>
-                    setConfirmOpen(false)
-                }
-                onConfirm={handleConfirm}
-            />
-
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "right",
+            <Box
+                sx={{
+                    display: "flex",
+                    gap: 2,
+                    mb: 3,
+                    mt: 3,
                 }}
             >
-                <Alert
-                    severity={snackbar.severity}
-                    onClose={handleSnackbarClose}
-                    variant="filled"
-                    sx={{
-                        width: "100%",
-                    }}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
 
-        </Box>
+            {hasPermission(
+
+                "subscriptions.purchase",
+
+            ) && (
+
+                <Button
+
+                    variant="contained"
+
+                    startIcon={<AddIcon />}
+
+                    onClick={
+
+                        handleOpenPurchaseDialog
+
+                    }
+
+                >
+
+                    Purchase Subscription
+
+                </Button>
+
+            )}
+
+            {hasPermission(
+
+                "subscriptions.process",
+
+            ) && (
+
+                <Button
+
+                    variant="outlined"
+
+                    startIcon={<SyncIcon />}
+
+                    onClick={
+
+                        handleProcessSubscriptions
+
+                    }
+
+                >
+
+                    Process Expired
+
+                </Button>
+
+            )}
+
+            </Box>
+
+            <FilterToolbar>
+
+                <SearchBar
+                    placeholder="Search by customer or plan..."
+                    value={searchTerm}
+                    onChange={(event) => {
+
+                        setSearchTerm(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+                    sx={{
+                        flex: 1,
+                    }}
+                />
+
+                <SubscriptionFilters
+
+                    customers={
+                        sortedCustomers
+                    }
+
+                    plans={
+                        sortedPlans
+                    }
+
+                    customerId={
+                        customerFilter
+                    }
+
+                    planId={
+                        planFilter
+                    }
+
+                    status={
+                        statusFilter
+                    }
+
+                    onCustomerChange={(
+                        event,
+                    ) => {
+
+                        setCustomerFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onPlanChange={(
+                        event,
+                    ) => {
+
+                        setPlanFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onStatusChange={(
+                        event,
+                    ) => {
+
+                        setStatusFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onRefresh={
+                        refetch
+                    }
+
+                    onClear={
+                        handleClearFilters
+                    }
+
+                />
+
+                <ExportCsvButton
+
+                    filename="subscriptions"
+
+                    rows={
+                        subscriptions
+                    }
+
+                    columns={[
+
+                        {
+                            key: "customer_name",
+                            label: "Customer",
+                        },
+
+                        {
+                            key: "plan_name",
+                            label: "Plan",
+                        },
+
+                        {
+                            key: "status",
+                            label: "Status",
+                        },
+
+                        {
+                            key: "created_at",
+                            label: "Created",
+                        },
+
+                        {
+                            key: "expiry_date",
+                            label: "Expiry",
+                        },
+
+                        {
+                            key: "remaining_days",
+                            label: "Remaining Days",
+                        },
+
+                    ]}
+
+                />
+
+            </FilterToolbar>
+
+            <SubscriptionTable
+                subscriptions={
+                    subscriptions
+                }
+                loading={isLoading}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                total={total}
+                onPageChange={
+                    handleChangePage
+                }
+                onRowsPerPageChange={
+                    handleChangeRowsPerPage
+                }
+                onRowClick={
+                    handleOpenDrawer
+                }
+                onCancel={
+                    handleCancel
+                }
+            />
+
+            {hasPermission(
+
+                "subscriptions.purchase",
+
+            ) && (
+
+                <SubscriptionPurchaseDialog
+
+                    open={
+
+                        purchaseDialogOpen
+
+                    }
+
+                    customers={
+
+                        sortedCustomers
+
+                    }
+
+                    plans={
+
+                        sortedPlans
+
+                    }
+
+                    onClose={
+
+                        handleClosePurchaseDialog
+
+                    }
+
+                    onSubmit={
+
+                        handlePurchase
+
+                    }
+
+                />
+
+            )}
+
+            {hasPermission(
+
+                "subscriptions.view",
+
+            ) && (
+
+                <SubscriptionDetailsDrawer
+
+                    open={
+
+                        drawerOpen
+
+                    }
+
+                    subscription={
+
+                        selectedSubscription
+
+                    }
+
+                    onClose={
+
+                        handleCloseDrawer
+
+                    }
+
+                />
+
+            )}
+
+            <AppSnackbar
+                open={
+                    snackbar.open
+                }
+                severity={
+                    snackbar.severity
+                }
+                message={
+                    snackbar.message
+                }
+                onClose={
+                    handleCloseSnackbar
+                }
+            />
+
+        </>
 
     );
 
 }
 
-export default Subscriptions;
+export default Subscriptions;            

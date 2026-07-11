@@ -68,7 +68,7 @@ function DashboardStats() {
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 2.4 }}>
 
                 <StatCard
-                    title="Revenue"
+                    title="Total Revenue"
                     value={`₦${Number(
                         data?.total_revenue ?? 0
                     ).toLocaleString()}`}

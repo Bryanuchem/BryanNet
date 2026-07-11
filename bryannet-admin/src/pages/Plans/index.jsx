@@ -1,373 +1,788 @@
 import {
-    useEffect,
     useState,
 } from "react";
 
-import {
-    Alert,
-    Box,
-    Button,
-    Container,
-    Typography,
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 
 import AddIcon from "@mui/icons-material/Add";
 
-import {
-    createPlan,
-    deletePlan,
-    getPlans,
-    updatePlan,
-    updatePlanStatus,
-} from "../../api/plans";
-
-import PlansTable from "../../components/plans/PlansTable";
-import PlanDialog from "../../components/plans/PlanDialog";
+import PageHeader from "../../components/common/PageHeader";
 import AppSnackbar from "../../components/common/AppSnackbar";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+
+import FilterToolbar from "../../components/common/FilterToolbar";
+
 import SearchBar from "../../components/common/SearchBar";
+import ExportCsvButton from "../../components/common/ExportCsvButton";
 
-const PlansPage = () => {
-    const [plans, setPlans] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [searchTerm, setSearchTerm] = useState("");
+import PlanFilters from "../../components/plans/PlanFilters";
+import PlanTable from "../../components/plans/PlanTable";
+import PlanDialog from "../../components/plans/PlanDialog";
+import PlanDetailsDrawer from "../../components/plans/PlanDetailsDrawer";
 
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState(null);
+import {
+    usePlans,
+} from "../../hooks/usePlans";
 
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(null);
+import {
+    useCreatePlan,
+} from "../../hooks/useCreatePlan";
 
-    const [planToToggle, setPlanToToggle] = useState(null);
-    const [planToDelete, setPlanToDelete] = useState(null);
+import {
+    useUpdatePlan,
+} from "../../hooks/useUpdatePlan";
 
-    const [snackbar, setSnackbar] = useState({
-        open: false,
-        message: "",
-        severity: "success",
+import {
+    useActivatePlan,
+} from "../../hooks/useActivatePlan";
+
+import {
+    useDeactivatePlan,
+} from "../../hooks/useDeactivatePlan";
+
+import {
+    useCurrentPermissions,
+} from "../../hooks/useCurrentPermissions";
+
+
+
+function Plans() {
+
+    const [
+        page,
+        setPage,
+    ] = useState(0);
+
+    const [
+        rowsPerPage,
+        setRowsPerPage,
+    ] = useState(10);
+
+    const [
+        searchTerm,
+        setSearchTerm,
+    ] = useState("");
+
+    const [
+        activeFilter,
+        setActiveFilter,
+    ] = useState("all");
+
+    const {
+        data,
+        isLoading,
+        error,
+        refetch,
+    } = usePlans({
+
+        page: page + 1,
+
+        pageSize: rowsPerPage,
+
+        search: searchTerm,
+
+        isActive:
+
+            activeFilter === "all"
+
+                ? undefined
+
+                : activeFilter === "active",
+
     });
 
-    async function fetchPlans() {
+    const plans =
+        data?.items ?? [];
 
-        try {
+    const total =
+        data?.total ?? 0;
 
-            setLoading(true);
+    const createPlan =
+        useCreatePlan();
 
-            setError("");
+    const updatePlan =
+        useUpdatePlan();
 
-            const data = await getPlans();
+    const activatePlan =
+        useActivatePlan();
 
-            setPlans(data);
+    const deactivatePlan =
+        useDeactivatePlan();
 
-        } catch (err) {
+    const {
 
-            console.error(err);
+        hasPermission,
 
-            setError(
-                err.response?.data?.detail ||
-                "Failed to load plans."
-            );
+    } = useCurrentPermissions();
 
-            setSnackbar({
-                open: true,
-                message:
-                    err.response?.data?.detail ||
-                    "Failed to load plans.",
-                severity: "error",
-            });
+    const [
 
-        } finally {
+        selectedPlan,
 
-            setLoading(false);
+        setSelectedPlan,
+
+    ] = useState(null);
+
+    const [
+        dialogOpen,
+        setDialogOpen,
+    ] = useState(false);
+
+    const [
+        drawerOpen,
+        setDrawerOpen,
+    ] = useState(false);
+
+    const [
+        snackbar,
+        setSnackbar,
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const filteredPlans = plans;
+
+    const handleChangePage = (
+        event,
+        newPage,
+    ) => {
+
+        setPage(newPage);
+
+    };
+
+    const handleChangeRowsPerPage = (
+        event,
+    ) => {
+
+        setRowsPerPage(
+
+            parseInt(
+                event.target.value,
+                10,
+            ),
+
+        );
+
+        setPage(0);
+
+    };
+
+    const handleOpenDialog = () => {
+
+        if (
+
+            !hasPermission(
+
+                "plans.create",
+
+            )
+
+        ) {
+
+            return;
 
         }
 
-    }
+        setSelectedPlan(
 
-    useEffect(() => {
+            null,
 
-        fetchPlans();
+        );
 
-    }, []);
+        setDialogOpen(
 
-    const handleOpenDialog = () => {
-        setSelectedPlan(null);
-        setDialogOpen(true);
+            true,
+
+        );
+
     };
 
-    const handleEditPlan = (plan) => {
-        setSelectedPlan(plan);
-        setDialogOpen(true);
+    const handleEditPlan = (
+
+        plan,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "plans.edit",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedPlan(
+
+            plan,
+
+        );
+
+        setDialogOpen(
+
+            true,
+
+        );
+
     };
 
     const handleCloseDialog = () => {
+
         setDialogOpen(false);
+
         setSelectedPlan(null);
+
     };
 
-    const handleSubmitPlan = async (formData) => {
-        try {
-            if (selectedPlan) {
-                    await updatePlan({
+    const handleOpenDrawer = (
 
-                        planId: selectedPlan.plan_id,
+        plan,
 
-                        data: formData,
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "plans.view",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedPlan(
+
+            plan,
+
+        );
+
+        setDrawerOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleCloseDrawer = () => {
+
+        setDrawerOpen(false);
+
+        setSelectedPlan(null);
+
+    };
+
+    const handleSubmitPlan =
+        async (formData) => {
+
+            try {
+
+                if (
+
+                    selectedPlan
+
+                ) {
+
+                    if (
+
+                        !hasPermission(
+
+                            "plans.edit",
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    await updatePlan.mutateAsync({
+
+                        planId:
+
+                            selectedPlan.plan_id,
+
+                        planData:
+
+                            formData,
 
                     });
-                setSnackbar({
-                    open: true,
-                    message:
-                        "Plan updated successfully.",
-                    severity: "success",
-                });
-            } else {
-                await createPlan(formData);
+
+                    setSnackbar({
+
+                        open: true,
+
+                        severity: "success",
+
+                        message:
+
+                            "Plan updated successfully.",
+
+                    });
+
+                } else {
+
+                    if (
+
+                        !hasPermission(
+
+                            "plans.create",
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    await createPlan.mutateAsync(
+
+                        formData,
+
+                    );
+
+                    setSnackbar({
+
+                        open: true,
+
+                        severity: "success",
+
+                        message:
+
+                            "Plan created successfully.",
+
+                    });
+
+                }
+
+                handleCloseDialog();
+
+            } catch (err) {
+
+                console.error(err);
 
                 setSnackbar({
+
                     open: true,
+
+                    severity: "error",
+
                     message:
-                        "Plan created successfully.",
-                    severity: "success",
+
+                        err.response?.data?.detail ??
+
+                        "Operation failed.",
+
                 });
+
             }
 
-            handleCloseDialog();
-            await fetchPlans();
-        } catch (err) {
-            console.error(err);
+        };
 
-            setSnackbar({
-                open: true,
-                message:
-                    err.response?.data?.detail ||
-                    "Operation failed.",
-                severity: "error",
-            });
-        }
-    };
+    const handleToggleStatus =
+        async (plan) => {
 
-    const handleToggleStatus = (plan) => {
-        setPlanToToggle(plan);
-        setPlanToDelete(null);
-        setConfirmAction("toggle");
-        setConfirmOpen(true);
-    };
+            try {
 
-    const handleDelete = (plan) => {
-        setPlanToDelete(plan);
-        setPlanToToggle(null);
-        setConfirmAction("delete");
-        setConfirmOpen(true);
-    };
+                if (
 
-    const handleConfirmToggleStatus = async () => {
-        try {
-            await updatePlanStatus({
+                    plan.is_active
 
-                planId: planToToggle.plan_id,
+                ) {
 
-                isActive: !planToToggle.is_active,
+                    if (
 
-            });
+                        !hasPermission(
 
-            setSnackbar({
-                open: true,
-                message: planToToggle.is_active
-                    ? "Plan deactivated successfully."
-                    : "Plan activated successfully.",
-                severity: "success",
-            });
+                            "plans.deactivate",
 
-            handleCloseConfirm();
+                        )
 
-            await fetchPlans();
-        } catch (err) {
-            console.error(err);
+                    ) {
 
-            handleCloseConfirm();
+                        return;
 
-            setSnackbar({
-                open: true,
-                message:
-                    err.response?.data?.detail ||
-                    "Failed to update plan status.",
-                severity: "error",
-            });
-        }
-    };
+                    }
 
-    const handleConfirmDelete = async () => {
-        try {
-            await deletePlan(
-                planToDelete.plan_id
+                    await deactivatePlan.mutateAsync(
+
+                        plan.plan_id,
+
+                    );
+
+                    setSnackbar({
+
+                        open: true,
+
+                        severity: "success",
+
+                        message:
+
+                            "Plan deactivated successfully.",
+
+                    });
+
+                } else {
+
+                    if (
+
+                        !hasPermission(
+
+                            "plans.activate",
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    await activatePlan.mutateAsync(
+
+                        plan.plan_id,
+
+                    );
+
+                    setSnackbar({
+
+                        open: true,
+
+                        severity: "success",
+
+                        message:
+
+                            "Plan activated successfully.",
+
+                    });
+
+                }
+
+            } catch (err) {
+
+                console.error(err);
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        err.response?.data?.detail ??
+
+                        "Operation failed.",
+
+                });
+
+            }
+
+        };
+
+    const handleClearFilters =
+        () => {
+
+            setSearchTerm("");
+
+            setActiveFilter(
+                "all",
             );
 
-            setSnackbar({
-                open: true,
-                message:
-                    "Plan deleted successfully.",
-                severity: "success",
-            });
+            setPage(0);
 
-            handleCloseConfirm();
+        };
 
-            await fetchPlans();
-        } catch (err) {
-            console.error(err);
+    const handleCloseSnackbar =
+        () => {
 
-            handleCloseConfirm();
+            setSnackbar(
+                (previous) => ({
 
-            setSnackbar({
-                open: true,
-                message:
-                    err.response?.data?.detail ||
-                    "Failed to delete plan.",
-                severity: "error",
-            });
-        }
-    };
+                    ...previous,
 
-    const handleCloseConfirm = () => {
-        setConfirmOpen(false);
-        setConfirmAction(null);
-        setPlanToToggle(null);
-        setPlanToDelete(null);
-    };
+                    open: false,
 
-    const handleCloseSnackbar = () => {
-        setSnackbar((prev) => ({
-            ...prev,
-            open: false,
-        }));
-    };
+                }),
+            );
 
-    const filteredPlans = plans.filter((plan) =>
-        plan.plan_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-    );
+        };
+
+    if (error) {
+
+        return (
+
+            <>
+
+                <PageHeader
+                    title="Plans"
+                    subtitle="Manage subscription plans."
+                />
+
+                <p>
+                    Failed to load plans.
+                </p>
+
+            </>
+
+        );
+
+    }
 
     return (
-        <Container
-            maxWidth={false}
-            sx={{ py: 3 }}
-        >
-            <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
-            >
-                <Box>
-                    <Typography
-                        variant="h4"
-                        fontWeight={600}
-                    >
-                        Plans
-                    </Typography>
 
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
+        <>
+
+            <PageHeader
+                title="Plans"
+                subtitle="Manage subscription plans."
+            />
+
+            {hasPermission(
+
+                "plans.create",
+
+            ) && (
+
+                <Box
+
+                    sx={{
+
+                        mt: 3,
+
+                        mb: 2,
+
+                    }}
+
+                >
+
+                    <Button
+
+                        variant="contained"
+
+                        startIcon={<AddIcon />}
+
+                        onClick={
+
+                            handleOpenDialog
+
+                        }
+
                     >
-                        View and manage all internet plans.
-                    </Typography>
+
+                        New Plan
+
+                    </Button>
+
                 </Box>
-                
-            <Box sx={{mt:3, mb: 3}}>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleOpenDialog}
-                >
-                    New Plan
-                </Button>
-            </Box>    
-            </Box>
 
-            {error && (
-                <Alert
-                    severity="error"
-                    sx={{ mb: 2 }}
-                >
-                    {error}
-                </Alert>
             )}
 
-            <SearchBar
-                value={searchTerm}
-                onChange={(event) =>
-                    setSearchTerm(event.target.value)
-                }
-                placeholder="Search plans..."
-            />
+            <FilterToolbar>
 
-            <PlansTable
+                <SearchBar
+                    value={searchTerm}
+                    onChange={(event) => {
+
+                        setSearchTerm(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+                    placeholder="Search by plan name..."
+                    sx={{
+                        flex: 1,
+                    }}
+                />
+
+                <PlanFilters
+
+                    active={
+                        activeFilter
+                    }
+
+                    onActiveChange={(
+                        event,
+                    ) => {
+
+                        setActiveFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onRefresh={
+                        refetch
+                    }
+
+                    onClear={
+                        handleClearFilters
+                    }
+
+                />
+
+                <ExportCsvButton
+
+                    filename="plans"
+
+                    rows={
+                        filteredPlans
+                    }
+
+                    columns={[
+
+                        {
+                            key: "plan_name",
+                            label: "Plan",
+                        },
+
+                        {
+                            key: "price",
+                            label: "Price",
+                        },
+
+                        {
+                            key: "duration_days",
+                            label: "Duration (Days)",
+                        },
+
+                        {
+                            key: "speed_limit_mbps",
+                            label: "Speed (Mbps)",
+                        },
+
+                        {
+                            key: "max_devices",
+                            label: "Max Devices",
+                        },
+
+                        {
+                            key: "concurrent_devices",
+                            label: "Concurrent Devices",
+                        },
+
+                        {
+                            key: "is_active",
+                            label: "Status",
+
+                            formatter: (
+                                value,
+                            ) =>
+                                value
+                                    ? "Active"
+                                    : "Inactive",
+
+                        },
+
+                    ]}
+
+                />
+
+            </FilterToolbar>
+
+            <PlanTable
                 plans={filteredPlans}
-                loading={loading}
-                onEdit={handleEditPlan}
-                onToggleStatus={handleToggleStatus}
-                onDelete={handleDelete}
+                loading={isLoading}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                total={total}
+                onPageChange={
+                    handleChangePage
+                }
+                onRowsPerPageChange={
+                    handleChangeRowsPerPage
+                }
+                onRowClick={
+                    handleOpenDrawer
+                }
+                onEdit={
+                    handleEditPlan
+                }
+                onToggleStatus={
+                    handleToggleStatus
+                }
             />
-
 
             <PlanDialog
                 open={dialogOpen}
-                onClose={handleCloseDialog}
-                onSubmit={handleSubmitPlan}
+                onClose={
+                    handleCloseDialog
+                }
+                onSubmit={
+                    handleSubmitPlan
+                }
                 plan={selectedPlan}
             />
 
-            <ConfirmDialog
-                open={confirmOpen}
-                title={
-                    confirmAction === "delete"
-                        ? "Delete Plan"
-                        : planToToggle?.is_active
-                            ? "Deactivate Plan"
-                            : "Activate Plan"
-                }
-                message={
-                    confirmAction === "delete"
-                        ? `Are you sure you want to delete "${planToDelete?.plan_name}"?`
-                        : `Are you sure you want to ${
-                              planToToggle?.is_active
-                                  ? "deactivate"
-                                  : "activate"
-                          } "${planToToggle?.plan_name}"?`
-                }
-                confirmText={
-                    confirmAction === "delete"
-                        ? "Delete"
-                        : planToToggle?.is_active
-                            ? "Deactivate"
-                            : "Activate"
-                }
-                confirmColor={
-                    confirmAction === "delete"
-                        ? "error"
-                        : planToToggle?.is_active
-                            ? "warning"
-                            : "success"
-                }
-                onConfirm={
-                    confirmAction === "delete"
-                        ? handleConfirmDelete
-                        : handleConfirmToggleStatus
-                }
-                onClose={handleCloseConfirm}
-            />
+            {hasPermission(
+
+                "plans.view",
+
+            ) && (
+
+                <PlanDetailsDrawer
+
+                    open={
+
+                        drawerOpen
+
+                    }
+
+                    plan={
+
+                        selectedPlan
+
+                    }
+
+                    onClose={
+
+                        handleCloseDrawer
+
+                    }
+
+                />
+
+            )}
 
             <AppSnackbar
                 open={snackbar.open}
-                onClose={handleCloseSnackbar}
-                message={snackbar.message}
-                severity={snackbar.severity}
+                onClose={
+                    handleCloseSnackbar
+                }
+                message={
+                    snackbar.message
+                }
+                severity={
+                    snackbar.severity
+                }
             />
-        </Container>
-    );
-};
 
-export default PlansPage;
+        </>
+
+    );
+
+}
+
+export default Plans;                    

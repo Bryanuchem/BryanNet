@@ -18,6 +18,7 @@ const navigation = [
         label: "Dashboard",
         path: "/dashboard",
         icon: DashboardRoundedIcon,
+        permission: "dashboard.view",
     },
 
     // =========================
@@ -29,12 +30,14 @@ const navigation = [
         label: "Customers",
         path: "/customers",
         icon: PeopleAltRoundedIcon,
+        permission: "customers.view",
     },
     {
         section: "Customers",
         label: "Devices",
         path: "/devices",
         icon: RouterRoundedIcon,
+        permission: "devices.view",
     },
 
     // =========================
@@ -46,12 +49,14 @@ const navigation = [
         label: "Plans",
         path: "/plans",
         icon: Inventory2RoundedIcon,
+        permission: "plans.view",
     },
     {
         section: "Services",
         label: "Subscriptions",
         path: "/subscriptions",
         icon: ReceiptLongRoundedIcon,
+        permission: "subscriptions.view",
     },
 
     // =========================
@@ -63,6 +68,7 @@ const navigation = [
         label: "Payments",
         path: "/payments",
         icon: PaymentsRoundedIcon,
+        permission: "payments.view",
     },
 
     // =========================
@@ -73,32 +79,70 @@ const navigation = [
         section: "System",
         label: "Administration",
         icon: AdminPanelSettingsRoundedIcon,
+        permission: "administration.view",
 
         children: [
+
             {
+
                 label: "Overview",
+
                 path: "/administration",
+
+                permission: "administration.view",
+
             },
+
             {
+
                 label: "Admin Users",
+
                 path: "/administration/users",
+
+                permission: "admin_users.view",
+
             },
+
             {
+
                 label: "Roles & Permissions",
+
                 path: "/administration/roles",
+
+                permission: "roles.view",
+
             },
+
             {
+
                 label: "Audit Logs",
+
                 path: "/administration/audit-logs",
+
+                permission: "audit_logs.view",
+
             },
+
             {
+
                 label: "Login Sessions",
+
                 path: "/administration/sessions",
+
+                permission: "login_sessions.view",
+
             },
+
             {
+
                 label: "System Activity",
+
                 path: "/administration/system-activity",
+
+                permission: "system_activity.view",
+
             },
+
         ],
     },
 
@@ -107,10 +151,19 @@ const navigation = [
         label: settingsNavigation.title,
         icon: settingsNavigation.icon,
 
-        children: settingsNavigation.children.map((item) => ({
-            label: item.title,
-            path: item.path,
-        })),
+        children: settingsNavigation.children.map(
+
+            (item) => ({
+
+                label: item.title,
+
+                path: item.path,
+
+                permission: item.permission,
+
+            }),
+
+        ),
     },
 ];
 

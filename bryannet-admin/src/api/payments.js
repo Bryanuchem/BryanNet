@@ -1,5 +1,9 @@
 import apiClient from "./client";
 
+// ==========================================================
+// Query Methods
+// ==========================================================
+
 export async function getPayments(
     filters = {},
 ) {
@@ -7,7 +11,21 @@ export async function getPayments(
     const response = await apiClient.get(
         "/payments",
         {
-            params: filters,
+            params: {
+
+                page: filters.page,
+
+                page_size: filters.pageSize,
+
+                search: filters.search,
+
+                payment_channel:
+                    filters.payment_channel,
+
+                status:
+                    filters.status,
+
+            },
         },
     );
 
@@ -15,7 +33,7 @@ export async function getPayments(
 
 }
 
-export async function getPaymentStats() {
+export async function getPaymentSummary() {
 
     const response = await apiClient.get(
         "/payments/summary",
@@ -26,16 +44,52 @@ export async function getPaymentStats() {
 }
 
 export async function getPayment(
-    paymentId,
+    paymentReference,
 ) {
 
     const response = await apiClient.get(
-        `/payments/${paymentId}`,
+        `/payments/${paymentReference}`,
     );
 
     return response.data;
 
 }
+
+export async function getCustomerPayments(
+    customerId,
+) {
+
+    const response = await apiClient.get(
+        `/payments/customer/${customerId}`,
+    );
+
+    return response.data;
+
+}
+
+export async function getPaymentReceipt(
+    paymentReference,
+) {
+
+    const response = await apiClient.get(
+
+        `/payments/${paymentReference}/receipt`,
+
+        {
+
+            responseType: "blob",
+
+        },
+
+    );
+
+    return response.data;
+
+}
+
+// ==========================================================
+// Business Commands
+// ==========================================================
 
 export async function createPayment(
     paymentData,
@@ -50,29 +104,64 @@ export async function createPayment(
 
 }
 
-export async function updatePayment({
+export async function completePayment(
+    paymentReference,
+    gatewayTransactionId = null,
+) {
 
-    paymentId,
+    const response = await apiClient.post(
 
-    data,
+        `/payments/${paymentReference}/complete`,
 
-}) {
+        null,
 
-    const response = await apiClient.put(
-        `/payments/${paymentId}`,
-        data,
+        {
+
+            params: {
+
+                gateway_transaction_id:
+                    gatewayTransactionId,
+
+            },
+
+        },
+
     );
 
     return response.data;
 
 }
 
-export async function deletePayment(
-    paymentId,
+export async function cancelPayment(
+    paymentReference,
 ) {
 
-    const response = await apiClient.delete(
-        `/payments/${paymentId}`,
+    const response = await apiClient.patch(
+        `/payments/${paymentReference}/cancel`,
+    );
+
+    return response.data;
+
+}
+
+export async function refundPayment(
+    paymentReference,
+) {
+
+    const response = await apiClient.patch(
+        `/payments/${paymentReference}/refund`,
+    );
+
+    return response.data;
+
+}
+
+export async function expirePayment(
+    paymentReference,
+) {
+
+    const response = await apiClient.patch(
+        `/payments/${paymentReference}/expire`,
     );
 
     return response.data;

@@ -1,95 +1,339 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import CompanyBrandingCard from "../../components/settings/branding/CompanyBrandingCard";
-import BrandingAssetsCard from "../../components/settings/branding/BrandingAssetsCard";
-import ThemeColorsCard from "../../components/settings/branding/ThemeColorsCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  companyName: "BryanNet",
-  companyTagline: "Reliable Internet. Exceptional Service.",
-  website: "https://www.bryannet.com",
-  supportEmail: "support@bryannet.com",
+import BrandingSettingsForm from "../../components/settings/branding/BrandingSettingsForm";
+import BrandingSettingsInfoCard from "../../components/settings/branding/BrandingSettingsInfoCard";
 
-  companyLogo: "bryannet-logo.png",
-  favicon: "favicon.ico",
-  loginBackground: "login-background.jpg",
+import {
 
-  primaryColor: "#1976d2",
-  secondaryColor: "#9c27b0",
-  accentColor: "#ff9800",
+    useBrandingSettings,
+
+    useUpdateBrandingSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    logo_url: "",
+
+    primary_color: "#1976d2",
+
+    secondary_color: "#424242",
+
+    login_page_title: "",
+
+    login_page_subtitle: "",
+
+    favicon_url: "",
+
 };
 
 export default function Branding() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving Branding Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="Branding Settings"
-        subtitle="Configure the visual identity of the BryanNet ISP Platform."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useBrandingSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateBrandingSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Branding settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update branding settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <CompanyBrandingCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <BrandingAssetsCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <ThemeColorsCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+        <>
+
+            <PageHeader
+
+                title="Branding Settings"
+
+                subtitle="Customize the visual identity, colours and login experience for the BryanNet ISP Platform."
+
+            />
+
+            <Stack spacing={3}>
+
+                <BrandingSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <BrandingSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

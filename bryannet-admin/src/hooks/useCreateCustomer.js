@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { registerCustomer } from "../services/customers";
+import { registerCustomer } from "../api/customers";
 
 export function useCreateCustomer() {
     const queryClient = useQueryClient();

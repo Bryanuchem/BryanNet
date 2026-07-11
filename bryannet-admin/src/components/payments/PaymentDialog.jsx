@@ -6,8 +6,6 @@ import {
 
 import {
     Autocomplete,
-    CircularProgress,
-    InputAdornment,
     MenuItem,
     TextField,
     Typography,
@@ -25,49 +23,55 @@ import {
 } from "../../hooks/useCustomers";
 
 import {
-    useSubscriptions,
-} from "../../hooks/useSubscriptions";
+    usePlans,
+} from "../../hooks/usePlans";
 
-const PAYMENT_CHANNELS = [
-    "Cash",
-    "Bank Transfer",
-    "POS",
-    "Wallet",
-    "Gateway",
-];
+import {
+
+    PAYMENT_CHANNEL_OPTIONS,
+
+    PAYMENT_PROVIDER_OPTIONS,
+
+    PaymentProvider,
+
+} from "../../constants/payment";
 
 const PAYMENT_METHODS = [
+
     "Opay",
+
     "Moniepoint",
+
     "PalmPay",
+
     "Paystack",
+
     "Flutterwave",
+
     "GTBank",
+
     "Access Bank",
+
     "UBA",
+
     "First Bank",
+
     "Zenith Bank",
+
 ];
 
 const DEFAULT_FORM = {
 
     customer_id: null,
 
-    subscription_id: null,
+    plan_id: null,
 
-    amount: "",
+    payment_provider:
+        PaymentProvider.MANUAL,
 
     payment_channel: "",
 
     payment_method: "",
-
-    status: "successful",
-
-    payment_date: new Date()
-        .toISOString()
-        .slice(0, 16),
-
-    notes: "",
 
 };
 
@@ -77,29 +81,49 @@ function PaymentDialog({
 
     loading = false,
 
-    initialValues = null,
-
     onClose,
 
     onSubmit,
 
 }) {
 
-    const {
-
-        data: customers = [],
-
-        isLoading: customersLoading,
-
-    } = useCustomers();
+    const EMPTY_ARRAY = [];
 
     const {
 
-        data: subscriptions = [],
+        data: customersData,
 
-        isLoading: subscriptionsLoading,
+        isLoading:
+            customersLoading,
 
-    } = useSubscriptions();
+    } = useCustomers({
+
+        page: 1,
+
+        pageSize: 1000,
+
+    });
+
+    const {
+
+        data: plansData,
+
+        isLoading:
+            plansLoading,
+
+    } = usePlans({
+
+        page: 1,
+
+        pageSize: 100,
+
+    });
+
+    const customers =
+        customersData ?? EMPTY_ARRAY;
+
+    const plans =
+        plansData?.items ?? EMPTY_ARRAY;
 
     const [
 
@@ -107,39 +131,55 @@ function PaymentDialog({
 
         setForm,
 
-    ] = useState(DEFAULT_FORM);
+    ] = useState(
+        DEFAULT_FORM,
+    );
 
     useEffect(() => {
 
-        if (!open) {
+        if (
 
-            return;
+            open
+
+        ) {
+
+            setForm(
+                DEFAULT_FORM,
+            );
 
         }
-
-        setForm(
-
-            initialValues
-
-                ? {
-
-                    ...DEFAULT_FORM,
-
-                    ...initialValues,
-
-                }
-
-                : DEFAULT_FORM,
-
-        );
 
     }, [
 
         open,
 
-        initialValues,
-
     ]);
+
+    const filterCustomers = (
+        options,
+        { inputValue },
+    ) => {
+
+        const search =
+            inputValue
+                .toLowerCase()
+                .trim();
+
+        return options.filter((customer) =>
+
+            (customer.full_name ?? "")
+                .toLowerCase()
+                .includes(search)
+
+            ||
+
+            (customer.phone_number ?? "")
+                .toLowerCase()
+                .includes(search)
+
+        );
+
+    };
 
     const selectedCustomer = useMemo(
 
@@ -150,9 +190,10 @@ function PaymentDialog({
                 (customer) =>
 
                     customer.customer_id ===
+
                     form.customer_id,
 
-            ) || null,
+            ) ?? null,
 
         [
 
@@ -164,47 +205,25 @@ function PaymentDialog({
 
     );
 
-    const availableSubscriptions = useMemo(
+    const selectedPlan = useMemo(
 
         () =>
 
-            subscriptions.filter(
+            plans.find(
 
-                (subscription) =>
+                (plan) =>
 
-                    subscription.customer_id ===
-                    form.customer_id,
+                    plan.plan_id ===
 
-            ),
+                    form.plan_id,
 
-        [
-
-            subscriptions,
-
-            form.customer_id,
-
-        ],
-
-    );
-
-    const selectedSubscription = useMemo(
-
-        () =>
-
-            availableSubscriptions.find(
-
-                (subscription) =>
-
-                    subscription.subscription_id ===
-                    form.subscription_id,
-
-            ) || null,
+            ) ?? null,
 
         [
 
-            availableSubscriptions,
+            plans,
 
-            form.subscription_id,
+            form.plan_id,
 
         ],
 
@@ -240,37 +259,29 @@ function PaymentDialog({
 
     ) => {
 
-        setForm(
+        updateField(
 
-            (previous) => ({
+            "customer_id",
 
-                ...previous,
-
-                customer_id:
-
-                    customer?.customer_id ?? null,
-
-                subscription_id: null,
-
-            }),
+            customer?.customer_id ?? null,
 
         );
 
     };
 
-    const handleSubscriptionChange = (
+    const handlePlanChange = (
 
         _,
 
-        subscription,
+        plan,
 
     ) => {
 
         updateField(
 
-            "subscription_id",
+            "plan_id",
 
-            subscription?.subscription_id ?? null,
+            plan?.plan_id ?? null,
 
         );
 
@@ -278,7 +289,9 @@ function PaymentDialog({
 
     const handleSubmit = () => {
 
-        onSubmit(form);
+        onSubmit(
+            form,
+        );
 
     };
 
@@ -292,7 +305,7 @@ function PaymentDialog({
 
             title="Record Payment"
 
-            subtitle="Record a payment received from a customer."
+            subtitle="Record a new customer payment."
 
             icon={
 
@@ -316,7 +329,7 @@ function PaymentDialog({
 
                 !form.customer_id ||
 
-                !form.amount ||
+                !form.plan_id ||
 
                 !form.payment_channel
 
@@ -330,9 +343,9 @@ function PaymentDialog({
 
             <FormSection
 
-                title="Customer Information"
+                title="Customer"
 
-                subtitle="Choose the customer and subscription."
+                subtitle="Select the customer making the payment."
 
             >
 
@@ -343,6 +356,8 @@ function PaymentDialog({
                         <Autocomplete
 
                             options={customers}
+
+                            filterOptions={filterCustomers}
 
                             loading={customersLoading}
 
@@ -355,57 +370,51 @@ function PaymentDialog({
                                 (option, value) =>
 
                                     option.customer_id ===
+
                                     value.customer_id
 
                             }
 
-                            getOptionLabel={(option) =>
+                            getOptionLabel={(option) => {
 
-                                option.full_name || ""
+                                return option.full_name ?? "";
 
-                            }
+                            }}
 
-                            renderOption={(props, option) => (
+                        renderOption={(props, option) => {
 
-                                <li {...props}>
+                            const {
+                                key,
+                                ...optionProps
+                            } = props;
+
+                            return (
+
+                                <li
+                                    key={key}
+                                    {...optionProps}
+                                >
 
                                     <div>
 
-                                        <Typography
-                                            fontWeight={600}
-                                        >
-
+                                        <Typography fontWeight={600}>
                                             {option.full_name}
-
                                         </Typography>
 
                                         <Typography
                                             variant="caption"
                                             color="text.secondary"
                                         >
-
-                                            📞 {option.phone_number}
-
-                                        </Typography>
-
-                                        <br />
-
-                                        <Typography
-                                            variant="caption"
-                                            color="text.secondary"
-                                        >
-
-                                            Customer #
-
-                                            {option.customer_id}
-
+                                            {option.phone_number}
                                         </Typography>
 
                                     </div>
 
                                 </li>
 
-                            )}
+                            );
+
+                        }}
 
                             renderInput={(params) => (
 
@@ -417,69 +426,52 @@ function PaymentDialog({
 
                                     placeholder="Search customer..."
 
-                                    InputProps={{
-
-                                        ...params.InputProps,
-
-                                        endAdornment: (
-
-                                            <>
-
-                                                {customersLoading && (
-
-                                                    <CircularProgress
-                                                        size={18}
-                                                    />
-
-                                                )}
-
-                                                {
-
-                                                    params.InputProps.endAdornment
-
-                                                }
-
-                                            </>
-
-                                        ),
-
-                                    }}
-
                                 />
 
                             )}
-
                         />
 
                     </FormGridItem>
+
+                </FormGrid>
+
+            </FormSection>
+
+            <FormSection
+
+                title="Subscription Plan"
+
+                subtitle="Choose the plan being purchased."
+
+            >
+
+                <FormGrid>
 
                     <FormGridItem>
 
                         <Autocomplete
 
-                            options={availableSubscriptions}
+                            options={plans}
 
-                            loading={subscriptionsLoading}
+                            loading={plansLoading}
 
-                            disabled={!form.customer_id}
+                            value={selectedPlan}
 
-                            value={selectedSubscription}
-
-                            onChange={handleSubscriptionChange}
+                            onChange={handlePlanChange}
 
                             isOptionEqualToValue={
 
                                 (option, value) =>
 
-                                    option.subscription_id ===
-                                    value.subscription_id
+                                    option.plan_id ===
+
+                                    value.plan_id
 
                             }
 
                             getOptionLabel={(option) =>
 
-                                option.plan_name ||
-                                `Subscription #${option.subscription_id}`
+                                option.plan_name ?? ""
 
                             }
 
@@ -502,22 +494,21 @@ function PaymentDialog({
                                             color="text.secondary"
                                         >
 
-                                            {option.status}
+                                            ₦
 
-                                        </Typography>
+                                            {Number(
 
-                                        <br />
+                                                option.price,
 
-                                        <Typography
-                                            variant="caption"
-                                            color="text.secondary"
-                                        >
+                                            ).toLocaleString()}
 
-                                            Expires{" "}
+                                            {" • "}
 
-                                            {new Date(
-                                                option.expiry_date,
-                                            ).toLocaleDateString()}
+                                            {option.duration_days} days
+
+                                            {" • "}
+
+                                            {option.speed_limit_mbps} Mbps
 
                                         </Typography>
 
@@ -533,14 +524,13 @@ function PaymentDialog({
 
                                     {...params}
 
-                                    label="Subscription"
+                                    label="Plan"
 
-                                    placeholder="Select subscription"
+                                    placeholder="Select a plan"
 
                                 />
 
                             )}
-
                         />
 
                     </FormGridItem>
@@ -550,8 +540,13 @@ function PaymentDialog({
             </FormSection>
 
             <FormSection
-                title="Payment Details"
-                subtitle="Enter the payment information."
+
+                title="Payment Information"
+
+                subtitle="Enter how the payment was received."
+
+                divider={false}
+
             >
 
                 <FormGrid>
@@ -560,42 +555,42 @@ function PaymentDialog({
 
                         <TextField
 
+                            select
+
                             fullWidth
 
-                            type="number"
+                            label="Payment Provider"
 
-                            label="Amount"
-
-                            value={form.amount}
+                            value={form.payment_provider}
 
                             onChange={(event) =>
 
                                 updateField(
-                                    "amount",
+
+                                    "payment_provider",
+
                                     event.target.value,
+
                                 )
 
                             }
 
-                            slotProps={{
+                        >
 
-                                input: {
+                            {PAYMENT_PROVIDER_OPTIONS.map((provider) => (
 
-                                    startAdornment: (
+                                <MenuItem
+                                    key={provider.value}
+                                    value={provider.value}
+                                >
 
-                                        <InputAdornment position="start">
+                                    {provider.label}
 
-                                            ₦
+                                </MenuItem>
 
-                                        </InputAdornment>
+                            ))}
 
-                                    ),
-
-                                },
-
-                            }}
-
-                        />
+                        </TextField>
 
                     </FormGridItem>
 
@@ -614,22 +609,24 @@ function PaymentDialog({
                             onChange={(event) =>
 
                                 updateField(
+
                                     "payment_channel",
+
                                     event.target.value,
+
                                 )
 
                             }
 
                         >
-
-                            {PAYMENT_CHANNELS.map((channel) => (
+                            {PAYMENT_CHANNEL_OPTIONS.map((channel) => (
 
                                 <MenuItem
-                                    key={channel}
-                                    value={channel}
+                                    key={channel.value}
+                                    value={channel.value}
                                 >
 
-                                    {channel}
+                                    {channel.label}
 
                                 </MenuItem>
 
@@ -639,7 +636,7 @@ function PaymentDialog({
 
                     </FormGridItem>
 
-                    <FormGridItem md={6}>
+                    <FormGridItem>
 
                         <Autocomplete
 
@@ -652,8 +649,11 @@ function PaymentDialog({
                             onInputChange={(_, value) =>
 
                                 updateField(
+
                                     "payment_method",
+
                                     value,
+
                                 )
 
                             }
@@ -676,136 +676,7 @@ function PaymentDialog({
 
                     </FormGridItem>
 
-                    <FormGridItem md={6}>
-
-                        <TextField
-
-                            select
-
-                            fullWidth
-
-                            label="Status"
-
-                            value={form.status}
-
-                            onChange={(event) =>
-
-                                updateField(
-                                    "status",
-                                    event.target.value,
-                                )
-
-                            }
-
-                        >
-
-                            <MenuItem value="successful">
-
-                                🟢 Successful
-
-                            </MenuItem>
-
-                            <MenuItem value="pending">
-
-                                🟡 Pending
-
-                            </MenuItem>
-
-                            <MenuItem value="failed">
-
-                                🔴 Failed
-
-                            </MenuItem>
-
-                            <MenuItem value="cancelled">
-
-                                ⚫ Cancelled
-
-                            </MenuItem>
-
-                            <MenuItem value="refunded">
-
-                                🔵 Refunded
-
-                            </MenuItem>
-
-                        </TextField>
-
-                    </FormGridItem>
-
-                    <FormGridItem>
-
-                        <TextField
-
-                            fullWidth
-
-                            type="datetime-local"
-
-                            label="Payment Date"
-
-                            value={form.payment_date}
-
-                            onChange={(event) =>
-
-                                updateField(
-                                    "payment_date",
-                                    event.target.value,
-                                )
-
-                            }
-
-                            slotProps={{
-
-                                inputLabel: {
-
-                                    shrink: true,
-
-                                },
-
-                            }}
-
-                        />
-
-                    </FormGridItem>
-
                 </FormGrid>
-
-            </FormSection>
-
-            <FormSection
-
-                title="Additional Information"
-
-                subtitle="Optional information for future reference."
-
-                divider={false}
-
-            >
-
-                <TextField
-
-                    fullWidth
-
-                    multiline
-
-                    rows={4}
-
-                    label="Notes"
-
-                    placeholder="Enter any notes about this payment..."
-
-                    value={form.notes}
-
-                    onChange={(event) =>
-
-                        updateField(
-                            "notes",
-                            event.target.value,
-                        )
-
-                    }
-
-                />
 
             </FormSection>
 
@@ -815,4 +686,4 @@ function PaymentDialog({
 
 }
 
-export default PaymentDialog;            
+export default PaymentDialog;    

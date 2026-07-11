@@ -1,41 +1,78 @@
 import {
+    useEffect,
+    useState,
+} from "react";
+
+import {
     Autocomplete,
-    Box,
     Button,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
-    Divider,
-    MenuItem,
-    Paper,
-    Stack,
+    Grid,
     TextField,
-    Typography,
 } from "@mui/material";
 
 function SubscriptionPurchaseDialog({
+
     open,
-    customers = [],
-    plans = [],
-    subscription,
-    onChange,
+
+    customers,
+
+    plans,
+
     onClose,
-    onPurchase,
+
+    onSubmit,
+
 }) {
 
-    const selectedPlan = plans.find(
-        (plan) =>
-            Number(plan.plan_id) ===
-            Number(subscription?.plan_id)
-    );
+    const [
+        formData,
+        setFormData,
+    ] = useState({
 
-    const selectedCustomer =
-        customers.find(
-            (customer) =>
-                Number(customer.customer_id) ===
-                Number(subscription?.customer_id)
-        ) || null;
+        customer_id: "",
+
+        plan_id: "",
+
+    });
+
+    useEffect(() => {
+
+        if (!open) {
+
+            return;
+
+        }
+
+        setFormData({
+
+            customer_id: "",
+
+            plan_id: "",
+
+        });
+
+    }, [open]);
+
+
+    const handleSubmit = () => {
+
+        onSubmit({
+
+            customer_id: Number(
+                formData.customer_id,
+            ),
+
+            plan_id: Number(
+                formData.plan_id,
+            ),
+
+        });
+
+    };
 
     return (
 
@@ -47,281 +84,190 @@ function SubscriptionPurchaseDialog({
         >
 
             <DialogTitle>
-                New Subscription
+
+                Purchase Subscription
+
             </DialogTitle>
 
-            <DialogContent>
+            <DialogContent dividers>
 
-                <Stack
-                    spacing={3}
-                    sx={{ mt: 1 }}
+                <Grid
+                    container
+                    spacing={2}
+                    sx={{
+                        mt: 0.5,
+                    }}
                 >
 
-                    <Autocomplete
-                        fullWidth
-                        options={customers}
-                        value={selectedCustomer}
-                        isOptionEqualToValue={(option, value) =>
-                            option.customer_id === value.customer_id
-                        }
-                        getOptionLabel={(option) =>
-                            `${option.full_name ?? ""} (${option.phone_number ?? "No Phone"})`
-                        }
-                        filterOptions={(options, state) => {
+                    <Grid size={{ xs: 12 }}>
 
-                            const search = state.inputValue
-                                .toLowerCase()
-                                .trim();
+                        <Autocomplete
 
-                            return options.filter((customer) =>
+                            options={customers}
 
-                                (customer.full_name ?? "")
-                                    .toLowerCase()
-                                    .includes(search)
+                            value={
 
-                                ||
+                                customers.find(
 
-                                (customer.phone_number ?? "")
-                                    .toLowerCase()
-                                    .includes(search)
+                                    (customer) =>
 
-                                ||
+                                        customer.customer_id ===
 
-                                String(customer.customer_id)
-                                    .includes(search)
+                                        Number(
+                                            formData.customer_id,
+                                        ),
 
-                            );
+                                ) ?? null
 
-                        }}                        
-                        onChange={(event, customer) => {
+                            }
 
-                            onChange({
-                                target: {
-                                    name: "customer_id",
-                                    value: customer
-                                        ? customer.customer_id
-                                        : "",
-                                },
-                            });
+                            getOptionLabel={(customer) =>
 
-                        }}
-                        renderOption={(props, option) => (
+                                customer.full_name
 
-                            <li
-                                {...props}
-                                key={option.customer_id}
-                            >
+                            }
 
-                                <Box>
+                            isOptionEqualToValue={
 
-                                    <Typography
-                                        fontWeight={600}
-                                    >
-                                        {option.full_name}
-                                    </Typography>
+                                (option, value) =>
 
-                                    <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                    >
-                                        {option.phone_number ?? "No phone number"}
-                                    </Typography>
+                                    option.customer_id ===
+                                    value.customer_id
 
-                                    <Typography
-                                        variant="caption"
-                                        display="block"
-                                        color="text.secondary"
-                                    >
-                                        Customer #{option.customer_id}
-                                    </Typography>
+                            }
 
-                                </Box>
+                            onChange={(_, customer) => {
 
-                            </li>
+                                setFormData((previous) => ({
 
-                        )}                        
-                        renderInput={(params) => (
+                                    ...previous,
 
-                            <TextField
-                                {...params}
-                                label="Customer"
-                                placeholder="Search by name, phone or customer ID..."
-                            />
+                                    customer_id:
 
-                        )}
-                    />
+                                        customer?.customer_id ??
 
-                    <TextField
-                        select
-                        fullWidth
-                        label="Internet Plan"
-                        name="plan_id"
-                        value={
-                            subscription?.plan_id ?? ""
-                        }
-                        onChange={onChange}
-                    >
+                                        "",
 
-                        {plans.map((plan) => (
+                                }));
 
-                            <MenuItem
-                                key={plan.plan_id}
-                                value={plan.plan_id}
-                            >
-                                {plan.plan_name}
-                            </MenuItem>
-
-                        ))}
-
-                    </TextField>
-
-                    <Divider />
-
-                    <Paper
-                        variant="outlined"
-                        sx={{
-                            p: 3,
-                            borderRadius: 2,
-                            bgcolor: "grey.50",
-                        }}
-                    >
-
-                        <Typography
-                            variant="subtitle1"
-                            fontWeight={700}
-                            sx={{
-                                mb: 2,
                             }}
-                        >
-                            Selected Plan
-                        </Typography>
 
-                        <Stack spacing={2}>
+                            renderInput={(params) => (
 
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
+                                <TextField
 
-                                <Typography
-                                    color="text.secondary"
-                                >
-                                    Price
-                                </Typography>
+                                    {...params}
 
-                                <Typography
-                                    fontWeight={600}
-                                >
-                                    {selectedPlan
-                                        ? `₦${Number(
-                                            selectedPlan.price
-                                        ).toLocaleString()}`
-                                        : "--"}
-                                </Typography>
+                                    required
 
-                            </Box>
+                                    label="Customer"
 
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
+                                />
 
-                                <Typography
-                                    color="text.secondary"
-                                >
-                                    Duration
-                                </Typography>
+                            )}
 
-                                <Typography
-                                    fontWeight={600}
-                                >
-                                    {selectedPlan
-                                        ? `${selectedPlan.duration_days} Days`
-                                        : "--"}
-                                </Typography>
+                        />
 
-                            </Box>
+                    </Grid>
 
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
+                    <Grid size={{ xs: 12 }}>
 
-                                <Typography
-                                    color="text.secondary"
-                                >
-                                    Starts
-                                </Typography>
+                        <Autocomplete
 
-                                <Typography
-                                    fontWeight={600}
-                                >
-                                    Immediately
-                                </Typography>
+                            options={plans}
 
-                            </Box>
+                            value={
 
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
+                                plans.find(
 
-                                <Typography
-                                    color="text.secondary"
-                                >
-                                    Expiry
-                                </Typography>
+                                    (plan) =>
 
-                                <Typography
-                                    fontWeight={600}
-                                >
-                                    Automatically Calculated
-                                </Typography>
+                                        plan.plan_id ===
 
-                            </Box>
+                                        Number(
+                                            formData.plan_id,
+                                        ),
 
-                        </Stack>
+                                ) ?? null
 
-                    </Paper>
+                            }
 
-                </Stack>
+                            getOptionLabel={(plan) =>
+
+                                `${plan.plan_name} • ₦${Number(
+                                    plan.price,
+                                ).toLocaleString()}`
+
+                            }
+
+                            isOptionEqualToValue={
+
+                                (option, value) =>
+
+                                    option.plan_id ===
+                                    value.plan_id
+
+                            }
+
+                            onChange={(_, plan) => {
+
+                                setFormData((previous) => ({
+
+                                    ...previous,
+
+                                    plan_id:
+
+                                        plan?.plan_id ??
+
+                                        "",
+
+                                }));
+
+                            }}
+
+                            renderInput={(params) => (
+
+                                <TextField
+
+                                    {...params}
+
+                                    required
+
+                                    label="Plan"
+
+                                />
+
+                            )}
+
+                        />
+
+                    </Grid>
+
+                </Grid>
 
             </DialogContent>
 
-            <DialogActions
-                sx={{
-                    px: 3,
-                    pb: 3,
-                }}
-            >
+            <DialogActions>
 
                 <Button
                     onClick={onClose}
                 >
+
                     Cancel
+
                 </Button>
 
                 <Button
                     variant="contained"
-                    onClick={onPurchase}
+                    onClick={handleSubmit}
                     disabled={
-                        !subscription?.customer_id ||
-                        !subscription?.plan_id
+                        !formData.customer_id ||
+                        !formData.plan_id
                     }
                 >
-                    Purchase Subscription
+
+                    Purchase
+
                 </Button>
 
             </DialogActions>

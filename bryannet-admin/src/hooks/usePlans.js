@@ -1,98 +1,51 @@
-import {
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import {
-    createPlan,
-    deletePlan,
-    getPlan,
-    getPlans,
-    updatePlan,
-} from "../api/plans";
+import { getPlans } from "../api/plans";
 
-const QUERY_KEY = ["plans"];
+export const usePlans = ({
+    page = 1,
+    pageSize = 25,
+    search = "",
+    isActive,
+    sortBy = "price",
+    sortOrder = "asc",
+} = {}) => {
 
+    return useQuery({
 
-export const usePlans = () =>
-    useQuery({
-        queryKey: QUERY_KEY,
-        queryFn: getPlans,
-    });
-
-
-export const usePlan = (
-    planId
-) =>
-    useQuery({
         queryKey: [
-            ...QUERY_KEY,
-            planId,
+
+            "plans",
+
+            {
+                page,
+                pageSize,
+                search,
+                isActive,
+                sortBy,
+                sortOrder,
+            },
+
         ],
+
         queryFn: () =>
-            getPlan(planId),
-        enabled: !!planId,
-    });
+            getPlans({
 
+                page,
 
-export const useCreatePlan = () => {
+                page_size: pageSize,
 
-    const queryClient = useQueryClient();
+                search,
 
-    return useMutation({
+                is_active: isActive,
 
-        mutationFn: createPlan,
+                sort_by: sortBy,
 
-        onSuccess: () => {
+                sort_order: sortOrder,
 
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
+            }),
 
-        },
-
-    });
-
-};
-
-
-export const useUpdatePlan = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: updatePlan,
-
-        onSuccess: () => {
-
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-
-        },
-
-    });
-
-};
-
-
-export const useDeletePlan = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: deletePlan,
-
-        onSuccess: () => {
-
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-
-        },
+        keepPreviousData: true,
 
     });
 

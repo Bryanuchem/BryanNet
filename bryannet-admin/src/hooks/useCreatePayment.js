@@ -7,18 +7,39 @@ import {
     createPayment,
 } from "../api/payments";
 
-export default function useCreatePayment() {
+import {
 
-    const queryClient = useQueryClient();
+    PAYMENTS_QUERY_KEY,
+
+    PAYMENT_SUMMARY_QUERY_KEY,
+
+} from "./usePayments";
+
+
+export function useCreatePayment() {
+
+    const queryClient =
+        useQueryClient();
 
     return useMutation({
 
-        mutationFn: createPayment,
+        mutationFn:
+            createPayment,
 
         onSuccess: () => {
 
             queryClient.invalidateQueries({
-                queryKey: ["payments"],
+
+                queryKey:
+                    PAYMENTS_QUERY_KEY,
+
+            });
+
+            queryClient.invalidateQueries({
+
+                queryKey:
+                    PAYMENT_SUMMARY_QUERY_KEY,
+
             });
 
         },

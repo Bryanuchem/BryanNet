@@ -1,132 +1,80 @@
-import {
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import {
-    deleteSubscription,
-    getSubscription,
     getSubscriptions,
-    purchaseSubscription,
-    renewSubscription,
-    updateSubscription,
-    updateSubscriptionStatus,
 } from "../api/subscriptions";
 
-const QUERY_KEY = ["subscriptions"];
+export const useSubscriptions = ({
 
+    page = 1,
 
-export const useSubscriptions = () =>
-    useQuery({
-        queryKey: QUERY_KEY,
-        queryFn: getSubscriptions,
-    });
+    pageSize = 25,
 
+    search = "",
 
-export const useSubscription = (
-    subscriptionId
-) =>
-    useQuery({
+    customerId,
+
+    planId,
+
+    status,
+
+    sortBy = "created_at",
+
+    sortOrder = "desc",
+
+} = {}) => {
+
+    return useQuery({
+
         queryKey: [
-            ...QUERY_KEY,
-            subscriptionId,
+
+            "subscriptions",
+
+            {
+
+                page,
+
+                pageSize,
+
+                search,
+
+                customerId,
+
+                planId,
+
+                status,
+
+                sortBy,
+
+                sortOrder,
+
+            },
+
         ],
+
         queryFn: () =>
-            getSubscription(subscriptionId),
-        enabled: !!subscriptionId,
-    });
 
+            getSubscriptions({
 
-export const usePurchaseSubscription = () => {
+                page,
 
-    const queryClient = useQueryClient();
+                page_size: pageSize,
 
-    return useMutation({
+                search,
 
-        mutationFn: purchaseSubscription,
+                customer_id: customerId,
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-        },
+                plan_id: planId,
 
-    });
+                status,
 
-};
+                sort_by: sortBy,
 
+                sort_order: sortOrder,
 
-export const useUpdateSubscription = () => {
+            }),
 
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: updateSubscription,
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-        },
-
-    });
-
-};
-
-
-export const useUpdateSubscriptionStatus = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: updateSubscriptionStatus,
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-        },
-
-    });
-
-};
-
-
-export const useRenewSubscription = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: renewSubscription,
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-        },
-
-    });
-
-};
-
-
-export const useDeleteSubscription = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn: deleteSubscription,
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: QUERY_KEY,
-            });
-        },
+        keepPreviousData: true,
 
     });
 

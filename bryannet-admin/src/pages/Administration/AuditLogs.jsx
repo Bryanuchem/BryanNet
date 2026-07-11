@@ -1,13 +1,7 @@
-import { useMemo, useState } from "react";
 import {
-  Box,
-  Button,
-  MenuItem,
-  Stack,
-  TextField,
-} from "@mui/material";
-
-import RefreshIcon from "@mui/icons-material/Refresh";
+    useMemo,
+    useState,
+} from "react";
 
 import PageHeader from "../../components/common/PageHeader";
 
@@ -15,192 +9,274 @@ import AuditLogFilters from "../../components/admin/audit-logs/AuditLogFilters";
 import AuditLogTable from "../../components/admin/audit-logs/AuditLogTable";
 import AuditLogDetailsDialog from "../../components/admin/audit-logs/AuditLogDetailsDialog";
 
-const initialLogs = [
-  {
-    id: 1,
-    timestamp: "30 Jun 2026 10:15",
-    user: "Bryan",
-    module: "Customers",
-    action: "Created",
-    target: "John Doe",
-    status: "Success",
-    ipAddress: "192.168.1.15",
-    description: "Created a new customer account.",
-  },
-  {
-    id: 2,
-    timestamp: "30 Jun 2026 10:28",
-    user: "Mary",
-    module: "Plans",
-    action: "Updated",
-    target: "Premium 20 Mbps",
-    status: "Success",
-    ipAddress: "192.168.1.18",
-    description: "Updated plan pricing.",
-  },
-  {
-    id: 3,
-    timestamp: "30 Jun 2026 11:02",
-    user: "Bryan",
-    module: "Roles",
-    action: "Updated",
-    target: "Technician",
-    status: "Success",
-    ipAddress: "192.168.1.15",
-    description: "Modified role permissions.",
-  },
-  {
-    id: 4,
-    timestamp: "30 Jun 2026 11:40",
-    user: "Peter",
-    module: "Subscriptions",
-    action: "Suspended",
-    target: "Subscription #145",
-    status: "Warning",
-    ipAddress: "192.168.1.22",
-    description: "Suspended customer subscription.",
-  },
-  {
-    id: 5,
-    timestamp: "30 Jun 2026 12:10",
-    user: "Grace",
-    module: "Devices",
-    action: "Deleted",
-    target: "Router-014",
-    status: "Failed",
-    ipAddress: "192.168.1.30",
-    description: "Device deletion failed.",
-  },
-];
+import {
+    useAuditLogs,
+} from "../../hooks/useAuditLogs";
 
-export default function AuditLogs() {
-  const [logs] = useState(initialLogs);
+import {
+    useCurrentPermissions
+} from "../../hooks/useCurrentPermissions";
 
-  const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState("");
-  const [selectedModule, setSelectedModule] = useState("");
-  const [selectedAction, setSelectedAction] = useState("");
+function AuditLogs() {
 
-  const [selectedLog, setSelectedLog] = useState(null);
+    const [
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesSearch =
-        search === "" ||
-        log.target.toLowerCase().includes(search.toLowerCase()) ||
-        log.user.toLowerCase().includes(search.toLowerCase());
+        filters,
 
-      const matchesUser =
-        selectedUser === "" || log.user === selectedUser;
+        setFilters,
 
-      const matchesModule =
-        selectedModule === "" || log.module === selectedModule;
+    ] = useState({
 
-      const matchesAction =
-        selectedAction === "" || log.action === selectedAction;
+        search: "",
 
-      return (
-        matchesSearch &&
-        matchesUser &&
-        matchesModule &&
-        matchesAction
-      );
+        action: "",
+
+        result: "",
+
+        admin_id: "",
+
     });
-  }, [
-    logs,
-    search,
-    selectedUser,
-    selectedModule,
-    selectedAction,
-  ]);
 
-  return (
-    <Box>
-      <PageHeader
-        title="Audit Logs"
-        subtitle="Review administrator activity across the BryanNet ISP Platform."
-        actions={
-          <Button
-            variant="contained"
-            startIcon={<RefreshIcon />}
-          >
-            Refresh
-          </Button>
+    const [
+
+        selectedAuditLog,
+
+        setSelectedAuditLog,
+
+    ] = useState(null);
+
+const {
+
+    hasPermission,
+
+} = useCurrentPermissions();
+
+    const [
+
+        detailsDialogOpen,
+
+        setDetailsDialogOpen,
+
+    ] = useState(false);
+
+    const {
+
+        data: auditLogs = [],
+
+        isLoading,
+
+        refetch,
+
+    } = useAuditLogs(
+        filters,
+    );
+
+    const filteredAuditLogs = useMemo(
+
+        () => auditLogs,
+
+        [
+
+            auditLogs,
+
+        ],
+
+    );
+
+    const handleFilterChange = (
+
+        field,
+
+        value,
+
+    ) => {
+
+        setFilters(
+
+            (previous) => ({
+
+                ...previous,
+
+                [field]: value,
+
+            }),
+
+        );
+
+    };
+
+    const handleRefresh = () => {
+
+        refetch();
+
+    };
+
+    const handleClear = () => {
+
+        setFilters({
+
+            search: "",
+
+            action: "",
+
+            result: "",
+
+            admin_id: "",
+
+        });
+
+    };
+
+    const handleView = (
+
+        auditLog,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "audit_logs.view",
+
+            )
+
+        ) {
+
+            return;
+
         }
-      />
 
-      <Stack spacing={3}>
-        <AuditLogFilters
-          search={search}
-          onSearchChange={setSearch}
-        />
+        setSelectedAuditLog(
 
-        <Stack direction="row" spacing={2}>
-          <TextField
-            select
-            label="User"
-            value={selectedUser}
-            onChange={(e) =>
-              setSelectedUser(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Bryan">Bryan</MenuItem>
-            <MenuItem value="Mary">Mary</MenuItem>
-            <MenuItem value="Peter">Peter</MenuItem>
-            <MenuItem value="Grace">Grace</MenuItem>
-          </TextField>
+            auditLog,
 
-          <TextField
-            select
-            label="Module"
-            value={selectedModule}
-            onChange={(e) =>
-              setSelectedModule(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Customers">Customers</MenuItem>
-            <MenuItem value="Plans">Plans</MenuItem>
-            <MenuItem value="Roles">Roles</MenuItem>
-            <MenuItem value="Subscriptions">
-              Subscriptions
-            </MenuItem>
-            <MenuItem value="Devices">Devices</MenuItem>
-          </TextField>
+        );
 
-          <TextField
-            select
-            label="Action"
-            value={selectedAction}
-            onChange={(e) =>
-              setSelectedAction(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Created">Created</MenuItem>
-            <MenuItem value="Updated">Updated</MenuItem>
-            <MenuItem value="Suspended">
-              Suspended
-            </MenuItem>
-            <MenuItem value="Deleted">Deleted</MenuItem>
-          </TextField>
-        </Stack>
+        setDetailsDialogOpen(
 
-        <AuditLogTable
-          logs={filteredLogs}
-          onView={setSelectedLog}
-        />
-      </Stack>
+            true,
 
-      <AuditLogDetailsDialog
-        open={Boolean(selectedLog)}
-        log={selectedLog}
-        onClose={() => setSelectedLog(null)}
-      />
-    </Box>
-  );
+        );
+
+    };
+
+    const handleCloseDialog = () => {
+
+        setSelectedAuditLog(
+            null,
+        );
+
+        setDetailsDialogOpen(
+            false,
+        );
+
+    };
+
+    return (
+
+        <>
+
+            <PageHeader
+
+                title="Audit Logs"
+
+                subtitle="Review administrator and system activity across the platform."
+
+            />
+
+            <AuditLogFilters
+
+                filters={filters}
+
+                onFilterChange={
+
+                    handleFilterChange
+
+                }
+
+                onRefresh={
+
+                    handleRefresh
+
+                }
+
+                onClear={
+
+                    handleClear
+
+                }
+
+                auditLogs={
+
+                    filteredAuditLogs
+
+                }
+
+            />
+
+            <AuditLogTable
+
+                auditLogs={
+
+                    filteredAuditLogs
+
+                }
+
+                loading={
+
+                    isLoading
+
+                }
+
+                onRowClick={
+
+                    handleView
+
+                }
+
+                onView={
+
+                    handleView
+
+                }
+
+            />
+
+            {hasPermission(
+
+                "audit_logs.view",
+
+            ) && (
+
+                <AuditLogDetailsDialog
+
+                    open={
+
+                        detailsDialogOpen
+
+                    }
+
+                    auditLog={
+
+                        selectedAuditLog
+
+                    }
+
+                    onClose={
+
+                        handleCloseDialog
+
+                    }
+
+                />
+
+            )}
+
+        </>
+
+    );
+
 }
+
+export default AuditLogs;

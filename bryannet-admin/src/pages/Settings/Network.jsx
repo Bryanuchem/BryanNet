@@ -1,97 +1,337 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import NetworkDefaultsCard from "../../components/settings/network/NetworkDefaultsCard";
-import IpAddressManagementCard from "../../components/settings/network/IpAddressManagementCard";
-import RouterDefaultsCard from "../../components/settings/network/RouterDefaultsCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  defaultGateway: "192.168.1.1",
-  subnetMask: "255.255.255.0",
-  primaryDns: "8.8.8.8",
-  secondaryDns: "8.8.4.4",
+import NetworkSettingsForm from "../../components/settings/network/NetworkSettingsForm";
+import NetworkSettingsInfoCard from "../../components/settings/network/NetworkSettingsInfoCard";
 
-  addressPool: "192.168.1.100 - 192.168.1.250",
-  leaseDuration: "24 Hours",
-  dhcpEnabled: true,
-  autoAssignAddresses: true,
+import {
 
-  defaultRouterName: "BryanNet-Router",
-  managementVlan: "10",
-  managementInterface: "ether1",
-  defaultMtu: "1500",
+    useNetworkSettings,
+
+    useUpdateNetworkSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    default_router: "",
+
+    dns_primary: "",
+
+    dns_secondary: "",
+
+    dhcp_lease_time: 24,
+
+    bandwidth_unit: "Mbps",
+
 };
 
 export default function Network() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving Network Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="Network Settings"
-        subtitle="Configure default network, IP address management and router settings."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useNetworkSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateNetworkSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Network settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update network settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <NetworkDefaultsCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <IpAddressManagementCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <RouterDefaultsCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+        <>
+
+            <PageHeader
+
+                title="Network Settings"
+
+                subtitle="Configure the default networking configuration used across the BryanNet ISP Platform."
+
+            />
+
+            <Stack spacing={3}>
+
+                <NetworkSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <NetworkSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

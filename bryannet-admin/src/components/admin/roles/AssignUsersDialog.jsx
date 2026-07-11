@@ -1,163 +1,567 @@
-import { useMemo, useState } from "react";
+import {
+
+    useMemo,
+
+    useState,
+
+} from "react";
 
 import {
-  Avatar,
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  InputAdornment,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Stack,
-  TextField,
-  Typography,
+
+    Avatar,
+
+    Box,
+
+    Button,
+
+    Chip,
+
+    Dialog,
+
+    DialogActions,
+
+    DialogContent,
+
+    DialogTitle,
+
+    Divider,
+
+    List,
+
+    ListItem,
+
+    ListItemAvatar,
+
+    ListItemText,
+
+    MenuItem,
+
+    Stack,
+
+    TextField,
+
+    Typography,
+
 } from "@mui/material";
 
-import SearchIcon from "@mui/icons-material/Search";
+import SearchBar from "../../common/SearchBar";
 
-const administrators = [
-  {
-    id: 1,
-    name: "Bryan Uche",
-    email: "bryan@bryannet.com",
-  },
-  {
-    id: 2,
-    name: "Mary Johnson",
-    email: "mary@bryannet.com",
-  },
-  {
-    id: 3,
-    name: "John Doe",
-    email: "john@bryannet.com",
-  },
-  {
-    id: 4,
-    name: "Peter Williams",
-    email: "peter@bryannet.com",
-  },
-  {
-    id: 5,
-    name: "Grace Adams",
-    email: "grace@bryannet.com",
-  },
-];
+import {
+
+    useRoles,
+
+} from "../../../hooks/useRoles";
+
+import {
+
+    useChangeAdminRole,
+
+} from "../../../hooks/useChangeAdminRole";
+
+import AppSnackbar from "../../common/AppSnackbar";
 
 export default function AssignUsersDialog({
-  open,
-  role,
-  onClose,
+
+    open,
+
+    role,
+
+    administrators = [],
+
+    onClose,
+
 }) {
-  const [search, setSearch] = useState("");
 
-  const filteredUsers = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const [
 
-    if (!query) {
-      return administrators;
+        search,
+
+        setSearch,
+
+    ] = useState("");
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const {
+
+        data: roles = [],
+
+    } = useRoles();
+
+    const changeRole =
+
+        useChangeAdminRole({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Administrator role updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update administrator role.",
+
+                });
+
+            },
+
+        });
+
+    const filteredUsers = useMemo(
+
+        () => {
+
+            const query =
+
+                search
+
+                    .trim()
+
+                    .toLowerCase();
+
+            const items =
+
+                administrators.items ??
+
+                administrators;
+
+            if (
+
+                !query
+
+            ) {
+
+                return items;
+
+            }
+
+            return items.filter(
+
+                (
+
+                    administrator,
+
+                ) =>
+
+                    administrator.username
+
+                        ?.toLowerCase()
+
+                        .includes(
+
+                            query,
+
+                        ) ||
+
+                    administrator.email
+
+                        ?.toLowerCase()
+
+                        .includes(
+
+                            query,
+
+                        ),
+
+            );
+
+        },
+
+        [
+
+            administrators,
+
+            search,
+
+        ],
+
+    );
+
+    function handleRoleChange(
+
+        adminUser,
+
+        newRoleId,
+
+    ) {
+
+        if (
+
+            Number(
+
+                adminUser.role_id,
+
+            ) === Number(
+
+                newRoleId,
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        changeRole.mutate({
+
+            adminUserId:
+
+                adminUser.admin_user_id,
+
+            roleId:
+
+                Number(
+
+                    newRoleId,
+
+                ),
+
+        });
+
     }
 
-    return administrators.filter(
-      (user) =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
-    );
-  }, [search]);
+    return (
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle>
-        Assign Users
-      </DialogTitle>
+        <>
 
-      <DialogContent dividers>
-        <Stack spacing={3}>
-          <Box>
-            <Typography variant="body1">
-              Role
-            </Typography>
+            <Dialog
 
-            <Chip
-              sx={{ mt: 1 }}
-              color="primary"
-              label={role?.name ?? "New Role"}
-            />
-          </Box>
+                open={open}
 
-          <TextField
-            fullWidth
-            placeholder="Search administrators..."
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
+                onClose={onClose}
 
-          <Divider />
+                fullWidth
 
-          <List disablePadding>
-            {filteredUsers.map((user) => (
-              <ListItem
-                key={user.id}
-                secondaryAction={
-                  <Button variant="outlined">
-                    Assign
-                  </Button>
+                maxWidth="md"
+
+            >
+
+                <DialogTitle>
+
+                    Manage Administrators
+
+                </DialogTitle>
+
+                <DialogContent dividers>
+
+                    <Stack spacing={3}>
+
+                        <Stack spacing={1}>
+
+                            <Typography>
+
+                                Role
+
+                            </Typography>
+
+                            <Chip
+
+                                color="primary"
+
+                                label={
+
+                                    role?.role_name ??
+
+                                    "-"
+
+                                }
+
+                            />
+
+                        </Stack>
+
+                        <SearchBar
+
+                            value={search}
+
+                            onChange={(
+
+                                event,
+
+                            ) =>
+
+                                setSearch(
+
+                                    event.target.value,
+
+                                )
+
+                            }
+
+                            placeholder="Search administrators..."
+
+                        />
+
+                        <Divider />
+
+                        <List disablePadding>
+
+                            {filteredUsers.map(
+
+                                (
+
+                                    administrator,
+
+                                ) => (
+
+                                    <ListItem
+
+                                        key={
+
+                                            administrator.admin_user_id
+
+                                        }
+
+                                        secondaryAction={
+
+                                            <TextField
+
+                                                select
+
+                                                size="small"
+
+                                                value={
+
+                                                    administrator.role_id
+
+                                                }
+
+                                                onChange={(
+
+                                                    event,
+
+                                                ) =>
+
+                                                    handleRoleChange(
+
+                                                        administrator,
+
+                                                        event.target.value,
+
+                                                    )
+
+                                                }
+
+                                                sx={{
+
+                                                    minWidth: 180,
+
+                                                }}
+
+                                            >
+
+                                                {roles.map(
+
+                                                    (
+
+                                                        item,
+
+                                                    ) => (
+
+                                                        <MenuItem
+
+                                                            key={
+
+                                                                item.role_id
+
+                                                            }
+
+                                                            value={
+
+                                                                item.role_id
+
+                                                            }
+
+                                                        >
+
+                                                            {
+
+                                                                item.role_name
+
+                                                            }
+
+                                                        </MenuItem>
+
+                                                    ),
+
+                                                )}
+
+                                            </TextField>
+
+                                        }
+
+                                    >
+
+                                        <ListItemAvatar>
+
+                                            <Avatar>
+
+                                                {administrator.username?.charAt(
+
+                                                    0,
+
+                                                )}
+
+                                            </Avatar>
+
+                                        </ListItemAvatar>
+
+                                        <ListItemText
+
+                                            primary={
+
+                                                administrator.username
+
+                                            }
+
+                                            secondary={
+
+                                                administrator.email
+
+                                            }
+
+                                        />
+
+                                    </ListItem>
+
+                                ),
+
+                            )}
+
+                            {filteredUsers.length === 0 && (
+
+                                <Box
+
+                                    sx={{
+
+                                        py: 6,
+
+                                        textAlign: "center",
+
+                                    }}
+
+                                >
+
+                                    <Typography
+
+                                        color="text.secondary"
+
+                                    >
+
+                                        No administrators found.
+
+                                    </Typography>
+
+                                </Box>
+
+                            )}
+
+                        </List>
+
+                    </Stack>
+
+                </DialogContent>
+
+                <DialogActions>
+
+                    <Button
+
+                        onClick={onClose}
+
+                    >
+
+                        Close
+
+                    </Button>
+
+                </DialogActions>
+
+            </Dialog>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
                 }
-              >
-                <ListItemAvatar>
-                  <Avatar>
-                    {user.name.charAt(0)}
-                  </Avatar>
-                </ListItemAvatar>
 
-                <ListItemText
-                  primary={user.name}
-                  secondary={user.email}
-                />
-              </ListItem>
-            ))}
+                message={
 
-            {filteredUsers.length === 0 && (
-              <Box
-                sx={{
-                  py: 6,
-                  textAlign: "center",
-                }}
-              >
-                <Typography color="text.secondary">
-                  No administrators found.
-                </Typography>
-              </Box>
-            )}
-          </List>
-        </Stack>
-      </DialogContent>
+                    snackbar.message
 
-      <DialogActions>
-        <Button onClick={onClose}>
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

@@ -1,0 +1,5287 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BryanNet API",
+    "version": "1.0.0",
+    "description": "Backend API for the BryanNet ISP Management Platform.\n\nBryanNet automates the sale, activation, renewal, and monitoring of internet subscriptions. The backend is the single source of business logic for every client -- the admin dashboard, the Telegram bot, and any future customer portal.\n\n### Authentication\nMost endpoints require a Bearer JWT obtained from `POST /auth/login`. Pass it as `Authorization: Bearer <token>`. Tokens are tied to a specific admin session record; closing or expiring that session invalidates the token even before its JWT expiry.\n\nA small number of endpoints are intentionally unauthenticated because they are called by the Telegram bot before a customer has any credentials to present (see the Customers and Session sections).\n\n### Error format\nAll error responses share one envelope:\n\n```json\n{\n  \"success\": false,\n  \"message\": \"Human-readable description of what went wrong.\"\n}\n```\n\nValidation errors (422) additionally include an `errors` array with the field-level Pydantic validation details.\n\n### Rate limiting\nSelected sensitive or expensive endpoints are rate-limited per client IP (see individual endpoints for limits). Exceeding a limit returns `429 Too Many Requests`.",
+    "contact": {
+      "name": "BryanNet Engineering"
+    }
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Admin login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Authenticates an administrator with username and password, creates a new admin session record, logs the login in the audit trail, and returns a JWT bearer token scoped to that session. Rate limited to 5 requests/minute per client IP.",
+        "security": []
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get current admin",
+        "operationId": "get_current_admin_details_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns the identity of the administrator associated with the current bearer token."
+      }
+    },
+    "/api/v1/administration/overview": {
+      "get": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Administration overview",
+        "operationId": "get_administration_overview_api_v1_administration_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationOverviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Returns a combined snapshot for the administration screen: headline metrics (admin user count, active sessions, roles, audit/system events today), the most recent audit log entries, currently active sessions, and recent system activity."
+      }
+    },
+    "/api/v1/admin-sessions/{admin_session_id}/activity": {
+      "patch": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "Touch session activity",
+        "operationId": "update_activity_api_v1_admin_sessions__admin_session_id__activity_patch",
+        "parameters": [
+          {
+            "name": "admin_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Admin session not found."
+          }
+        },
+        "description": "Updates the `last_activity` timestamp on an admin session. Used to keep a session alive."
+      }
+    },
+    "/api/v1/admin-sessions/{admin_session_id}/close": {
+      "patch": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "Close a session",
+        "operationId": "close_session_api_v1_admin_sessions__admin_session_id__close_patch",
+        "parameters": [
+          {
+            "name": "admin_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Admin session not found."
+          }
+        },
+        "description": "Manually closes a single admin session (logout). Sets `is_active` to false and records a logout reason and time."
+      }
+    },
+    "/api/v1/admin-sessions/close-all/{admin_user_id}": {
+      "patch": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "Close all sessions for an admin",
+        "operationId": "close_all_sessions_api_v1_admin_sessions_close_all__admin_user_id__patch",
+        "parameters": [
+          {
+            "name": "admin_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Closes every active session belonging to the given admin user, e.g. when forcing a logout everywhere. Returns the number of sessions closed."
+      }
+    },
+    "/api/v1/admin-sessions/": {
+      "get": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "List admin sessions",
+        "operationId": "get_all_sessions_api_v1_admin_sessions__get",
+        "parameters": [
+          {
+            "name": "admin_user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Admin User Id"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "login_time",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "desc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSessionResponse"
+                  },
+                  "title": "Response Get All Sessions Api V1 Admin Sessions  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Returns admin sessions with optional filters by admin user and active status, sortable and paginated (`page`, `page_size` query params). Note: this endpoint is not itself behind `get_current_admin`, but is intended for authenticated dashboard use.",
+        "security": []
+      }
+    },
+    "/api/v1/admin-sessions/active": {
+      "get": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "List active sessions",
+        "operationId": "get_active_sessions_api_v1_admin_sessions_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSessionResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Active Sessions Api V1 Admin Sessions Active Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns all currently active admin sessions across all administrators."
+      }
+    },
+    "/api/v1/admin-sessions/{admin_session_id}": {
+      "get": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "Get a session",
+        "operationId": "get_session_api_v1_admin_sessions__admin_session_id__get",
+        "parameters": [
+          {
+            "name": "admin_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Admin session not found."
+          }
+        },
+        "description": "Returns a single admin session by its ID."
+      }
+    },
+    "/api/v1/admin-sessions/admin/{admin_user_id}": {
+      "get": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "List sessions for an admin",
+        "operationId": "get_admin_sessions_api_v1_admin_sessions_admin__admin_user_id__get",
+        "parameters": [
+          {
+            "name": "admin_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSessionResponse"
+                  },
+                  "title": "Response Get Admin Sessions Api V1 Admin Sessions Admin  Admin User Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns the full session history for a given admin user."
+      }
+    },
+    "/api/v1/admin-sessions/admin/{admin_user_id}/active": {
+      "get": {
+        "tags": [
+          "Admin Sessions"
+        ],
+        "summary": "Get an admin's active session",
+        "operationId": "get_active_session_api_v1_admin_sessions_admin__admin_user_id__active_get",
+        "parameters": [
+          {
+            "name": "admin_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Admin User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminSessionResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Active Session Api V1 Admin Sessions Admin  Admin User Id  Active Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns the single currently active session for an admin user, or `null` if none."
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dashboard summary",
+        "operationId": "get_dashboard_summary_api_v1_dashboard_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Headline numbers for the admin dashboard: customers, active/queued subscriptions, active devices, revenue totals, revenue today, subscriptions expiring today/next 7 days, and new customers today/this month."
+      }
+    },
+    "/api/v1/dashboard/revenue-overview": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Revenue overview",
+        "operationId": "get_revenue_overview_api_v1_dashboard_revenue_overview_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "month",
+                "12m"
+              ],
+              "type": "string",
+              "default": "month",
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RevenueOverviewItem"
+                  },
+                  "title": "Response Get Revenue Overview Api V1 Dashboard Revenue Overview Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Revenue broken down over a time window. `period` accepts `7d`, `30d`, `month`, or `12m` (default `month`); the response is a list of labeled buckets with revenue totals."
+      }
+    },
+    "/api/v1/dashboard/subscription-breakdown": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Subscription status breakdown",
+        "operationId": "get_subscription_breakdown_api_v1_dashboard_subscription_breakdown_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionBreakdownItem"
+                  },
+                  "type": "array",
+                  "title": "Response Get Subscription Breakdown Api V1 Dashboard Subscription Breakdown Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Returns a count of subscriptions grouped by status (queued, active, expired, cancelled)."
+      }
+    },
+    "/api/v1/dashboard/recent-activity": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Recent activity feed",
+        "operationId": "get_recent_activity_api_v1_dashboard_recent_activity_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecentActivityItem"
+                  },
+                  "title": "Response Get Recent Activity Api V1 Dashboard Recent Activity Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Returns the most recent notable events across the platform (payments, subscriptions, etc.), newest first. `limit` controls how many are returned (default 10)."
+      }
+    },
+    "/api/v1/customers/register": {
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Register a customer (admin)",
+        "operationId": "register_customer_api_v1_customers_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "400": {
+            "description": "Customer with this phone number already exists."
+          }
+        },
+        "description": "Creates a customer record directly from the admin dashboard, bypassing the Telegram onboarding flow. Phone number must be unique."
+      }
+    },
+    "/api/v1/customers/{customer_id}": {
+      "put": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Update a customer",
+        "operationId": "update_customer_api_v1_customers__customer_id__put",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer not found."
+          },
+          "400": {
+            "description": "Customer with this phone number already exists."
+          }
+        },
+        "description": "Updates a customer's phone number and full name."
+      }
+    },
+    "/api/v1/customers/{customer_id}/activate": {
+      "patch": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Activate a customer",
+        "operationId": "activate_customer_api_v1_customers__customer_id__activate_patch",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Marks a customer account as active."
+      }
+    },
+    "/api/v1/customers/{customer_id}/deactivate": {
+      "patch": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Deactivate a customer",
+        "operationId": "deactivate_customer_api_v1_customers__customer_id__deactivate_patch",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Marks a customer account as inactive."
+      }
+    },
+    "/api/v1/customers/onboarding/start": {
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Start Telegram onboarding",
+        "operationId": "start_onboarding_api_v1_customers_onboarding_start_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerOnboardingStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Called by the Telegram bot the first time a Telegram user interacts with it. Creates a bare customer record keyed by `telegram_user_id` with registration in progress. Not authenticated -- it is the very first touchpoint before any credentials exist.",
+        "security": []
+      }
+    },
+    "/api/v1/customers/onboarding/name": {
+      "patch": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Set name during onboarding",
+        "operationId": "update_full_name_api_v1_customers_onboarding_name_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerUpdateName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Sets the customer's full name during the Telegram onboarding flow, identified by `telegram_user_id`. Not authenticated.",
+        "security": []
+      }
+    },
+    "/api/v1/customers/onboarding/phone": {
+      "patch": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Set phone during onboarding",
+        "operationId": "update_phone_number_api_v1_customers_onboarding_phone_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerUpdatePhone"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "404": {
+            "description": "Customer not found."
+          },
+          "400": {
+            "description": "Customer with this phone number already exists."
+          }
+        },
+        "description": "Sets the customer's phone number during the Telegram onboarding flow, identified by `telegram_user_id`. Phone number must be unique. Not authenticated.",
+        "security": []
+      }
+    },
+    "/api/v1/customers/": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "List customers",
+        "operationId": "get_all_customers_api_v1_customers__get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "customer_id",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "asc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_CustomerListItem_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Paginated, searchable, sortable list of customers for the admin dashboard. Note: unlike other customer endpoints, this route does not require `get_current_admin` in the current code.",
+        "security": []
+      }
+    },
+    "/api/v1/customers/id/{customer_id}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get customer by ID",
+        "operationId": "get_customer_api_v1_customers_id__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Returns a single customer by internal ID."
+      }
+    },
+    "/api/v1/customers/phone/{phone_number}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get customer by phone",
+        "operationId": "get_customer_by_phone_api_v1_customers_phone__phone_number__get",
+        "parameters": [
+          {
+            "name": "phone_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 11,
+              "maxLength": 15,
+              "pattern": "^\\+?[0-9]+$",
+              "title": "Phone Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Looks up a customer by phone number."
+      }
+    },
+    "/api/v1/customers/telegram/{telegram_user_id}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get customer by Telegram ID",
+        "operationId": "get_customer_by_telegram_id_api_v1_customers_telegram__telegram_user_id__get",
+        "parameters": [
+          {
+            "name": "telegram_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Telegram User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Looks up a customer by their Telegram user ID. Used by the bot to resume a known customer's session. Not authenticated.",
+        "security": []
+      }
+    },
+    "/api/v1/plans/": {
+      "post": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Create a plan",
+        "operationId": "create_plan_api_v1_plans__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "400": {
+            "description": "A plan with this name already exists."
+          }
+        },
+        "description": "Creates a new internet plan. Plan names must be unique."
+      },
+      "get": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "List plans",
+        "operationId": "get_plans_api_v1_plans__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanResponse"
+                  },
+                  "title": "Response Get Plans Api V1 Plans  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Returns all plans (paginated), including inactive ones. Not authenticated -- used by the bot's plan picker.",
+        "security": []
+      }
+    },
+    "/api/v1/plans/{plan_id}": {
+      "put": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Update a plan",
+        "operationId": "update_plan_api_v1_plans__plan_id__put",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Plan not found."
+          },
+          "400": {
+            "description": "A plan with this name already exists."
+          }
+        },
+        "description": "Replaces a plan's commercial details (price, duration, speed, device limits)."
+      },
+      "get": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Get a plan",
+        "operationId": "get_plan_api_v1_plans__plan_id__get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Plan not found."
+          }
+        },
+        "description": "Returns a single plan by ID."
+      }
+    },
+    "/api/v1/plans/{plan_id}/activate": {
+      "patch": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Activate a plan",
+        "operationId": "activate_plan_api_v1_plans__plan_id__activate_patch",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Plan not found."
+          }
+        },
+        "description": "Marks a plan as active and available for purchase."
+      }
+    },
+    "/api/v1/plans/{plan_id}/deactivate": {
+      "patch": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Deactivate a plan",
+        "operationId": "deactivate_plan_api_v1_plans__plan_id__deactivate_patch",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Plan not found."
+          }
+        },
+        "description": "Marks a plan as inactive; it stops appearing in active-plan listings but existing subscriptions are unaffected."
+      }
+    },
+    "/api/v1/plans/active": {
+      "get": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "List active plans",
+        "operationId": "get_active_plans_api_v1_plans_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlanResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Active Plans Api V1 Plans Active Get"
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns only plans currently marked active -- what a customer should be offered when purchasing. Not authenticated."
+      }
+    },
+    "/api/v1/subscriptions/purchase": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Create a subscription",
+        "operationId": "purchase_subscription_api_v1_subscriptions_purchase_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionPurchase"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer or plan not found."
+          }
+        },
+        "description": "Creates a subscription for a customer/plan pair. If the customer has no active subscription, the new one starts immediately with status `active`. If the customer already has an active subscription, the new one is created with status `queued` and its start date is set to the current subscription's expiry -- it activates automatically when the current one expires. This is normally called internally by `PaymentService.complete_payment` once a payment is verified, but is also exposed directly for admin-assisted or manual subscription creation."
+      }
+    },
+    "/api/v1/subscriptions/{subscription_id}/cancel": {
+      "patch": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Cancel a queued subscription",
+        "operationId": "cancel_subscription_api_v1_subscriptions__subscription_id__cancel_patch",
+        "parameters": [
+          {
+            "name": "subscription_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Subscription not found."
+          },
+          "400": {
+            "description": "Only queued subscriptions can be cancelled."
+          }
+        },
+        "description": "Cancels a subscription that is still `queued` (not yet active). Active or already-finished subscriptions cannot be cancelled this way."
+      }
+    },
+    "/api/v1/subscriptions/process": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Run subscription maintenance",
+        "operationId": "process_subscription_jobs_api_v1_subscriptions_process_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Manually triggers the subscription background job (expiring due subscriptions, activating queued ones whose turn has come, etc.) and returns how many were processed. Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/subscriptions/": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "List subscriptions",
+        "operationId": "get_subscriptions_api_v1_subscriptions__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SubscriptionStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "created_at",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "desc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionAdminResponse"
+                  },
+                  "title": "Response Get Subscriptions Api V1 Subscriptions  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Paginated, filterable (customer, plan, status) list of subscriptions for the admin dashboard. Note: unlike other subscription endpoints, this route does not require `get_current_admin` in the current code.",
+        "security": []
+      }
+    },
+    "/api/v1/subscriptions/{subscription_id}": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Get a subscription",
+        "operationId": "get_subscription_api_v1_subscriptions__subscription_id__get",
+        "parameters": [
+          {
+            "name": "subscription_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Subscription not found."
+          }
+        },
+        "description": "Returns a single subscription with admin-facing detail (customer name, plan name, remaining days)."
+      }
+    },
+    "/api/v1/subscriptions/customer/{customer_id}": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "List a customer's subscriptions",
+        "operationId": "get_customer_subscriptions_api_v1_subscriptions_customer__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionAdminResponse"
+                  },
+                  "title": "Response Get Customer Subscriptions Api V1 Subscriptions Customer  Customer Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns every subscription (any status) belonging to a customer."
+      }
+    },
+    "/api/v1/subscriptions/customer/{customer_id}/active": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Get a customer's active subscription",
+        "operationId": "get_active_subscription_api_v1_subscriptions_customer__customer_id__active_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns the customer's current active subscription, if any."
+      }
+    },
+    "/api/v1/subscriptions/customer/{customer_id}/queued": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "List a customer's queued subscriptions",
+        "operationId": "get_queued_subscriptions_api_v1_subscriptions_customer__customer_id__queued_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionResponse"
+                  },
+                  "title": "Response Get Queued Subscriptions Api V1 Subscriptions Customer  Customer Id  Queued Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns subscriptions waiting to activate once the current active one expires."
+      }
+    },
+    "/api/v1/subscriptions/customer/{customer_id}/status": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Get a customer's subscription status",
+        "operationId": "get_customer_subscription_status_api_v1_subscriptions_customer__customer_id__status_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Lightweight status check used by the Telegram bot: whether the customer has an active subscription, the plan name and expiry if so, and how many subscriptions are queued behind it. Not authenticated.",
+        "security": []
+      }
+    },
+    "/api/v1/devices/register": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Register a device",
+        "operationId": "register_device_api_v1_devices_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "400": {
+            "description": "Customer has no active subscription / Device limit reached / Device already exists."
+          },
+          "404": {
+            "description": "Customer not found."
+          }
+        },
+        "description": "Registers a new device (MAC address) for a customer. The customer must have an active subscription, and must be under the plan's device limit. Duplicate MAC addresses for the same customer are rejected."
+      }
+    },
+    "/api/v1/devices/{device_id}/activate": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Activate a device",
+        "operationId": "activate_device_api_v1_devices__device_id__activate_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          }
+        },
+        "description": "Activates a previously inactive device."
+      }
+    },
+    "/api/v1/devices/{device_id}/deactivate": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Deactivate a device",
+        "operationId": "deactivate_device_api_v1_devices__device_id__deactivate_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          }
+        },
+        "description": "Deactivates a device without blocking it outright."
+      }
+    },
+    "/api/v1/devices/{device_id}/approve": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Approve a device",
+        "operationId": "approve_device_api_v1_devices__device_id__approve_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          }
+        },
+        "description": "Marks a device as approved by the customer (e.g. confirming a new device is theirs)."
+      }
+    },
+    "/api/v1/devices/{device_id}/block": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Block a device",
+        "operationId": "block_device_api_v1_devices__device_id__block_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          },
+          "400": {
+            "description": "Device is already blocked."
+          }
+        },
+        "description": "Blocks a device from network access. A device that is already blocked cannot be blocked again."
+      }
+    },
+    "/api/v1/devices/{device_id}/unblock": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Unblock a device",
+        "operationId": "unblock_device_api_v1_devices__device_id__unblock_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          },
+          "400": {
+            "description": "Device is not blocked."
+          }
+        },
+        "description": "Restores network access to a previously blocked device."
+      }
+    },
+    "/api/v1/devices/{device_id}/rename": {
+      "patch": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Rename a device",
+        "operationId": "rename_device_api_v1_devices__device_id__rename_patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRenameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          }
+        },
+        "description": "Updates a device's display name."
+      }
+    },
+    "/api/v1/devices/replace": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Replace a device",
+        "operationId": "replace_device_api_v1_devices_replace_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceReplacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "400": {
+            "description": "Device does not belong to this customer."
+          },
+          "404": {
+            "description": "Customer or device not found."
+          }
+        },
+        "description": "Swaps one of a customer's devices for another (e.g. new phone). Both devices must belong to the specified customer."
+      }
+    },
+    "/api/v1/devices/": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List devices",
+        "operationId": "get_all_devices_api_v1_devices__get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "device_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeviceStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Device Status"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "device_id",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "asc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_DeviceListItem_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Paginated, filterable (search, customer, status) list of devices. Note: unlike other device endpoints, this route does not require `get_current_admin` in the current code.",
+        "security": []
+      }
+    },
+    "/api/v1/devices/{device_id}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Get a device",
+        "operationId": "get_device_api_v1_devices__device_id__get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Device not found."
+          }
+        },
+        "description": "Returns a single device by ID."
+      }
+    },
+    "/api/v1/devices/customer/{customer_id}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List a customer's devices",
+        "operationId": "get_customer_devices_api_v1_devices_customer__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceResponse"
+                  },
+                  "title": "Response Get Customer Devices Api V1 Devices Customer  Customer Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns every device registered to a customer."
+      }
+    },
+    "/api/v1/devices/customer/{customer_id}/active": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List a customer's active devices",
+        "operationId": "get_active_devices_api_v1_devices_customer__customer_id__active_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceResponse"
+                  },
+                  "title": "Response Get Active Devices Api V1 Devices Customer  Customer Id  Active Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns only the customer's currently active devices."
+      }
+    },
+    "/api/v1/payments/": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create a payment",
+        "operationId": "create_payment_api_v1_payments__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Customer or plan not found."
+          }
+        },
+        "description": "Creates a pending payment transaction for a customer/plan pair via the given provider and channel. This does not grant any entitlement by itself -- it is completed separately once the provider confirms it."
+      },
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List payments",
+        "operationId": "get_payments_api_v1_payments__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "payment_provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PaymentProvider"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payment Provider"
+            }
+          },
+          {
+            "name": "payment_channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PaymentChannel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payment Channel"
+            }
+          },
+          {
+            "name": "payment_method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payment Method"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PaymentStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "created_at",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "desc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_PaymentListItem_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          }
+        },
+        "description": "Paginated, filterable (customer, provider, channel, method, status) list of payments. Note: unlike other payment endpoints, this route does not require `get_current_admin` in the current code.",
+        "security": []
+      }
+    },
+    "/api/v1/payments/{payment_reference}/complete": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Complete a payment",
+        "operationId": "complete_payment_api_v1_payments__payment_reference__complete_post",
+        "parameters": [
+          {
+            "name": "payment_reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payment Reference"
+            }
+          },
+          {
+            "name": "gateway_transaction_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gateway Transaction Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Payment not found."
+          },
+          "400": {
+            "description": "Only pending payments can be completed."
+          }
+        },
+        "description": "Marks a pending payment as successful and, in the same operation, creates the resulting subscription (via `SubscriptionService.create_subscription`) and links it back to the payment. Only pending payments can be completed."
+      }
+    },
+    "/api/v1/payments/{payment_reference}/cancel": {
+      "patch": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Cancel a payment",
+        "operationId": "cancel_payment_api_v1_payments__payment_reference__cancel_patch",
+        "parameters": [
+          {
+            "name": "payment_reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payment Reference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Payment not found."
+          },
+          "400": {
+            "description": "Only pending payments can be cancelled."
+          }
+        },
+        "description": "Cancels a pending payment before it is completed. Only pending payments can be cancelled."
+      }
+    },
+    "/api/v1/payments/{payment_reference}/refund": {
+      "patch": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Refund a payment",
+        "operationId": "refund_payment_api_v1_payments__payment_reference__refund_patch",
+        "parameters": [
+          {
+            "name": "payment_reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payment Reference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Payment not found."
+          },
+          "400": {
+            "description": "Only successful payments can be refunded."
+          }
+        },
+        "description": "Marks a successful payment as refunded. Only successful payments can be refunded."
+      }
+    },
+    "/api/v1/payments/{payment_reference}/expire": {
+      "patch": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Expire a payment",
+        "operationId": "expire_payment_api_v1_payments__payment_reference__expire_patch",
+        "parameters": [
+          {
+            "name": "payment_reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payment Reference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Payment not found."
+          },
+          "400": {
+            "description": "Only pending payments can be expired."
+          }
+        },
+        "description": "Marks a pending payment as expired, e.g. after a provider callback window has passed. Only pending payments can be expired."
+      }
+    },
+    "/api/v1/payments/summary": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Payment statistics",
+        "operationId": "get_payment_summary_api_v1_payments_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "403": {
+            "description": "Admin account is inactive."
+          }
+        },
+        "description": "Aggregate payment counts by status (pending, successful, failed, cancelled, refunded, expired) plus total revenue."
+      }
+    },
+    "/api/v1/payments/{payment_reference}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Get a payment",
+        "operationId": "get_payment_api_v1_payments__payment_reference__get",
+        "parameters": [
+          {
+            "name": "payment_reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Payment Reference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "404": {
+            "description": "Payment not found."
+          }
+        },
+        "description": "Returns a single payment by its reference."
+      }
+    },
+    "/api/v1/payments/customer/{customer_id}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List a customer's payments",
+        "operationId": "get_customer_payments_api_v1_payments_customer__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentResponse"
+                  },
+                  "title": "Response Get Customer Payments Api V1 Payments Customer  Customer Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          }
+        },
+        "description": "Returns every payment made by a customer."
+      }
+    },
+    "/api/v1/automation/all": {
+      "post": {
+        "tags": [
+          "Automation"
+        ],
+        "summary": "Run all automation jobs",
+        "operationId": "run_all_jobs_api_v1_automation_all_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Runs every background maintenance job (payments, subscriptions, routers, notifications) in one call and logs a single audit entry. Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/automation/payments": {
+      "post": {
+        "tags": [
+          "Automation"
+        ],
+        "summary": "Run payment maintenance",
+        "operationId": "run_payment_jobs_api_v1_automation_payments_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Runs payment reconciliation/expiry maintenance. Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/automation/subscriptions": {
+      "post": {
+        "tags": [
+          "Automation"
+        ],
+        "summary": "Run subscription maintenance",
+        "operationId": "run_subscription_jobs_api_v1_automation_subscriptions_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Expires due subscriptions and activates queued ones whose turn has come. Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/automation/routers": {
+      "post": {
+        "tags": [
+          "Automation"
+        ],
+        "summary": "Run router maintenance",
+        "operationId": "run_router_jobs_api_v1_automation_routers_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Runs router account provisioning/sync/retry maintenance. Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/automation/notifications": {
+      "post": {
+        "tags": [
+          "Automation"
+        ],
+        "summary": "Run notification scheduling",
+        "operationId": "run_notification_jobs_api_v1_automation_notifications_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired bearer token."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Runs due notification scheduling (reminders, expiry notices, etc.). Rate limited to 10 requests/minute."
+      }
+    },
+    "/api/v1/session/telegram/{telegram_user_id}": {
+      "get": {
+        "tags": [
+          "Session"
+        ],
+        "summary": "Resolve Telegram session state",
+        "operationId": "get_session_api_v1_session_telegram__telegram_user_id__get",
+        "parameters": [
+          {
+            "name": "telegram_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Telegram User Id"
+            }
+          },
+          {
+            "name": "first_login",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "First Login"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body or query parameters failed validation."
+          },
+          "429": {
+            "description": "Too many requests -- rate limit exceeded."
+          }
+        },
+        "description": "Given a Telegram user ID, returns what the bot should do next: the next onboarding step, a message to show, a keyboard layout, and the customer record if one exists. This is the core state-machine endpoint the Telegram bot polls to decide what screen to show. `first_login` marks a brand-new chat. Not authenticated. Rate limited to 30 requests/minute.",
+        "security": []
+      }
+    },
+    "/api/v1/health/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "operationId": "health_check_api_v1_health__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "description": "Basic liveness probe. Returns service status and a timestamp. Not authenticated.",
+        "security": []
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActiveSessionItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "administrator": {
+            "type": "string",
+            "title": "Administrator"
+          },
+          "device": {
+            "type": "string",
+            "title": "Device"
+          },
+          "browser": {
+            "type": "string",
+            "title": "Browser"
+          },
+          "ip_address": {
+            "type": "string",
+            "title": "Ip Address"
+          },
+          "login_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Login Time"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "administrator",
+          "device",
+          "browser",
+          "ip_address",
+          "login_time",
+          "status"
+        ],
+        "title": "ActiveSessionItem"
+      },
+      "AdminSessionResponse": {
+        "properties": {
+          "admin_session_id": {
+            "type": "integer",
+            "title": "Admin Session Id"
+          },
+          "admin_user_id": {
+            "type": "integer",
+            "title": "Admin User Id"
+          },
+          "login_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Login Time"
+          },
+          "last_activity": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Activity"
+          },
+          "logout_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logout Time"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          },
+          "login_source": {
+            "$ref": "#/components/schemas/LoginSource"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "logout_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LogoutReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "admin_session_id",
+          "admin_user_id",
+          "login_time",
+          "last_activity",
+          "logout_time",
+          "ip_address",
+          "user_agent",
+          "login_source",
+          "client_name",
+          "logout_reason",
+          "is_active"
+        ],
+        "title": "AdminSessionResponse"
+      },
+      "AdministrationMetrics": {
+        "properties": {
+          "admin_users": {
+            "type": "integer",
+            "title": "Admin Users"
+          },
+          "active_sessions": {
+            "type": "integer",
+            "title": "Active Sessions"
+          },
+          "roles": {
+            "type": "integer",
+            "title": "Roles"
+          },
+          "audit_events_today": {
+            "type": "integer",
+            "title": "Audit Events Today"
+          },
+          "system_events_today": {
+            "type": "integer",
+            "title": "System Events Today"
+          }
+        },
+        "type": "object",
+        "required": [
+          "admin_users",
+          "active_sessions",
+          "roles",
+          "audit_events_today",
+          "system_events_today"
+        ],
+        "title": "AdministrationMetrics"
+      },
+      "AdministrationOverviewResponse": {
+        "properties": {
+          "metrics": {
+            "$ref": "#/components/schemas/AdministrationMetrics"
+          },
+          "recent_audit_logs": {
+            "items": {
+              "$ref": "#/components/schemas/RecentAuditLogItem"
+            },
+            "type": "array",
+            "title": "Recent Audit Logs"
+          },
+          "active_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveSessionItem"
+            },
+            "type": "array",
+            "title": "Active Sessions"
+          },
+          "system_activity": {
+            "items": {
+              "$ref": "#/components/schemas/SystemActivityItem"
+            },
+            "type": "array",
+            "title": "System Activity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metrics",
+          "recent_audit_logs",
+          "active_sessions",
+          "system_activity"
+        ],
+        "title": "AdministrationOverviewResponse"
+      },
+      "CurrentAdminResponse": {
+        "properties": {
+          "admin_user_id": {
+            "type": "integer",
+            "title": "Admin User Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "admin_user_id",
+          "username",
+          "email",
+          "role",
+          "is_active"
+        ],
+        "title": "CurrentAdminResponse"
+      },
+      "CustomerCreate": {
+        "properties": {
+          "phone_number": {
+            "type": "string",
+            "maxLength": 15,
+            "minLength": 11,
+            "pattern": "^\\+?[0-9]+$",
+            "title": "Phone Number"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone_number",
+          "full_name"
+        ],
+        "title": "CustomerCreate"
+      },
+      "CustomerListItem": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "telegram_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram User Id"
+          },
+          "is_registered": {
+            "type": "boolean",
+            "title": "Is Registered"
+          },
+          "registration_step": {
+            "type": "string",
+            "title": "Registration Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "is_registered",
+          "registration_step"
+        ],
+        "title": "CustomerListItem"
+      },
+      "CustomerOnboardingStart": {
+        "properties": {
+          "telegram_user_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Telegram User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram_user_id"
+        ],
+        "title": "CustomerOnboardingStart"
+      },
+      "CustomerResponse": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "telegram_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram User Id"
+          },
+          "is_registered": {
+            "type": "boolean",
+            "title": "Is Registered"
+          },
+          "registration_step": {
+            "type": "string",
+            "title": "Registration Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "is_registered",
+          "registration_step"
+        ],
+        "title": "CustomerResponse"
+      },
+      "CustomerUpdate": {
+        "properties": {
+          "phone_number": {
+            "type": "string",
+            "maxLength": 15,
+            "minLength": 11,
+            "pattern": "^\\+?[0-9]+$",
+            "title": "Phone Number"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone_number",
+          "full_name"
+        ],
+        "title": "CustomerUpdate"
+      },
+      "CustomerUpdateName": {
+        "properties": {
+          "telegram_user_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Telegram User Id"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram_user_id",
+          "full_name"
+        ],
+        "title": "CustomerUpdateName"
+      },
+      "CustomerUpdatePhone": {
+        "properties": {
+          "telegram_user_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Telegram User Id"
+          },
+          "phone_number": {
+            "type": "string",
+            "maxLength": 15,
+            "minLength": 11,
+            "pattern": "^\\+?[0-9]+$",
+            "title": "Phone Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram_user_id",
+          "phone_number"
+        ],
+        "title": "CustomerUpdatePhone"
+      },
+      "DashboardSummaryResponse": {
+        "properties": {
+          "total_customers": {
+            "type": "integer",
+            "title": "Total Customers"
+          },
+          "active_subscriptions": {
+            "type": "integer",
+            "title": "Active Subscriptions"
+          },
+          "queued_subscriptions": {
+            "type": "integer",
+            "title": "Queued Subscriptions"
+          },
+          "active_devices": {
+            "type": "integer",
+            "title": "Active Devices"
+          },
+          "total_revenue": {
+            "type": "number",
+            "title": "Total Revenue"
+          },
+          "total_payments": {
+            "type": "integer",
+            "title": "Total Payments"
+          },
+          "revenue_today": {
+            "type": "number",
+            "title": "Revenue Today"
+          },
+          "expiring_today": {
+            "type": "integer",
+            "title": "Expiring Today"
+          },
+          "expiring_next_7_days": {
+            "type": "integer",
+            "title": "Expiring Next 7 Days"
+          },
+          "new_customers_today": {
+            "type": "integer",
+            "title": "New Customers Today"
+          },
+          "new_customers_this_month": {
+            "type": "integer",
+            "title": "New Customers This Month"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_customers",
+          "active_subscriptions",
+          "queued_subscriptions",
+          "active_devices",
+          "total_revenue",
+          "total_payments",
+          "revenue_today",
+          "expiring_today",
+          "expiring_next_7_days",
+          "new_customers_today",
+          "new_customers_this_month"
+        ],
+        "title": "DashboardSummaryResponse"
+      },
+      "DeviceCreate": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Customer Id"
+          },
+          "device_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Device Name"
+          },
+          "mac_address": {
+            "type": "string",
+            "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
+            "title": "Mac Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "device_name",
+          "mac_address"
+        ],
+        "title": "DeviceCreate"
+      },
+      "DeviceListItem": {
+        "properties": {
+          "device_id": {
+            "type": "integer",
+            "title": "Device Id"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "mac_address": {
+            "type": "string",
+            "title": "Mac Address"
+          },
+          "device_status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "approved_by_customer": {
+            "type": "boolean",
+            "title": "Approved By Customer"
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "customer_id",
+          "mac_address",
+          "device_status",
+          "approved_by_customer"
+        ],
+        "title": "DeviceListItem"
+      },
+      "DeviceRenameRequest": {
+        "properties": {
+          "device_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Device Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_name"
+        ],
+        "title": "DeviceRenameRequest"
+      },
+      "DeviceReplacementRequest": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Customer Id"
+          },
+          "old_device_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Old Device Id"
+          },
+          "new_device_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "New Device Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "old_device_id",
+          "new_device_id"
+        ],
+        "title": "DeviceReplacementRequest"
+      },
+      "DeviceResponse": {
+        "properties": {
+          "device_id": {
+            "type": "integer",
+            "title": "Device Id"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "device_name": {
+            "type": "string",
+            "title": "Device Name"
+          },
+          "mac_address": {
+            "type": "string",
+            "title": "Mac Address"
+          },
+          "device_status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "customer_id",
+          "device_name",
+          "mac_address",
+          "device_status"
+        ],
+        "title": "DeviceResponse"
+      },
+      "DeviceStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "inactive",
+          "blocked"
+        ],
+        "title": "DeviceStatus"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobResultResponse": {
+        "properties": {
+          "processed": {
+            "type": "integer",
+            "title": "Processed"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "processed",
+          "message"
+        ],
+        "title": "JobResultResponse"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "LoginResponse"
+      },
+      "LoginSource": {
+        "type": "string",
+        "enum": [
+          "WEB",
+          "TELEGRAM",
+          "API"
+        ],
+        "title": "LoginSource"
+      },
+      "LogoutReason": {
+        "type": "string",
+        "enum": [
+          "MANUAL",
+          "CLOSE_ALL",
+          "NEW_LOGIN",
+          "TOKEN_EXPIRED"
+        ],
+        "title": "LogoutReason"
+      },
+      "NextAction": {
+        "type": "string",
+        "enum": [
+          "START_ONBOARDING",
+          "ENTER_NAME",
+          "ENTER_PHONE_NUMBER",
+          "COMPLETE",
+          "SHOW_MAIN_MENU"
+        ],
+        "title": "NextAction"
+      },
+      "PaginatedResponse_CustomerListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[CustomerListItem]"
+      },
+      "PaginatedResponse_DeviceListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[DeviceListItem]"
+      },
+      "PaginatedResponse_PaymentListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[PaymentListItem]"
+      },
+      "PaymentChannel": {
+        "type": "string",
+        "enum": [
+          "cash",
+          "bank_transfer",
+          "card",
+          "ussd",
+          "wallet",
+          "system"
+        ],
+        "title": "PaymentChannel"
+      },
+      "PaymentCreate": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "payment_provider": {
+            "$ref": "#/components/schemas/PaymentProvider"
+          },
+          "payment_channel": {
+            "$ref": "#/components/schemas/PaymentChannel"
+          },
+          "payment_method": {
+            "type": "string",
+            "title": "Payment Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "plan_id",
+          "payment_provider",
+          "payment_channel",
+          "payment_method"
+        ],
+        "title": "PaymentCreate"
+      },
+      "PaymentListItem": {
+        "properties": {
+          "payment_reference": {
+            "type": "string",
+            "title": "Payment Reference"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount"
+          },
+          "payment_provider": {
+            "$ref": "#/components/schemas/PaymentProvider"
+          },
+          "payment_channel": {
+            "$ref": "#/components/schemas/PaymentChannel"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          },
+          "payment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Date"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payment_reference",
+          "customer_id",
+          "customer_name",
+          "plan_id",
+          "plan_name",
+          "amount",
+          "payment_provider",
+          "payment_channel",
+          "payment_method",
+          "status",
+          "payment_date",
+          "created_at"
+        ],
+        "title": "PaymentListItem"
+      },
+      "PaymentProvider": {
+        "type": "string",
+        "enum": [
+          "paystack",
+          "flutterwave",
+          "monnify",
+          "manual"
+        ],
+        "title": "PaymentProvider"
+      },
+      "PaymentResponse": {
+        "properties": {
+          "payment_reference": {
+            "type": "string",
+            "title": "Payment Reference"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "subscription_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Id"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount"
+          },
+          "payment_provider": {
+            "$ref": "#/components/schemas/PaymentProvider"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
+          },
+          "gateway_transaction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateway Transaction Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          },
+          "payment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Date"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payment_reference",
+          "customer_id",
+          "plan_id",
+          "subscription_id",
+          "amount",
+          "payment_provider",
+          "payment_method",
+          "gateway_transaction_id",
+          "status",
+          "payment_date",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PaymentResponse"
+      },
+      "PaymentStatsResponse": {
+        "properties": {
+          "total_payments": {
+            "type": "integer",
+            "title": "Total Payments"
+          },
+          "pending_payments": {
+            "type": "integer",
+            "title": "Pending Payments"
+          },
+          "successful_payments": {
+            "type": "integer",
+            "title": "Successful Payments"
+          },
+          "failed_payments": {
+            "type": "integer",
+            "title": "Failed Payments"
+          },
+          "cancelled_payments": {
+            "type": "integer",
+            "title": "Cancelled Payments"
+          },
+          "refunded_payments": {
+            "type": "integer",
+            "title": "Refunded Payments"
+          },
+          "expired_payments": {
+            "type": "integer",
+            "title": "Expired Payments"
+          },
+          "total_revenue": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Revenue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_payments",
+          "pending_payments",
+          "successful_payments",
+          "failed_payments",
+          "cancelled_payments",
+          "refunded_payments",
+          "expired_payments",
+          "total_revenue"
+        ],
+        "title": "PaymentStatsResponse"
+      },
+      "PaymentStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "successful",
+          "failed",
+          "cancelled",
+          "refunded",
+          "expired"
+        ],
+        "title": "PaymentStatus"
+      },
+      "PlanCreate": {
+        "properties": {
+          "plan_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Plan Name"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Price"
+          },
+          "duration_days": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration Days"
+          },
+          "speed_limit_mbps": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Speed Limit Mbps"
+          },
+          "max_devices": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Devices"
+          },
+          "concurrent_devices": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Concurrent Devices"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_name",
+          "price",
+          "duration_days",
+          "speed_limit_mbps",
+          "max_devices",
+          "concurrent_devices"
+        ],
+        "title": "PlanCreate"
+      },
+      "PlanResponse": {
+        "properties": {
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "price": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price"
+          },
+          "duration_days": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration Days"
+          },
+          "speed_limit_mbps": {
+            "type": "integer",
+            "title": "Speed Limit Mbps"
+          },
+          "max_devices": {
+            "type": "integer",
+            "title": "Max Devices"
+          },
+          "concurrent_devices": {
+            "type": "integer",
+            "title": "Concurrent Devices"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_id",
+          "plan_name",
+          "price",
+          "duration_days",
+          "speed_limit_mbps",
+          "max_devices",
+          "concurrent_devices",
+          "is_active"
+        ],
+        "title": "PlanResponse"
+      },
+      "RecentActivityItem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "description",
+          "created_at"
+        ],
+        "title": "RecentActivityItem"
+      },
+      "RecentAuditLogItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "administrator": {
+            "type": "string",
+            "title": "Administrator"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "administrator",
+          "action",
+          "module",
+          "target",
+          "status"
+        ],
+        "title": "RecentAuditLogItem"
+      },
+      "RevenueOverviewItem": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "revenue": {
+            "type": "number",
+            "title": "Revenue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "revenue"
+        ],
+        "title": "RevenueOverviewItem"
+      },
+      "SessionResponse": {
+        "properties": {
+          "next_action": {
+            "$ref": "#/components/schemas/NextAction"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "keyboard": {
+            "type": "string",
+            "title": "Keyboard"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_action",
+          "message",
+          "keyboard"
+        ],
+        "title": "SessionResponse"
+      },
+      "SubscriptionAdminResponse": {
+        "properties": {
+          "subscription_id": {
+            "type": "integer",
+            "title": "Subscription Id"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Date"
+          },
+          "expiry_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiry Date"
+          },
+          "remaining_days": {
+            "type": "integer",
+            "title": "Remaining Days"
+          },
+          "activation_sequence": {
+            "type": "integer",
+            "title": "Activation Sequence"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubscriptionStatus"
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subscription_id",
+          "customer_id",
+          "customer_name",
+          "plan_id",
+          "plan_name",
+          "price",
+          "start_date",
+          "expiry_date",
+          "remaining_days",
+          "activation_sequence",
+          "status",
+          "activated_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SubscriptionAdminResponse"
+      },
+      "SubscriptionBreakdownItem": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "count"
+        ],
+        "title": "SubscriptionBreakdownItem"
+      },
+      "SubscriptionPurchase": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Customer Id"
+          },
+          "plan_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Plan Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "plan_id"
+        ],
+        "title": "SubscriptionPurchase"
+      },
+      "SubscriptionResponse": {
+        "properties": {
+          "subscription_id": {
+            "type": "integer",
+            "title": "Subscription Id"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "plan_id": {
+            "type": "integer",
+            "title": "Plan Id"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Date"
+          },
+          "expiry_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiry Date"
+          },
+          "activation_sequence": {
+            "type": "integer",
+            "title": "Activation Sequence"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubscriptionStatus"
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subscription_id",
+          "customer_id",
+          "plan_id",
+          "start_date",
+          "expiry_date",
+          "activation_sequence",
+          "status",
+          "activated_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SubscriptionResponse"
+      },
+      "SubscriptionStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "active",
+          "expired",
+          "cancelled"
+        ],
+        "title": "SubscriptionStatus"
+      },
+      "SubscriptionStatusResponse": {
+        "properties": {
+          "has_active_subscription": {
+            "type": "boolean",
+            "title": "Has Active Subscription"
+          },
+          "plan_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Name"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "queued_subscriptions": {
+            "type": "integer",
+            "title": "Queued Subscriptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_active_subscription",
+          "queued_subscriptions"
+        ],
+        "title": "SubscriptionStatusResponse"
+      },
+      "SystemActivityItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "title",
+          "description"
+        ],
+        "title": "SystemActivityItem"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000/api/v1",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Admin login and current-session identity."
+    },
+    {
+      "name": "Administration",
+      "description": "Aggregated administration overview: metrics, recent audit logs, active sessions, system activity."
+    },
+    {
+      "name": "Admin Sessions",
+      "description": "Admin login session lifecycle: activity tracking, closing sessions, session queries."
+    },
+    {
+      "name": "Dashboard",
+      "description": "Business metrics for the admin dashboard: revenue, subscriptions, recent activity."
+    },
+    {
+      "name": "Customers",
+      "description": "Customer identity, registration, and the Telegram onboarding flow."
+    },
+    {
+      "name": "Plans",
+      "description": "Internet plan catalog: pricing, speed, duration, device limits."
+    },
+    {
+      "name": "Subscriptions",
+      "description": "Subscription lifecycle: purchase, queueing, cancellation, and status."
+    },
+    {
+      "name": "Devices",
+      "description": "Customer devices: registration, approval, blocking, replacement."
+    },
+    {
+      "name": "Payments",
+      "description": "Payment transactions: creation, completion, cancellation, refunds, expiry."
+    },
+    {
+      "name": "Automation",
+      "description": "Manually triggered background maintenance jobs (payments, subscriptions, routers, notifications)."
+    },
+    {
+      "name": "Session",
+      "description": "Telegram bot conversational session/state resolution."
+    },
+    {
+      "name": "Health",
+      "description": "Service liveness check."
+    }
+  ]
+}

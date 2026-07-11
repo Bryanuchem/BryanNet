@@ -7,15 +7,17 @@ function SearchBar({
     value,
     onChange,
     placeholder = "Search...",
+    sx,
 }) {
     return (
         <TextField
             fullWidth
+            size="small"
             value={value}
             onChange={onChange}
             placeholder={placeholder}
             sx={{
-                mb: 4,
+                ...sx,
             }}
             InputProps={{
                 startAdornment: (

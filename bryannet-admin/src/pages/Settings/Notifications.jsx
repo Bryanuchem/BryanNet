@@ -1,100 +1,337 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import EmailNotificationsCard from "../../components/settings/notifications/EmailNotificationsCard";
-import TelegramNotificationsCard from "../../components/settings/notifications/TelegramNotificationsCard";
-import SystemAlertsCard from "../../components/settings/notifications/SystemAlertsCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  enableEmailNotifications: true,
-  adminNotificationEmail: "admin@bryannet.com",
-  notifyNewCustomerEmail: true,
-  notifyNewPaymentEmail: true,
-  notifySubscriptionExpiryEmail: true,
+import NotificationSettingsForm from "../../components/settings/notifications/NotificationSettingsForm";
+import NotificationSettingsInfoCard from "../../components/settings/notifications/NotificationSettingsInfoCard";
 
-  enableTelegramNotifications: true,
-  notifyNewCustomerTelegram: true,
-  notifyNewPaymentTelegram: true,
-  notifyRouterEventsTelegram: true,
-  notifySystemErrorsTelegram: true,
+import {
 
-  enableSystemAlerts: true,
-  maintenanceAlerts: true,
-  securityAlerts: true,
-  backupAlerts: true,
-  highPriorityEvents: true,
+    useNotificationSettings,
+
+    useUpdateNotificationSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    email_notifications: true,
+
+    sms_notifications: false,
+
+    payment_reminders: true,
+
+    outage_alerts: true,
+
+    low_balance_alerts: true,
+
 };
 
 export default function Notifications() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving Notification Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="Notification Settings"
-        subtitle="Configure how the BryanNet ISP Platform sends notifications and system alerts."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useNotificationSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateNotificationSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Notification settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update notification settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <EmailNotificationsCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <TelegramNotificationsCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <SystemAlertsCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+        <>
+
+            <PageHeader
+
+                title="Notification Settings"
+
+                subtitle="Configure how BryanNet delivers billing, account and network notifications to customers."
+
+            />
+
+            <Stack spacing={3}>
+
+                <NotificationSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <NotificationSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

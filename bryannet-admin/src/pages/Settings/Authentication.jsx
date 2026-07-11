@@ -1,99 +1,343 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import PasswordPolicyCard from "../../components/settings/authentication/PasswordPolicyCard";
-import SessionManagementCard from "../../components/settings/authentication/SessionManagementCard";
-import LoginSecurityCard from "../../components/settings/authentication/LoginSecurityCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  minimumPasswordLength: 8,
-  requireUppercase: true,
-  requireLowercase: true,
-  requireNumbers: true,
-  requireSpecialCharacters: true,
-  passwordExpiry: "90 Days",
+import AuthenticationSettingsForm from "../../components/settings/authentication/AuthenticationSettingsForm";
+import AuthenticationSettingsInfoCard from "../../components/settings/authentication/AuthenticationSettingsInfoCard";
 
-  sessionTimeout: "30 Minutes",
-  rememberMe: true,
-  maximumConcurrentSessions: 3,
-  automaticLogout: true,
+import {
 
-  twoFactorAuthentication: false,
-  maximumLoginAttempts: 5,
-  lockoutDuration: "15 Minutes",
-  allowPasswordReset: true,
+    useAuthenticationSettings,
+
+    useUpdateAuthenticationSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    registration_enabled: false,
+
+    session_timeout_minutes: 30,
+
+    max_login_attempts: 5,
+
+    password_min_length: 8,
+
+    require_special_characters: true,
+
+    require_uppercase: true,
+
+    require_numbers: true,
+
+    two_factor_auth_enabled: false,
+
 };
 
 export default function Authentication() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving Authentication Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="Authentication Settings"
-        subtitle="Configure authentication, password policies and administrator session management."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useAuthenticationSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateAuthenticationSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Authentication settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update authentication settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <PasswordPolicyCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <SessionManagementCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <LoginSecurityCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+        <>
+
+            <PageHeader
+
+                title="Authentication Settings"
+
+                subtitle="Configure administrator authentication, password policies and session security for the BryanNet ISP Platform."
+
+            />
+
+            <Stack spacing={3}>
+
+                <AuthenticationSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <AuthenticationSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

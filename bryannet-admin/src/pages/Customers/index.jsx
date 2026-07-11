@@ -8,21 +8,33 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import SearchBar from "../../components/common/SearchBar";
 import PageHeader from "../../components/common/PageHeader";
 import AppSnackbar from "../../components/common/AppSnackbar";
+import FilterToolbar from "../../components/common/FilterToolbar";
+import ExportCsvButton from "../../components/common/ExportCsvButton";
 
 import CustomerTable from "../../components/customers/CustomerTable";
 import CustomerDialog from "../../components/customers/CustomerDialog";
 import CustomerDetailsDrawer from "../../components/customers/CustomerDetailsDrawer";
+import CustomerFilters from "../../components/customers/CustomerFilters";
 
 import { useCustomers } from "../../hooks/useCustomers";
 import { useCustomerSearch } from "../../hooks/useCustomerSearch";
 import { useCreateCustomer } from "../../hooks/useCreateCustomer";
 import { useUpdateCustomer } from "../../hooks/useUpdateCustomer";
+import { useActivateCustomer} from "../../hooks/useActivateCustomer";
+import { useDeactivateCustomer } from "../../hooks/useDeactivateCustomer";
+
+import {
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
 
 function Customers() {
     const {
         data: customers = [],
         isLoading,
         error,
+        refetch,
     } = useCustomers();
 
     const createCustomer =
@@ -30,6 +42,12 @@ function Customers() {
 
     const updateCustomer =
         useUpdateCustomer();
+
+    const activateCustomer =
+        useActivateCustomer();
+
+    const deactivateCustomer =
+        useDeactivateCustomer();        
 
     const {
         searchTerm,
@@ -40,6 +58,22 @@ function Customers() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] =
         useState(10);
+
+    const [
+        registrationFilter,
+        setRegistrationFilter,
+    ] = useState("all");
+
+    const [
+        statusFilter,
+        setStatusFilter,
+    ] = useState("all");
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
 
     const [
         selectedCustomer,
@@ -76,10 +110,37 @@ function Customers() {
     };
 
     const handleCustomerClick = (
-        customer
+
+        customer,
+
     ) => {
-        setSelectedCustomer(customer);
-        setDrawerOpen(true);
+
+        if (
+
+            !hasPermission(
+
+                "customers.view",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedCustomer(
+
+            customer,
+
+        );
+
+        setDrawerOpen(
+
+            true,
+
+        );
+
     };
 
     const handleDrawerClose = () => {
@@ -88,21 +149,111 @@ function Customers() {
     };
 
     const handleOpenDialog = () => {
-        setSelectedCustomer(null);
-        setDialogOpen(true);
+
+        if (
+
+            !hasPermission(
+
+                "customers.create",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedCustomer(
+
+            null,
+
+        );
+
+        setDialogOpen(
+
+            true,
+
+        );
+
     };
 
     const handleEditCustomer = (
-        customer
+
+        customer,
+
     ) => {
-        setSelectedCustomer(customer);
-        setDialogOpen(true);
+
+        if (
+
+            !hasPermission(
+
+                "customers.edit",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedCustomer(
+
+            customer,
+
+        );
+
+        setDialogOpen(
+
+            true,
+
+        );
+
     };
 
     const handleCloseDialog = () => {
         setDialogOpen(false);
         setSelectedCustomer(null);
     };
+
+    const visibleCustomers =
+        filteredCustomers.filter(
+            (customer) => {
+
+                if (
+                    registrationFilter !== "all"
+                ) {
+
+                    const registered =
+                        registrationFilter ===
+                        "registered";
+
+                    if (
+                        customer.is_registered !==
+                        registered
+                    ) {
+
+                        return false;
+
+                    }
+
+                }
+
+                if (
+                    statusFilter !== "all" &&
+                    customer.status !==
+                        statusFilter
+                ) {
+
+                    return false;
+
+                }
+
+                return true;
+
+            },
+        );
 
     const handleSubmitCustomer =
         async (formData) => {
@@ -148,6 +299,128 @@ function Customers() {
             }
         };
 
+    const handleToggleStatus = async (
+
+        customer,
+
+    ) => {
+
+        const canToggle =
+
+            customer.status === "active"
+
+                ? hasPermission(
+
+                    "customers.deactivate",
+
+                )
+
+                : hasPermission(
+
+                    "customers.activate",
+
+                );
+
+        if (
+
+            !canToggle
+
+        ) {
+
+            return;
+
+        }
+
+        try {
+
+            if (
+
+                customer.status === "active"
+
+            ) {
+
+                await deactivateCustomer.mutateAsync(
+
+                    customer.customer_id,
+
+                );
+
+                setSnackbar({
+
+                    open: true,
+
+                    message:
+
+                        "Customer deactivated successfully.",
+
+                    severity: "success",
+
+                });
+
+            } else {
+
+                await activateCustomer.mutateAsync(
+
+                    customer.customer_id,
+
+                );
+
+                setSnackbar({
+
+                    open: true,
+
+                    message:
+
+                        "Customer activated successfully.",
+
+                    severity: "success",
+
+                });
+
+            }
+
+        } catch (err) {
+
+            console.error(
+
+                err,
+
+            );
+
+            setSnackbar({
+
+                open: true,
+
+                message:
+
+                    err.response?.data?.detail ??
+
+                    "Operation failed.",
+
+                severity: "error",
+
+            });
+
+        }
+
+    };
+
+    const handleClearFilters = () => {
+
+        setSearchTerm("");
+
+        setRegistrationFilter(
+            "all",
+        );
+
+        setStatusFilter(
+            "all",
+        );
+
+        setPage(0);
+
+    };
+
     const handleCloseSnackbar = () => {
         setSnackbar((prev) => ({
             ...prev,
@@ -178,27 +451,119 @@ function Customers() {
                 subtitle="Manage registered customers."
             />
 
-            <Box sx={{ mt: 3, mb: 3 }}>
-                <Button
-                    variant="contained"
-                    startIcon={<PersonAddIcon />}
-                    onClick={handleOpenDialog}
-                >
-                    New Customer
-                </Button>
-            </Box>
+                {hasPermission(
 
-            <SearchBar
-                value={searchTerm}
-                onChange={(event) => {
-                    setSearchTerm(event.target.value);
-                    setPage(0);
-                }}
-                placeholder="Search by name or phone..."
-            />
+                    "customers.create",
+
+                ) && (
+
+                    <Box
+
+                        sx={{
+
+                            mt: 3,
+
+                            mb: 2,
+
+                        }}
+
+                    >
+
+                        <Button
+
+                            variant="contained"
+
+                            startIcon={<PersonAddIcon />}
+
+                            onClick={
+
+                                handleOpenDialog
+
+                            }
+
+                        >
+
+                            New Customer
+
+                        </Button>
+
+                    </Box>
+
+                )}
+
+            <FilterToolbar>
+                <SearchBar
+                    value={searchTerm}
+                    onChange={(event) => {
+                        setSearchTerm(event.target.value);
+                        setPage(0);
+                    }}
+                    placeholder="Search by name or phone number..."
+                    sx={{
+                        flex: 1,
+                    }}
+                />
+
+                <CustomerFilters
+                    registration={registrationFilter}
+                    status={statusFilter}
+                    onRegistrationChange={(event) => {
+                        setRegistrationFilter(
+                            event.target.value,
+                        );
+                        setPage(0);
+                    }}
+                    onStatusChange={(event) => {
+                        setStatusFilter(
+                            event.target.value,
+                        );
+                        setPage(0);
+                    }}
+                    onRefresh={refetch}
+                    onClear={handleClearFilters}
+                />
+
+                <ExportCsvButton
+                    filename="customers"
+                    rows={filteredCustomers}
+                    columns={[
+                        {
+                            key: "full_name",
+                            label: "Customer",
+                        },
+                        {
+                            key: "phone_number",
+                            label: "Phone Number",
+                        },
+                        {
+                            key: "status",
+                            label: "Status",
+                            formatter: (value) =>
+                                value
+                                    ? value.charAt(0).toUpperCase() +
+                                    value.slice(1)
+                                    : "",
+                        },
+                        {
+                            key: "is_registered",
+                            label: "Registered",
+                            formatter: (value) =>
+                                value ? "Yes" : "No",
+                        },
+                        {
+                            key: "telegram_user_id",
+                            label: "Telegram",
+                            formatter: (value) =>
+                                value
+                                    ? "Linked"
+                                    : "Not Linked",
+                        },
+                    ]}
+                />
+            </FilterToolbar>
 
             <CustomerTable
-                customers={filteredCustomers}
+                customers={visibleCustomers}
                 loading={isLoading}
                 searchTerm={searchTerm}
                 page={page}
@@ -209,20 +574,86 @@ function Customers() {
                 }
                 onRowClick={handleCustomerClick}
                 onEdit={handleEditCustomer}
+                onToggleStatus={
+                    handleToggleStatus
+                }
             />
 
-            <CustomerDialog
-                open={dialogOpen}
-                onClose={handleCloseDialog}
-                onSubmit={handleSubmitCustomer}
-                customer={selectedCustomer}
-            />
+            {(
 
-            <CustomerDetailsDrawer
-                open={drawerOpen}
-                customer={selectedCustomer}
-                onClose={handleDrawerClose}
-            />
+                hasPermission(
+
+                    "customers.create",
+
+                ) ||
+
+                hasPermission(
+
+                    "customers.edit",
+
+                )
+
+            ) && (
+
+                <CustomerDialog
+
+                    open={
+
+                        dialogOpen
+
+                    }
+
+                    onClose={
+
+                        handleCloseDialog
+
+                    }
+
+                    onSubmit={
+
+                        handleSubmitCustomer
+
+                    }
+
+                    customer={
+
+                        selectedCustomer
+
+                    }
+
+                />
+
+            )}
+
+            {hasPermission(
+
+                "customers.view",
+
+            ) && (
+
+                <CustomerDetailsDrawer
+
+                    open={
+
+                        drawerOpen
+
+                    }
+
+                    customer={
+
+                        selectedCustomer
+
+                    }
+
+                    onClose={
+
+                        handleDrawerClose
+
+                    }
+
+                />
+
+            )}
 
             <AppSnackbar
                 open={snackbar.open}

@@ -1,65 +1,86 @@
 import {
     Button,
     Stack,
-    TextField,
 } from "@mui/material";
 
 import RefreshIcon from "@mui/icons-material/Refresh";
+import ClearIcon from "@mui/icons-material/Clear";
+import DownloadIcon from "@mui/icons-material/Download";
 
+import SearchBar from "../common/SearchBar";
 import FilterControl from "../common/FilterControl";
 
 const CHANNEL_OPTIONS = [
+
     {
         value: "",
         label: "All Channels",
     },
+
     {
         value: "Cash",
         label: "Cash",
     },
+
     {
         value: "Bank Transfer",
         label: "Bank Transfer",
     },
+
     {
         value: "POS",
         label: "POS",
     },
+
     {
         value: "Wallet",
         label: "Wallet",
     },
+
     {
         value: "Gateway",
         label: "Gateway",
     },
+
 ];
 
 const STATUS_OPTIONS = [
+
     {
         value: "",
         label: "All Statuses",
     },
-    {
-        value: "successful",
-        label: "Successful",
-    },
+
     {
         value: "pending",
         label: "Pending",
     },
+
+    {
+        value: "successful",
+        label: "Successful",
+    },
+
     {
         value: "failed",
         label: "Failed",
     },
+
     {
         value: "cancelled",
         label: "Cancelled",
     },
+
     {
         value: "refunded",
         label: "Refunded",
     },
+
+    {
+        value: "expired",
+        label: "Expired",
+    },
+
 ];
 
 function PaymentFilters({
@@ -79,6 +100,8 @@ function PaymentFilters({
     onRefresh,
 
     onClear,
+
+    onExport,
 
 }) {
 
@@ -130,27 +153,27 @@ function PaymentFilters({
 
             >
 
-                <TextField
-
-                    size="small"
-
-                    placeholder="Search customer, phone or reference..."
+                <SearchBar
 
                     value={search}
 
-                    onChange={(event) =>
+                    onChange={onSearchChange}
 
-                        onSearchChange(
-                            event.target.value,
-                        )
+                    placeholder="Search customer, plan or payment reference..."
 
-                    }
+                    sx={{
 
-                    fullWidth
+                        flex: 1,
+
+                    }}
 
                 />
 
                 <FilterControl
+
+                    label="Channel"
+
+                    placeholder="All Channels"
 
                     value={paymentChannel}
 
@@ -163,6 +186,10 @@ function PaymentFilters({
                 />
 
                 <FilterControl
+
+                    label="Status"
+
+                    placeholder="All Statuses"
 
                     value={status}
 
@@ -184,34 +211,42 @@ function PaymentFilters({
 
             >
 
+            <Button
+
+                variant="outlined"
+
+                startIcon={<RefreshIcon />}
+
+                onClick={onRefresh}
+
+            >
+
+                Refresh
+
+            </Button>
+
+            <Button
+
+                variant="outlined"
+
+                color="inherit"
+
+                startIcon={<ClearIcon />}
+
+                onClick={onClear}
+            >
+                Clear
+            </Button>
+
                 <Button
 
                     variant="outlined"
 
-                    onClick={onClear}
+                    startIcon={<DownloadIcon />}
 
-                    disabled={!onClear}
-
+                    onClick={onExport}
                 >
-
-                    Clear
-
-                </Button>
-
-                <Button
-
-                    variant="contained"
-
-                    startIcon={<RefreshIcon />}
-
-                    onClick={onRefresh}
-
-                    disabled={!onRefresh}
-
-                >
-
-                    Refresh
-
+                    Export CSV
                 </Button>
 
             </Stack>

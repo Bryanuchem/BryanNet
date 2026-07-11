@@ -1,80 +1,107 @@
 import api from "./axios";
 
 /**
- * Get all internet plans.
+ * Get all plans.
  */
-export const getPlans = async () => {
-    const response = await api.get("/plans");
-    return response.data;
-};
+export const getPlans = async (params = {}) => {
 
-/**
- * Get a single plan by ID.
- */
-export const getPlan = async (planId) => {
     const response = await api.get(
-        `/plans/${planId}`
+        "/plans",
+        {
+            params,
+        },
     );
 
     return response.data;
+
 };
+
+/**
+ * Get a single plan.
+ */
+export const getPlan = async (
+    planId,
+) => {
+
+    const response = await api.get(
+        `/plans/${planId}`,
+    );
+
+    return response.data;
+
+};
+
+/**
+ * Get all active plans.
+ */
+export const getActivePlans =
+    async () => {
+
+        const response = await api.get(
+            "/plans/active",
+        );
+
+        return response.data;
+
+    };
 
 /**
  * Create a new plan.
  */
-export const createPlan = async (planData) => {
+export const createPlan = async (
+    planData,
+) => {
+
     const response = await api.post(
         "/plans",
-        planData
+        planData,
     );
 
     return response.data;
+
 };
 
 /**
- * Update an existing plan.
+ * Update a plan.
  */
-export const updatePlan = async ({
+export const updatePlan = async (
     planId,
-    data,
-}) => {
+    planData,
+) => {
+
     const response = await api.put(
         `/plans/${planId}`,
-        data
+        planData,
     );
 
     return response.data;
+
 };
 
 /**
- * Delete a plan.
+ * Activate a plan.
  */
-export const deletePlan = async (
-    planId
-) => {
-    const response = await api.delete(
-        `/plans/${planId}`
-    );
+export const activatePlan =
+    async (planId) => {
 
-    return response.data;
-};
+        const response = await api.patch(
+            `/plans/${planId}/activate`,
+        );
+
+        return response.data;
+
+    };
 
 /**
- * Activate or deactivate a plan.
+ * Deactivate a plan.
  */
-export const updatePlanStatus = async ({
-    planId,
-    isActive,
-}) => {
-    const response = await api.patch(
-        `/plans/${planId}/status`,
-        null,
-        {
-            params: {
-                is_active: isActive,
-            },
-        }
-    );
+export const deactivatePlan =
+    async (planId) => {
 
-    return response.data;
-};
+        const response = await api.patch(
+            `/plans/${planId}/deactivate`,
+        );
+
+        return response.data;
+
+    };

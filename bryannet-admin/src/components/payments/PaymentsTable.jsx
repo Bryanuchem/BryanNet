@@ -8,11 +8,13 @@ import {
     DataGrid,
 } from "@mui/x-data-grid";
 
-import {
-    DeleteOutlineOutlined,
-    EditOutlined,
-    VisibilityOutlined,
-} from "@mui/icons-material";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import MoneyOffOutlinedIcon from "@mui/icons-material/MoneyOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import PriceCheckOutlinedIcon from "@mui/icons-material/PriceCheckOutlined";
+import RemoveDoneOutlinedIcon from "@mui/icons-material/RemoveDoneOutlined";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+
 
 import {
     useMemo,
@@ -22,19 +24,48 @@ import DashboardSection from "../common/DashboardSection";
 import ActionMenu from "../common/ActionMenu";
 import BadgeChip from "../common/BadgeChip";
 
+import {
+    useCurrentPermissions,
+} from "../../hooks/useCurrentPermissions";
+
 function PaymentsTable({
 
     payments = [],
 
     loading = false,
 
+    page,
+
+    rowsPerPage,
+
+    total,
+
+    onPageChange,
+
+    onRowsPerPageChange,
+
     onView,
 
-    onEdit,
+    onRowClick,
 
-    onDelete,
+
+    onPrintReceipt,
+
+    onComplete,
+
+    onRefund,
+
+    onCancel,
+
+    onExpire,
 
 }) {
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
 
     const columns = useMemo(
 
@@ -46,7 +77,7 @@ function PaymentsTable({
 
                 headerName: "Reference",
 
-                flex: 1.3,
+                flex: 1.35,
 
                 minWidth: 220,
 
@@ -58,9 +89,19 @@ function PaymentsTable({
 
                 headerName: "Customer",
 
-                flex: 1.3,
+                flex: 1.25,
 
                 minWidth: 180,
+
+            },
+
+            {
+
+                field: "plan_name",
+
+                headerName: "Plan",
+
+                width: 170,
 
             },
 
@@ -122,7 +163,7 @@ function PaymentsTable({
 
                 headerName: "Status",
 
-                width: 130,
+                width: 140,
 
                 renderCell: (params) => (
 
@@ -140,15 +181,15 @@ function PaymentsTable({
 
                 headerName: "Payment Date",
 
-                width: 180,
+                width: 185,
 
                 renderCell: (params) => (
 
                     params.value
 
                         ? new Date(
-                              params.value,
-                          ).toLocaleString()
+                            params.value,
+                        ).toLocaleString()
 
                         : "-"
 
@@ -160,7 +201,11 @@ function PaymentsTable({
 
                 field: "actions",
 
-                headerName: "",
+                headerName: "Actions",
+
+                align: "center",
+
+                headerAlign: "center",
 
                 width: 70,
 
@@ -170,77 +215,255 @@ function PaymentsTable({
 
                 disableColumnMenu: true,
 
-                renderCell: (params) => (
+                renderCell: (params) => {
 
-                    <ActionMenu
+                    const payment = params.row;
 
-                        items={[
+                    const items = [];
 
-                            {
+                    if (
 
-                                label: "View",
+                        hasPermission(
+
+                            "payments.view",
+
+                        )
+
+                    ) {
+
+                        items.push({
+
+                            label: "View",
+
+                            icon: (
+
+                                <VisibilityOutlinedIcon
+
+                                    fontSize="small"
+
+                                />
+
+                            ),
+
+                            onClick: () =>
+
+                                onView(
+
+                                    payment,
+
+                                ),
+
+                        });
+
+                    }
+
+                    if (
+
+                        payment.status === "successful"
+
+                    ) {
+
+                        if (
+
+                            hasPermission(
+
+                                "payments.view",
+
+                            )
+
+                        ) {
+
+                            items.push({
+
+                                label: "Print Receipt",
 
                                 icon: (
 
-                                    <VisibilityOutlined
+                                    <ReceiptLongOutlinedIcon
+
                                         fontSize="small"
+
                                     />
 
                                 ),
 
                                 onClick: () =>
 
-                                    onView(
-                                        params.row,
+                                    onPrintReceipt(
+
+                                        payment,
+
                                     ),
 
-                            },
+                            });
 
-                            {
+                        }
 
-                                label: "Edit",
+                        if (
+
+                            hasPermission(
+
+                                "payments.refund",
+
+                            )
+
+                        ) {
+
+                            items.push({
+
+                                label: "Refund",
 
                                 icon: (
 
-                                    <EditOutlined
+                                    <MoneyOffOutlinedIcon
+
                                         fontSize="small"
+
                                     />
 
                                 ),
 
                                 onClick: () =>
 
-                                    onEdit(
-                                        params.row,
+                                    onRefund(
+
+                                        payment,
+
                                     ),
 
-                            },
+                            });
 
-                            {
+                        }
 
-                                label: "Delete",
+                    }
+
+                    if (
+
+                        payment.status === "pending"
+
+                    ) {
+
+                        if (
+
+                            hasPermission(
+
+                                "payments.complete",
+
+                            )
+
+                        ) {
+
+                            items.push({
+
+                                label: "Complete",
 
                                 icon: (
 
-                                    <DeleteOutlineOutlined
+                                    <PriceCheckOutlinedIcon
+
                                         fontSize="small"
+
                                     />
 
                                 ),
 
                                 onClick: () =>
 
-                                    onDelete(
-                                        params.row,
+                                    onComplete(
+
+                                        payment,
+
                                     ),
 
-                            },
+                            });
 
-                        ]}
+                        }
 
-                    />
+                        if (
 
-                ),
+                            hasPermission(
+
+                                "payments.cancel",
+
+                            )
+
+                        ) {
+
+                            items.push({
+
+                                label: "Cancel",
+
+                                icon: (
+
+                                    <RemoveDoneOutlinedIcon
+
+                                        fontSize="small"
+
+                                    />
+
+                                ),
+
+                                onClick: () =>
+
+                                    onCancel(
+
+                                        payment,
+
+                                    ),
+
+                            });
+
+                        }
+
+                        if (
+
+                            hasPermission(
+
+                                "payments.expire",
+
+                            )
+
+                        ) {
+
+                            items.push({
+
+                                label: "Expire",
+
+                                icon: (
+
+                                    <ScheduleIcon
+
+                                        fontSize="small"
+
+                                    />
+
+                                ),
+
+                                onClick: () =>
+
+                                    onExpire(
+
+                                        payment,
+
+                                    ),
+
+                            });
+
+                        }
+
+                    }
+
+                    return items.length > 0 ? (
+
+                        <ActionMenu
+
+                            items={items}
+
+                        />
+
+                    ) : null;
+
+                },
 
             },
 
@@ -248,11 +471,19 @@ function PaymentsTable({
 
         [
 
+            hasPermission,
+
             onView,
 
-            onEdit,
+            onPrintReceipt,
 
-            onDelete,
+            onComplete,
+
+            onRefund,
+
+            onCancel,
+
+            onExpire,
 
         ],
 
@@ -261,7 +492,6 @@ function PaymentsTable({
     return (
 
         <DashboardSection
-            title="Payments"
         >
 
             {loading ? (
@@ -288,6 +518,7 @@ function PaymentsTable({
 
                 <DataGrid
 
+
                     autoHeight
 
                     rows={payments}
@@ -295,30 +526,90 @@ function PaymentsTable({
                     columns={columns}
 
                     getRowId={(row) =>
-                        row.payment_id
+                        row.payment_reference
                     }
 
                     disableRowSelectionOnClick
 
-                    pageSizeOptions={[
-                        10,
-                        25,
-                        50,
-                    ]}
+                    paginationMode="server"
 
-                    initialState={{
+                    rowCount={total}
 
-                        pagination: {
+                    paginationModel={{
 
-                            paginationModel: {
+                        page,
 
-                                pageSize: 10,
-
-                            },
-
-                        },
+                        pageSize:
+                            rowsPerPage,
 
                     }}
+
+                    onPaginationModelChange={(model) => {
+
+                        if (
+                            model.page !== page
+                        ) {
+
+                            onPageChange(
+                                null,
+                                model.page,
+                            );
+
+                        }
+
+                        if (
+
+                            model.pageSize
+                            !== rowsPerPage
+
+                        ) {
+
+                            onRowsPerPageChange({
+
+                                target: {
+
+                                    value:
+                                        model.pageSize,
+
+                                },
+
+                            });
+
+                        }
+
+                    }}
+
+                    onRowClick={(params) => {
+
+                        if (
+
+                            hasPermission(
+
+                                "payments.view",
+
+                            )
+
+                        ) {
+
+                            onRowClick?.(
+
+                                params.row,
+
+                            );
+
+                        }
+
+                    }}
+
+                    pageSizeOptions={[
+
+                        10,
+
+                        25,
+
+                        50,
+
+                    ]}
 
                     sx={{
 
@@ -328,7 +619,8 @@ function PaymentsTable({
 
                             fontWeight: 700,
 
-                            backgroundColor: "background.paper",
+                            backgroundColor:
+                                "background.paper",
 
                         },
 
@@ -340,11 +632,64 @@ function PaymentsTable({
 
                         },
 
+                        "& .MuiDataGrid-row": {
+
+                            cursor:
+
+                                hasPermission(
+
+                                    "payments.view",
+
+                                )
+
+                                    ? "pointer"
+
+                                    : "default",
+
+                        },
+
+                        "& .MuiDataGrid-row:nth-of-type(odd)": {
+
+                            backgroundColor: "grey.50",
+
+                        },
+
+                        "& .MuiDataGrid-row:hover": {
+
+                            cursor: "pointer",
+
+                        },
+
+                        "& .MuiDataGrid-cell:focus": {
+
+                            outline: "none",
+
+                        },
+
+                        "& .MuiDataGrid-cell:focus-within": {
+
+                            outline: "none",
+
+                        },
+
+                        "& .MuiDataGrid-columnHeader:focus": {
+
+                            outline: "none",
+
+                        },
+
+                        "& .MuiDataGrid-columnHeader:focus-within": {
+
+                            outline: "none",
+
+                        },
+
                         "& .MuiDataGrid-footerContainer": {
 
                             borderTop: 1,
 
-                            borderColor: "divider",
+                            borderColor:
+                                "divider",
 
                         },
 

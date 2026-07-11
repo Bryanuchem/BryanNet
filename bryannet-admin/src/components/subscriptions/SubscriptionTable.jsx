@@ -1,119 +1,217 @@
 import {
+    useState,
+} from "react";
+
+import {
+    Box,
+    CircularProgress,
+    IconButton,
+    Menu,
+    MenuItem,
+    Paper,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
-    Paper,
-    CircularProgress,
-    Box,
+    Typography,
 } from "@mui/material";
 
-import TablePagination from "@mui/material/TablePagination";
-
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import EditIcon from "@mui/icons-material/Edit";
-import AutorenewIcon from "@mui/icons-material/Autorenew";
-import PauseCircleIcon from "@mui/icons-material/PauseCircle";
-import PlayCircleIcon from "@mui/icons-material/PlayCircle";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CancelIcon from "@mui/icons-material/Cancel";
-import DeleteIcon from "@mui/icons-material/Delete";
-
-import ActionMenu from "../common/ActionMenu";
 import BadgeChip from "../common/BadgeChip";
-import EmptyState from "../common/EmptyState";
+
+import {
+    useCurrentPermissions,
+} from "../../hooks/useCurrentPermissions";
 
 function SubscriptionTable({
+
     subscriptions,
+
     loading,
-    searchTerm,
+
     page,
+
     rowsPerPage,
+
+    total,
+
     onPageChange,
+
     onRowsPerPageChange,
-    onView,
-    onEdit,
-    onRenew,
-    onStatusChange,
-    onDelete,
+
+    onRowClick,
+
+    onCancel,
+
 }) {
 
-    if (loading) {
-        return (
-            <Box
-                sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    py: 6,
-                }}
-            >
-                <CircularProgress />
-            </Box>
-        );
-    }
+    const {
 
-    if (subscriptions.length === 0) {
+        hasPermission,
 
-        if (searchTerm) {
-            return (
-                <EmptyState
-                    title="No matching subscriptions"
-                    description="Try a different customer name, plan or status."
-                />
+    } = useCurrentPermissions();
+
+    const [
+
+        anchorEl,
+
+        setAnchorEl,
+
+    ] = useState(null);
+
+    const [
+        selectedSubscription,
+        setSelectedSubscription,
+    ] = useState(null);
+
+    const menuOpen =
+        Boolean(anchorEl);
+
+    const handleOpenMenu = (
+
+        event,
+
+        subscription,
+
+    ) => {
+
+        const canOpen =
+
+            hasPermission(
+
+                "subscriptions.view",
+
+            ) ||
+
+            hasPermission(
+
+                "subscriptions.cancel",
+
             );
+
+        if (
+
+            !canOpen
+
+        ) {
+
+            return;
+
         }
 
-        return (
-            <EmptyState
-                title="No subscriptions found"
-                description="Customer subscriptions will appear here."
-            />
+        event.stopPropagation();
+
+        setAnchorEl(
+
+            event.currentTarget,
+
         );
+
+        setSelectedSubscription(
+
+            subscription,
+
+        );
+
+    };
+
+    const handleCloseMenu =
+        () => {
+
+            setAnchorEl(null);
+
+            setSelectedSubscription(
+                null,
+            );
+
+        };
+
+    if (loading) {
+
+        return (
+
+            <Box
+                display="flex"
+                justifyContent="center"
+                py={8}
+            >
+
+                <CircularProgress />
+
+            </Box>
+
+        );
+
+    }
+
+    if (!subscriptions.length) {
+
+        return (
+
+            <Paper
+                sx={{
+                    p: 6,
+                    textAlign: "center",
+                }}
+            >
+
+                <Typography
+                    color="text.secondary"
+                >
+
+                    No subscriptions found.
+
+                </Typography>
+
+            </Paper>
+
+        );
+
     }
 
     return (
+
         <Paper>
 
-            <TableContainer
-                sx={{
-                    maxHeight: 650,
-                }}
-            >
+            <TableContainer>
 
-                <Table stickyHeader>
+                <Table>
 
                     <TableHead>
 
                         <TableRow>
 
-                            <TableCell sx={{ fontWeight: 700 }}>
+                            <TableCell>
                                 Customer
                             </TableCell>
 
-                            <TableCell sx={{ fontWeight: 700 }}>
+                            <TableCell>
                                 Plan
                             </TableCell>
 
-                            <TableCell sx={{ fontWeight: 700 }}>
+                            <TableCell>
                                 Status
                             </TableCell>
 
-                            <TableCell sx={{ fontWeight: 700 }}>
-                                Price
-                            </TableCell>
-
-                            <TableCell sx={{ fontWeight: 700 }}>
+                            <TableCell>
                                 Remaining
                             </TableCell>
 
-                            <TableCell sx={{ fontWeight: 700 }}>
-                                Expiry Date
+                            <TableCell>
+                                Started
+                            </TableCell>
+
+                            <TableCell>
+                                Expires
                             </TableCell>
 
                             <TableCell
-                                align="center"
-                                sx={{ fontWeight: 700 }}
+                                align="right"
                             >
                                 Actions
                             </TableCell>
@@ -124,166 +222,213 @@ function SubscriptionTable({
 
                     <TableBody>
 
-                        {subscriptions
-                            .slice(
-                                page * rowsPerPage,
-                                page * rowsPerPage + rowsPerPage
-                            )
-                            .map((subscription) => (
+                        {subscriptions.map(
+                            (
+                                subscription,
+                            ) => (
 
                                 <TableRow
-                                    key={
-                                        subscription.subscription_id
-                                    }
+
                                     hover
+
+                                    key={
+
+                                        subscription.subscription_id
+
+                                    }
+
+                                    onClick={() => {
+
+                                        if (
+
+                                            hasPermission(
+
+                                                "subscriptions.view",
+
+                                            )
+
+                                        ) {
+
+                                            onRowClick?.(
+
+                                                subscription,
+
+                                            );
+
+                                        }
+
+                                    }}
+
                                     sx={{
+
+                                        cursor:
+
+                                            hasPermission(
+
+                                                "subscriptions.view",
+
+                                            )
+
+                                                ? "pointer"
+
+                                                : "default",
+
                                         "&:nth-of-type(odd)": {
-                                            bgcolor: "#FAFAFA",
+
+                                            bgcolor:
+
+                                                "grey.50",
+
                                         },
 
-                                        "&:hover": {
-                                            bgcolor: "#F1F5F9",
-                                        },
                                     }}
+
                                 >
 
                                     <TableCell>
-                                        {subscription.customer_name}
-                                    </TableCell>
 
-                                    <TableCell>
-                                        {subscription.plan_name}
-                                    </TableCell>
+                                        <Typography
+                                            fontWeight={
+                                                600
+                                            }
+                                        >
 
-                                    <TableCell>
+                                            {
+                                                subscription.customer_name
+                                            }
 
-                                    <BadgeChip
-                                        status={
-                                            subscription.status
-                                        }
-/>
+                                        </Typography>
 
                                     </TableCell>
 
                                     <TableCell>
-                                        ₦
-                                        {Number(
-                                            subscription.price
-                                        ).toLocaleString()}
-                                    </TableCell>
 
-                                    <TableCell>
                                         {
-                                            subscription.remaining_days
-                                        }{" "}
-                                        days
+                                            subscription.plan_name
+                                        }
+
                                     </TableCell>
 
                                     <TableCell>
-                                        {new Date(
+
+                                        <BadgeChip
+                                            status={
+
+                                                subscription.status?.toLowerCase()
+
+                                            }
+                                            label={
+                                                subscription.status
+                                            }
+                                        />
+
+                                    </TableCell>
+
+                                    <TableCell>
+
+                                        {
+
+                                            subscription.remaining_days
+
+                                        }{" "}
+
+                                        days
+
+                                    </TableCell>
+
+                                    <TableCell>
+
+                                        {
+
+                                            subscription.created_at
+
+                                                ? new Date(
+
+                                                      subscription.created_at,
+
+                                                  ).toLocaleDateString()
+
+                                                : "-"
+
+                                        }
+
+                                    </TableCell>
+
+                                    <TableCell>
+
+                                        {
+
                                             subscription.expiry_date
-                                        ).toLocaleDateString()}
+
+                                                ? new Date(
+
+                                                      subscription.expiry_date,
+
+                                                  ).toLocaleDateString()
+
+                                                : "-"
+
+                                        }
+
                                     </TableCell>
 
                                     <TableCell
-                                        align="center"
+
+                                        align="right"
+
                                         onClick={(event) =>
+
                                             event.stopPropagation()
+
                                         }
+
                                     >
 
-                                        <ActionMenu
-                                            items={[
-                                                {
-                                                    label: "View Details",
-                                                    icon: (
-                                                        <VisibilityIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onView(
-                                                            subscription
-                                                        ),
-                                                },
+                                        {(
 
-                                                {
-                                                    label: "Edit Subscription",
-                                                    icon: (
-                                                        <EditIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onEdit(
-                                                            subscription
-                                                        ),
-                                                },
+                                            hasPermission(
 
-                                                {
-                                                    label: "Renew Subscription",
-                                                    icon: (
-                                                        <AutorenewIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onRenew(
-                                                            subscription
-                                                        ),
-                                                },
+                                                "subscriptions.view",
 
-                                                subscription.status ===
-                                                "active"
-                                                    ? {
-                                                          label:
-                                                              "Suspend Subscription",
-                                                          icon: (
-                                                              <PauseCircleIcon fontSize="small" />
-                                                          ),
-                                                          onClick: () =>
-                                                              onStatusChange(
-                                                                  subscription,
-                                                                  "suspended"
-                                                              ),
-                                                      }
-                                                    : {
-                                                          label:
-                                                              "Reactivate Subscription",
-                                                          icon: (
-                                                              <PlayCircleIcon fontSize="small" />
-                                                          ),
-                                                          onClick: () =>
-                                                              onStatusChange(
-                                                                  subscription,
-                                                                  "active"
-                                                              ),
-                                                      },
+                                            ) ||
 
-                                                {
-                                                    label: "Cancel Subscription",
-                                                    icon: (
-                                                        <CancelIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onStatusChange(
-                                                            subscription,
-                                                            "cancelled"
-                                                        ),
-                                                },
+                                            hasPermission(
 
-                                                {
-                                                    label: "Delete Subscription",
-                                                    icon: (
-                                                        <DeleteIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onDelete(
-                                                            subscription
-                                                        ),
-                                                },
-                                            ]}
-                                        />
+                                                "subscriptions.cancel",
+
+                                            )
+
+                                        ) && (
+
+                                            <IconButton
+
+                                                onClick={(event) =>
+
+                                                    handleOpenMenu(
+
+                                                        event,
+
+                                                        subscription,
+
+                                                    )
+
+                                                }
+
+                                            >
+
+                                                <MoreVertIcon />
+
+                                            </IconButton>
+
+                                        )}
 
                                     </TableCell>
 
                                 </TableRow>
 
-                            ))}
+                            ),
+
+                        )}
 
                     </TableBody>
 
@@ -291,25 +436,121 @@ function SubscriptionTable({
 
             </TableContainer>
 
+                <Menu
+
+                    anchorEl={
+
+                        anchorEl
+
+                    }
+
+                    open={
+
+                        menuOpen
+
+                    }
+
+                    onClose={
+
+                        handleCloseMenu
+
+                    }
+
+                >
+
+                {hasPermission(
+
+                    "subscriptions.view",
+
+                ) && (
+
+                    <MenuItem
+
+                        onClick={() => {
+
+                            onRowClick?.(
+
+                                selectedSubscription,
+
+                            );
+
+                            handleCloseMenu();
+
+                        }}
+
+                    >
+
+                        <VisibilityOutlinedIcon
+
+                            fontSize="small"
+
+                            sx={{
+
+                                mr: 1,
+
+                            }}
+
+                        />
+
+                        View Details
+
+                    </MenuItem>
+
+                )}
+
+                {hasPermission(
+                    "subscriptions.cancel",
+                ) &&
+                    selectedSubscription?.status?.toLowerCase() ===
+                        "queued" && (
+                        <MenuItem
+                            onClick={() => {
+                                onCancel?.(
+                                    selectedSubscription.subscription_id,
+                                );
+                                handleCloseMenu();
+                            }}
+                        >
+                            <CancelIcon
+                                fontSize="small"
+                                sx={{ mr: 1 }}
+                            />
+                            Cancel Queued Subscription
+                        </MenuItem>
+                )}
+
+                </Menu>
+
             <TablePagination
+
                 component="div"
-                count={subscriptions.length}
+
+                count={total}
+
                 page={page}
+
                 rowsPerPage={rowsPerPage}
-                onPageChange={onPageChange}
+
+                onPageChange={
+                    onPageChange
+                }
+
                 onRowsPerPageChange={
                     onRowsPerPageChange
                 }
+
                 rowsPerPageOptions={[
-                    5,
                     10,
                     25,
                     50,
                 ]}
+
             />
 
         </Paper>
+
     );
+
 }
 
-export default SubscriptionTable;
+export default SubscriptionTable;                                    

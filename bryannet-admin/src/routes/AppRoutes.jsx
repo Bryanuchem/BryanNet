@@ -10,6 +10,11 @@ import PublicLayout from "../layouts/PublicLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 
+import PermissionRoute from "../components/permissions/PermissionRoute";
+import SettingsIndexRedirect from "../components/permissions/SettingsIndexRedirect";
+
+import Unauthorized from "../pages/Unauthorized";
+
 import Dashboard from "../pages/Dashboard";
 import Customers from "../pages/Customers";
 import Devices from "../pages/Devices";
@@ -53,8 +58,11 @@ export default function AppRoutes() {
                 <Route element={<PublicLayout />}>
 
                     <Route
+
                         path="/login"
+
                         element={<Login />}
+
                     />
 
                 </Route>
@@ -70,43 +78,157 @@ export default function AppRoutes() {
                 <Route element={<MainLayout />}>
 
                     <Route
+
                         path="/"
+
                         element={
+
                             <Navigate
+
                                 to="/dashboard"
+
                                 replace
+
                             />
+
                         }
+
                     />
 
+                    {/* ==========================
+                        Dashboard
+                    ========================== */}
+
                     <Route
+
                         path="/dashboard"
-                        element={<Dashboard />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="dashboard.view"
+
+                            >
+
+                                <Dashboard />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
+                    {/* ==========================
+                        Customers
+                    ========================== */}
+
                     <Route
+
                         path="/customers"
-                        element={<Customers />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="customers.view"
+
+                            >
+
+                                <Customers />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
-                        path="/plans"
-                        element={<Plans />}
-                    />
 
-                    <Route
-                        path="/subscriptions"
-                        element={<Subscriptions />}
-                    />
-
-                    <Route
                         path="/devices"
-                        element={<Devices />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="devices.view"
+
+                            >
+
+                                <Devices />
+
+                            </PermissionRoute>
+
+                        }
+
+                    />
+
+                    {/* ==========================
+                        Services
+                    ========================== */}
+
+                    <Route
+
+                        path="/plans"
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="plans.view"
+
+                            >
+
+                                <Plans />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
+                        path="/subscriptions"
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="subscriptions.view"
+
+                            >
+
+                                <Subscriptions />
+
+                            </PermissionRoute>
+
+                        }
+
+                    />
+
+                    {/* ==========================
+                        Operations
+                    ========================== */}
+
+                    <Route
+
                         path="/payments"
-                        element={<Payments />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="payments.view"
+
+                            >
+
+                                <Payments />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     {/* ==========================
@@ -114,33 +236,123 @@ export default function AppRoutes() {
                     ========================== */}
 
                     <Route
+
                         path="/administration"
-                        element={<Overview />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="administration.view"
+
+                            >
+
+                                <Overview />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
                         path="/administration/users"
-                        element={<AdminUsers />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="admin_users.view"
+
+                            >
+
+                                <AdminUsers />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
                         path="/administration/roles"
-                        element={<RolesPermissions />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="roles.view"
+
+                            >
+
+                                <RolesPermissions />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
                         path="/administration/audit-logs"
-                        element={<AuditLogs />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="audit_logs.view"
+
+                            >
+
+                                <AuditLogs />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
                         path="/administration/sessions"
-                        element={<LoginSessions />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="login_sessions.view"
+
+                            >
+
+                                <LoginSessions />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     <Route
+
                         path="/administration/system-activity"
-                        element={<SystemActivity />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="system_activity.view"
+
+                            >
+
+                                <SystemActivity />
+
+                            </PermissionRoute>
+
+                        }
+
                     />
 
                     {/* ==========================
@@ -148,54 +360,210 @@ export default function AppRoutes() {
                     ========================== */}
 
                     <Route
+
                         path="/settings"
-                        element={<Settings />}
+
+                        element={
+
+                            <PermissionRoute
+
+                                permission="settings.view"
+
+                            >
+
+                                <Settings />
+
+                            </PermissionRoute>
+
+                        }
+
                     >
+
                         <Route
+
                             index
-                            element={<Navigate to="general" replace />}
+
+                            element={
+
+                                <SettingsIndexRedirect />
+
+                            }
+
                         />
 
                         <Route
+
                             path="general"
-                            element={<General />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.general"
+
+                                >
+
+                                    <General />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="authentication"
-                            element={<Authentication />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.authentication"
+
+                                >
+
+                                    <Authentication />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="notifications"
-                            element={<Notifications />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.notifications"
+
+                                >
+
+                                    <Notifications />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="network"
-                            element={<Network />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.network"
+
+                                >
+
+                                    <Network />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="billing"
-                            element={<Billing />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.billing"
+
+                                >
+
+                                    <Billing />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="integrations"
-                            element={<Integrations />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.integrations"
+
+                                >
+
+                                    <Integrations />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="branding"
-                            element={<Branding />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.branding"
+
+                                >
+
+                                    <Branding />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
 
                         <Route
+
                             path="system"
-                            element={<System />}
+
+                            element={
+
+                                <PermissionRoute
+
+                                    permission="settings.system"
+
+                                >
+
+                                    <System />
+
+                                </PermissionRoute>
+
+                            }
+
                         />
+
                     </Route>
+
+                    {/* ==========================
+                        Unauthorized
+                    ========================== */}
+
+                    <Route
+
+                        path="/unauthorized"
+
+                        element={<Unauthorized />}
+
+                    />
 
                 </Route>
 
@@ -206,8 +574,11 @@ export default function AppRoutes() {
             ========================== */}
 
             <Route
+
                 path="*"
+
                 element={<NotFound />}
+
             />
 
         </Routes>

@@ -1,5 +1,4 @@
 import {
-    Chip,
     Paper,
     Table,
     TableBody,
@@ -10,12 +9,17 @@ import {
     Typography,
 } from "@mui/material";
 
+import BadgeChip from "../../common/BadgeChip";
+
 export default function RecentAuditLogsTable({
     logs = [],
     loading = false,
 }) {
+
     if (loading) {
+
         return (
+
             <Paper
                 variant="outlined"
                 sx={{
@@ -23,15 +27,21 @@ export default function RecentAuditLogsTable({
                     textAlign: "center",
                 }}
             >
+
                 <Typography color="text.secondary">
                     Loading audit logs...
                 </Typography>
+
             </Paper>
+
         );
+
     }
 
     if (logs.length === 0) {
+
         return (
+
             <Paper
                 variant="outlined"
                 sx={{
@@ -39,60 +49,139 @@ export default function RecentAuditLogsTable({
                     textAlign: "center",
                 }}
             >
+
                 <Typography color="text.secondary">
                     No recent audit logs found.
                 </Typography>
+
             </Paper>
+
         );
+
     }
 
     return (
-        <TableContainer component={Paper} variant="outlined">
+
+        <TableContainer
+            component={Paper}
+            variant="outlined"
+        >
+
             <Table>
+
                 <TableHead>
+
                     <TableRow>
+
                         <TableCell>Time</TableCell>
+
                         <TableCell>Administrator</TableCell>
+
                         <TableCell>Action</TableCell>
+
                         <TableCell>Module</TableCell>
+
                         <TableCell>Target</TableCell>
+
                         <TableCell>Status</TableCell>
+
                     </TableRow>
+
                 </TableHead>
 
                 <TableBody>
-                    {logs.map((log) => (
-                        <TableRow key={log.id} hover>
+
+                    {logs.map((log, index) => (
+
+                        <TableRow
+
+                            key={log.id}
+
+                            hover
+
+                            sx={{
+
+                                cursor: "pointer",
+
+                                backgroundColor:
+
+                                    index % 2 === 0
+
+                                        ? "action.hover"
+
+                                        : "background.paper",
+
+                            }}
+
+                        >
+
                             <TableCell>
-                                {new Date(log.timestamp).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
+
+                                {new Date(
+                                    log.timestamp,
+                                ).toLocaleTimeString(
+                                    [],
+                                    {
+
+                                        hour: "2-digit",
+
+                                        minute: "2-digit",
+
+                                    },
+                                )}
+
                             </TableCell>
 
-                            <TableCell>{log.administrator}</TableCell>
+                            <TableCell>
 
-                            <TableCell>{log.action}</TableCell>
+                                {log.administrator}
 
-                            <TableCell>{log.module}</TableCell>
-
-                            <TableCell>{log.target}</TableCell>
+                            </TableCell>
 
                             <TableCell>
-                                <Chip
-                                    label={log.status}
-                                    color={
-                                        log.status === "Success"
-                                            ? "success"
-                                            : "error"
+
+                                {log.action}
+
+                            </TableCell>
+
+                            <TableCell>
+
+                                {log.module}
+
+                            </TableCell>
+
+                            <TableCell>
+
+                                {log.target}
+
+                            </TableCell>
+
+                            <TableCell>
+
+                                <BadgeChip
+
+                                    status={
+                                        log.status?.toLowerCase()
                                     }
-                                    size="small"
+
+                                    label={
+                                        log.status
+                                    }
+
                                 />
+
                             </TableCell>
+
                         </TableRow>
+
                     ))}
+
                 </TableBody>
+
             </Table>
+
         </TableContainer>
+
     );
+
 }

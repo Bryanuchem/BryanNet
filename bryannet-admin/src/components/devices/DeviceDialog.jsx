@@ -1,133 +1,248 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
 
 import {
+    Autocomplete,
     Button,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
+    Grid,
     TextField,
 } from "@mui/material";
 
-const INITIAL_FORM_DATA = {
+const initialForm = {
+
     customer_id: "",
+
     device_name: "",
+
     mac_address: "",
+
 };
 
 function DeviceDialog({
+
     open,
-    customers = [],
+
     onClose,
+
     onSubmit,
+
+    customers = [],
+
 }) {
-    const [formData, setFormData] =
-        useState(INITIAL_FORM_DATA);
+
+    const [
+        formData,
+        setFormData,
+    ] = useState(initialForm);
+
+    const [
+        selectedCustomer,
+        setSelectedCustomer,
+    ] = useState(null);
 
     useEffect(() => {
-        if (open) {
-            setFormData(INITIAL_FORM_DATA);
+
+        if (!open) {
+            return;
         }
+
+        const nextFormData = {
+            customer_id: "",
+            device_name: "",
+            mac_address: "",
+        };
+
+        setFormData((previous) => {
+
+            if (
+
+                previous.customer_id === nextFormData.customer_id &&
+
+                previous.device_name === nextFormData.device_name &&
+
+                previous.mac_address === nextFormData.mac_address
+
+            ) {
+
+                return previous;
+
+            }
+
+            return nextFormData;
+
+        });
+
     }, [open]);
 
-    const handleChange = (event) => {
-        const { name, value } = event.target;
+    const handleChange = (
+        event,
+    ) => {
 
-        setFormData((prev) => ({
-            ...prev,
+        const {
+
+            name,
+
+            value,
+
+        } = event.target;
+
+        setFormData((previous) => ({
+
+            ...previous,
+
             [name]: value,
+
         }));
+
+    };
+
+    const handleCustomerChange = (
+        event,
+        customer,
+    ) => {
+
+        setSelectedCustomer(
+            customer,
+        );
+
+        setFormData((previous) => ({
+
+            ...previous,
+
+            customer_id:
+                customer?.customer_id ?? "",
+
+        }));
+
     };
 
     const handleSubmit = () => {
-        onSubmit({
-            ...formData,
-            customer_id: Number(
-                formData.customer_id
-            ),
-        });
+
+        onSubmit(
+            formData,
+        );
+
     };
 
     return (
+
         <Dialog
             open={open}
             onClose={onClose}
             fullWidth
             maxWidth="sm"
         >
+
             <DialogTitle>
+
                 Register Device
+
             </DialogTitle>
 
-            <DialogContent>
+            <DialogContent dividers>
 
-                <Stack
-                    spacing={3}
-                    sx={{ mt: 1 }}
+                <Grid
+                    container
+                    spacing={2}
+                    sx={{
+                        mt: 0.5,
+                    }}
                 >
 
-                    <FormControl fullWidth>
+                    <Grid
+                        size={{
+                            xs: 12,
+                        }}
+                    >
 
-                        <InputLabel>
-                            Customer
-                        </InputLabel>
+                        <Autocomplete
 
-                        <Select
-                            name="customer_id"
+                            options={customers}
+
                             value={
-                                formData.customer_id
+                                selectedCustomer
                             }
-                            label="Customer"
-                            onChange={handleChange}
-                        >
 
-                            {customers.map(
-                                (customer) => (
+                            onChange={
+                                handleCustomerChange
+                            }
 
-                                    <MenuItem
-                                        key={
-                                            customer.customer_id
-                                        }
-                                        value={
-                                            customer.customer_id
-                                        }
-                                    >
-                                        {customer.full_name}
-                                    </MenuItem>
+                            getOptionLabel={(option) =>
+                                option.full_name ?? ""
+                            }
 
-                                )
+                            isOptionEqualToValue={(
+                                option,
+                                value,
+                            ) =>
+                                option.customer_id ===
+                                value.customer_id
+                            }
+
+                            renderInput={(params) => (
+
+                                <TextField
+                                    {...params}
+                                    required
+                                    label="Customer"
+                                />
+
                             )}
 
-                        </Select>
+                        />
 
-                    </FormControl>
+                    </Grid>
 
-                    <TextField
-                        fullWidth
-                        label="Device Name"
-                        name="device_name"
-                        value={
-                            formData.device_name
-                        }
-                        onChange={handleChange}
-                    />
+                    <Grid
+                        size={{
+                            xs: 12,
+                        }}
+                    >
 
-                    <TextField
-                        fullWidth
-                        label="MAC Address"
-                        name="mac_address"
-                        value={
-                            formData.mac_address
-                        }
-                        onChange={handleChange}
-                    />
+                        <TextField
+                            fullWidth
+                            required
+                            label="Device Name"
+                            name="device_name"
+                            value={
+                                formData.device_name
+                            }
+                            onChange={
+                                handleChange
+                            }
+                        />
 
-                </Stack>
+                    </Grid>
+
+                    <Grid
+                        size={{
+                            xs: 12,
+                        }}
+                    >
+
+                        <TextField
+                            fullWidth
+                            required
+                            label="MAC Address"
+                            name="mac_address"
+                            value={
+                                formData.mac_address
+                            }
+                            onChange={
+                                handleChange
+                            }
+                            placeholder="AA:BB:CC:DD:EE:FF"
+                        />
+
+                    </Grid>
+
+                </Grid>
 
             </DialogContent>
 
@@ -136,20 +251,26 @@ function DeviceDialog({
                 <Button
                     onClick={onClose}
                 >
+
                     Cancel
+
                 </Button>
 
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
                 >
-                    Register
+
+                    Register Device
+
                 </Button>
 
             </DialogActions>
 
         </Dialog>
+
     );
+
 }
 
 export default DeviceDialog;

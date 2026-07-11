@@ -6,6 +6,7 @@ import {
 function DashboardSection({
     title,
     header,
+    action,
     children,
 }) {
 
@@ -28,15 +29,37 @@ function DashboardSection({
 
             ) : (
 
-                <Typography
-                    variant="h6"
-                    fontWeight={600}
-                    sx={{
-                        mb: 3,
+                <div
+
+                    style={{
+
+                        display: "flex",
+
+                        justifyContent: "space-between",
+
+                        alignItems: "center",
+
+                        marginBottom: 24,
+
                     }}
+
                 >
-                    {title}
-                </Typography>
+
+                    <Typography
+
+                        variant="h6"
+
+                        fontWeight={600}
+
+                    >
+
+                        {title}
+
+                    </Typography>
+
+                    {action}
+
+                </div>
 
             )}
 

@@ -1,206 +1,399 @@
-import { useMemo, useState } from "react";
 import {
-  Box,
-  Button,
-  MenuItem,
-  Stack,
-  TextField,
-} from "@mui/material";
 
-import RefreshIcon from "@mui/icons-material/Refresh";
-import LogoutIcon from "@mui/icons-material/Logout";
+    useMemo,
+
+    useState,
+
+} from "react";
 
 import PageHeader from "../../components/common/PageHeader";
+import LoginSessionsToolbar from "../../components/admin/loginSessions/LoginSessionsToolbar";
+import LoginSessionsTable from "../../components/admin/loginSessions/LoginSessionsTable";
+import LoginSessionDetailsDialog from "../../components/admin/loginSessions/LoginSessionDetailsDialog";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import LoginSessionsFilters from "../../components/admin/login-sessions/LoginSessionsFilters";
-import LoginSessionsTable from "../../components/admin/login-sessions/LoginSessionsTable";
-import SessionDetailsDialog from "../../components/admin/login-sessions/SessionDetailsDialog";
+import {
 
-const initialSessions = [
-  {
-    id: 1,
-    user: "Bryan",
-    device: "Desktop",
-    browser: "Chrome",
-    operatingSystem: "Windows 11",
-    ipAddress: "192.168.1.15",
-    location: "Owa-Oyibu, Delta",
-    loginTime: "30 Jun 2026 08:15",
-    lastActivity: "2 mins ago",
-    status: "Online",
-  },
-  {
-    id: 2,
-    user: "Mary",
-    device: "Laptop",
-    browser: "Edge",
-    operatingSystem: "Windows 11",
-    ipAddress: "192.168.1.18",
-    location: "Asaba, Delta",
-    loginTime: "30 Jun 2026 08:42",
-    lastActivity: "10 mins ago",
-    status: "Idle",
-  },
-  {
-    id: 3,
-    user: "Peter",
-    device: "Android",
-    browser: "Chrome",
-    operatingSystem: "Android 15",
-    ipAddress: "192.168.1.25",
-    location: "Benin City",
-    loginTime: "30 Jun 2026 09:20",
-    lastActivity: "25 mins ago",
-    status: "Offline",
-  },
-  {
-    id: 4,
-    user: "Grace",
-    device: "MacBook",
-    browser: "Safari",
-    operatingSystem: "macOS",
-    ipAddress: "192.168.1.32",
-    location: "Warri, Delta",
-    loginTime: "30 Jun 2026 09:50",
-    lastActivity: "1 min ago",
-    status: "Online",
-  },
-];
+    useAdminSessions,
 
-export default function LoginSessions() {
-  const [sessions] = useState(initialSessions);
+} from "../../hooks/useAdminSession";
 
-  const [search, setSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedDevice, setSelectedDevice] = useState("");
-  const [selectedBrowser, setSelectedBrowser] = useState("");
+import {
 
-  const [selectedSession, setSelectedSession] = useState(null);
+    useRevokeSession,
 
-  const filteredSessions = useMemo(() => {
-    return sessions.filter((session) => {
-      const matchesSearch =
-        search === "" ||
-        session.user.toLowerCase().includes(search.toLowerCase()) ||
-        session.ipAddress.includes(search);
+} from "../../hooks/useRevokeSession";
 
-      const matchesStatus =
-        selectedStatus === "" ||
-        session.status === selectedStatus;
+import {
 
-      const matchesDevice =
-        selectedDevice === "" ||
-        session.device === selectedDevice;
+    useCurrentPermissions,
 
-      const matchesBrowser =
-        selectedBrowser === "" ||
-        session.browser === selectedBrowser;
+} from "../../hooks/useCurrentPermissions";
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesDevice &&
-        matchesBrowser
-      );
+function LoginSessions() {
+
+    const [
+
+        search,
+
+        setSearch,
+
+    ] = useState("");
+
+    const [
+
+        status,
+
+        setStatus,
+
+    ] = useState("");
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
+
+    const [
+
+        browser,
+
+        setBrowser,
+
+    ] = useState("");
+
+    const [
+
+        selectedSession,
+
+        setSelectedSession,
+
+    ] = useState(null);
+
+    const [
+
+        detailsOpen,
+
+        setDetailsOpen,
+
+    ] = useState(false);
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
     });
-  }, [
-    sessions,
-    search,
-    selectedStatus,
-    selectedDevice,
-    selectedBrowser,
-  ]);
 
-  return (
-    <Box>
-      <PageHeader
-        title="Login Sessions"
-        subtitle="Monitor and manage active administrator sessions."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-            >
-              Refresh
-            </Button>
+    const filters = useMemo(
 
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<LogoutIcon />}
-            >
-              Terminate All
-            </Button>
-          </Stack>
+        () => ({
+
+            search,
+
+            isActive:
+
+                status === ""
+
+                    ? undefined
+
+                    : status === "true",
+
+            browser:
+
+                browser || undefined,
+
+            page: 1,
+
+            pageSize: 25,
+
+            sortBy: "login_time",
+
+            sortOrder: "desc",
+
+        }),
+
+        [
+
+            search,
+
+            status,
+
+            browser,
+
+        ],
+
+    );
+
+    const {
+
+        data,
+
+        isLoading,
+
+        isError,
+
+        refetch,
+
+    } = useAdminSessions(
+
+        filters,
+
+    );
+
+    const revokeSession =
+
+        useRevokeSession({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+                        "Login session revoked successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to revoke login session.",
+
+                });
+
+            },
+
+        });
+
+    function handleView(
+
+        session,
+
+    ) {
+
+        if (
+
+            !hasPermission(
+
+                "login_sessions.view",
+
+            )
+
+        ) {
+
+            return;
+
         }
-      />
 
-      <Stack spacing={3}>
-        <LoginSessionsFilters
-          search={search}
-          onSearchChange={setSearch}
-        />
+        setSelectedSession(
 
-        <Stack direction="row" spacing={2}>
-          <TextField
-            select
-            label="Status"
-            value={selectedStatus}
-            onChange={(e) =>
-              setSelectedStatus(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Online">Online</MenuItem>
-            <MenuItem value="Idle">Idle</MenuItem>
-            <MenuItem value="Offline">Offline</MenuItem>
-          </TextField>
+            session,
 
-          <TextField
-            select
-            label="Device"
-            value={selectedDevice}
-            onChange={(e) =>
-              setSelectedDevice(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Desktop">Desktop</MenuItem>
-            <MenuItem value="Laptop">Laptop</MenuItem>
-            <MenuItem value="Android">Android</MenuItem>
-            <MenuItem value="MacBook">MacBook</MenuItem>
-          </TextField>
+        );
 
-          <TextField
-            select
-            label="Browser"
-            value={selectedBrowser}
-            onChange={(e) =>
-              setSelectedBrowser(e.target.value)
-            }
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Chrome">Chrome</MenuItem>
-            <MenuItem value="Edge">Edge</MenuItem>
-            <MenuItem value="Safari">Safari</MenuItem>
-          </TextField>
-        </Stack>
+        setDetailsOpen(
 
-        <LoginSessionsTable
-          sessions={filteredSessions}
-          onView={setSelectedSession}
-        />
-      </Stack>
+            true,
 
-      <SessionDetailsDialog
-        open={Boolean(selectedSession)}
-        session={selectedSession}
-        onClose={() => setSelectedSession(null)}
-      />
-    </Box>
-  );
+        );
+
+    }
+
+    function handleRevoke(
+
+        session,
+
+    ) {
+
+        if (
+
+            !hasPermission(
+
+                "login_sessions.revoke",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        revokeSession.mutate(
+
+            session.admin_session_id,
+
+        );
+
+    }
+
+    function handleRefresh() {
+
+        refetch();
+
+    }
+
+    function handleClear() {
+
+        setSearch("");
+
+        setStatus("");
+
+        setBrowser("");
+
+    }
+
+    return (
+
+        <>
+
+            <PageHeader
+
+                title="Login Sessions"
+
+                subtitle="Monitor administrator login activity and active sessions."
+
+            />
+
+            <LoginSessionsToolbar
+
+                search={search}
+
+                onSearchChange={setSearch}
+
+                status={status}
+
+                onStatusChange={setStatus}
+
+                browser={browser}
+
+                onBrowserChange={setBrowser}
+
+                sessions={
+
+                    data?.items ?? []
+
+                }
+
+                onRefresh={handleRefresh}
+
+                onClear={handleClear}
+
+            />
+
+            <LoginSessionsTable
+
+                sessions={
+
+                    data?.items ?? []
+
+                }
+
+                loading={isLoading}
+
+                error={isError}
+
+                onRowClick={handleView}
+
+                onView={handleView}
+
+                onRevoke={handleRevoke}
+
+            />
+
+            {hasPermission(
+
+                "login_sessions.view",
+
+            ) && (
+
+                <LoginSessionDetailsDialog
+
+                    open={
+
+                        detailsOpen
+
+                    }
+
+                    session={
+
+                        selectedSession
+
+                    }
+
+                    onClose={() => {
+
+                        setDetailsOpen(
+
+                            false,
+
+                        );
+
+                        setSelectedSession(
+
+                            null,
+
+                        );
+
+                    }}
+
+                />
+
+            )}
+            <AppSnackbar
+
+                open={snackbar.open}
+
+                message={snackbar.message}
+
+                severity={snackbar.severity}
+
+                onClose={() =>
+
+                    setSnackbar((previous) => ({
+
+                        ...previous,
+
+                        open: false,
+
+                    }))
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }
+
+export default LoginSessions;    

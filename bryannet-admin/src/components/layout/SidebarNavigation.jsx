@@ -21,11 +21,19 @@ import {
 import navigation from "../../config/navigation";
 import { useLayout } from "../../context/LayoutContext";
 
+import {useCurrentPermissions} from "../../hooks/useCurrentPermissions"
+
 import SidebarExpandableItem from "./SidebarExpandableItem";
 
 export default function SidebarNavigation() {
 
     const { sidebarCollapsed } = useLayout();
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();    
 
     const location = useLocation();
 
@@ -33,19 +41,123 @@ export default function SidebarNavigation() {
 
     const groups = useMemo(() => {
 
-        return navigation.reduce((acc, item) => {
+        const filteredNavigation =
 
-            if (!acc[item.section]) {
-                acc[item.section] = [];
-            }
+            navigation
 
-            acc[item.section].push(item);
+                .map((item) => {
 
-            return acc;
+                    // -------------------------------------
+                    // Expandable Items
+                    // -------------------------------------
 
-        }, {});
+                    if (
 
-    }, []);
+                        item.children
+
+                    ) {
+
+                        const children =
+
+                            item.children.filter(
+
+                                (child) =>
+
+                                    !child.permission ||
+
+                                    hasPermission(
+
+                                        child.permission,
+
+                                    ),
+
+                            );
+
+                        if (
+
+                            children.length === 0
+
+                        ) {
+
+                            return null;
+
+                        }
+
+                        return {
+
+                            ...item,
+
+                            children,
+
+                        };
+
+                    }
+
+                    // -------------------------------------
+                    // Normal Items
+                    // -------------------------------------
+
+                    if (
+
+                        item.permission &&
+
+                        !hasPermission(
+
+                            item.permission,
+
+                        )
+
+                    ) {
+
+                        return null;
+
+                    }
+
+                    return item;
+
+                })
+
+                .filter(Boolean);
+
+        return filteredNavigation.reduce(
+
+            (
+
+                acc,
+
+                item,
+
+            ) => {
+
+                if (
+
+                    !acc[item.section]
+
+                ) {
+
+                    acc[item.section] = [];
+
+                }
+
+                acc[item.section].push(
+
+                    item,
+
+                );
+
+                return acc;
+
+            },
+
+            {},
+
+        );
+
+    }, [
+
+        hasPermission,
+
+    ]);
 
     const toggleItem = (label) => {
 

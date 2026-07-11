@@ -12,15 +12,6 @@ export const getCustomers = async () => {
     return response.data.items;
 };
 
-export const getRecentCustomers = async () => {
-
-    const response = await api.get(
-        "/customers",
-    );
-
-    return response.data.items;
-
-};
 
 /**
  * Register a new customer.
@@ -52,14 +43,31 @@ export const updateCustomer = async (
 };
 
 /**
- * Delete a customer.
+ * Activate a customer.
  */
-export const deleteCustomer = async (
-    customerId
+export const activateCustomer = async (
+    customerId,
 ) => {
-    const response = await api.delete(
-        `/customers/${customerId}`
+
+    const response = await api.patch(
+        `/customers/${customerId}/activate`,
     );
 
     return response.data;
+
+};
+
+/**
+* Deactivate a customer.
+ */
+export const deactivateCustomer = async (
+    customerId,
+) => {
+
+    const response = await api.patch(
+        `/customers/${customerId}/deactivate`,
+    );
+
+    return response.data;
+
 };

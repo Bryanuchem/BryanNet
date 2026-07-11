@@ -4,7 +4,7 @@ const STATUS_COLORS = {
 
     active: "success",
 
-    inactive: "default",
+    inactive: "error",
 
     suspended: "warning",
 
@@ -18,9 +18,15 @@ const STATUS_COLORS = {
 
     successful: "success",
 
+    success: "success",
+
     pending: "warning",
 
     failed: "error",
+
+    warning: "warning",
+
+    info: "info",
 
     refunded: "info",
 

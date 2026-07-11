@@ -1,162 +1,88 @@
 import {
-    useMutation,
     useQuery,
-    useQueryClient,
 } from "@tanstack/react-query";
 
 import {
-    createPayment,
-    deletePayment,
+
     getPayment,
+
     getPayments,
-    getPaymentStats,
-    updatePayment,
+
+    getPaymentSummary,
+
 } from "../api/payments";
 
-const QUERY_KEY = ["payments"];
 
-const SUMMARY_QUERY_KEY = [
+export const PAYMENTS_QUERY_KEY = [
+    "payments",
+];
+
+export const PAYMENT_SUMMARY_QUERY_KEY = [
     "payment-summary",
 ];
 
 
-export const usePayments = (
+export function usePayments(
     filters = {},
-) =>
-    useQuery({
+) {
+
+    return useQuery({
 
         queryKey: [
-            ...QUERY_KEY,
+
+            ...PAYMENTS_QUERY_KEY,
+
             filters,
+
         ],
 
         queryFn: () =>
-            getPayments(filters),
+            getPayments(
+                filters,
+            ),
 
     });
 
+}
 
-export const usePaymentStats = () =>
-    useQuery({
+
+export function usePaymentSummary() {
+
+    return useQuery({
 
         queryKey:
-            SUMMARY_QUERY_KEY,
+            PAYMENT_SUMMARY_QUERY_KEY,
 
         queryFn:
-            getPaymentStats,
+            getPaymentSummary,
 
     });
 
+}
 
-export const usePayment = (
-    paymentId,
-) =>
-    useQuery({
+
+export function usePayment(
+    paymentReference,
+) {
+
+    return useQuery({
 
         queryKey: [
-            ...QUERY_KEY,
-            paymentId,
+
+            ...PAYMENTS_QUERY_KEY,
+
+            paymentReference,
+
         ],
 
         queryFn: () =>
-            getPayment(paymentId),
+            getPayment(
+                paymentReference,
+            ),
 
-        enabled: !!paymentId,
-
-    });
-
-
-export const useCreatePayment = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn:
-            createPayment,
-
-        onSuccess: () => {
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    QUERY_KEY,
-
-            });
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    SUMMARY_QUERY_KEY,
-
-            });
-
-        },
+        enabled:
+            !!paymentReference,
 
     });
 
-};
-
-
-export const useUpdatePayment = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn:
-            updatePayment,
-
-        onSuccess: () => {
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    QUERY_KEY,
-
-            });
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    SUMMARY_QUERY_KEY,
-
-            });
-
-        },
-
-    });
-
-};
-
-
-export const useDeletePayment = () => {
-
-    const queryClient = useQueryClient();
-
-    return useMutation({
-
-        mutationFn:
-            deletePayment,
-
-        onSuccess: () => {
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    QUERY_KEY,
-
-            });
-
-            queryClient.invalidateQueries({
-
-                queryKey:
-                    SUMMARY_QUERY_KEY,
-
-            });
-
-        },
-
-    });
-
-};
+}

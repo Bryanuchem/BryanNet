@@ -7,7 +7,6 @@ import PageHeader from "../../components/common/PageHeader";
 
 import DashboardStats from "../../components/dashboard/DashboardStats";
 import DashboardCharts from "../../components/dashboard/DashboardCharts";
-import DashboardFilters from "../../components/dashboard/DashboardFilters";
 import RecentCustomers from "../../components/dashboard/RecentCustomers";
 import RecentActivity from "../../components/dashboard/RecentActivity";
 
@@ -22,10 +21,11 @@ function DashboardContent() {
         <Box>
 
             <PageHeader
-            
+
                 title="Dashboard"
+
                 subtitle="Monitor your ISP operations at a glance."
-                actions={<DashboardFilters />}
+
             />
 
             <DashboardStats />

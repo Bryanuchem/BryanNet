@@ -12,6 +12,8 @@ function FilterControl({
 
     options = [],
 
+    placeholder = "Select",
+
     minWidth = 170,
 
 }) {
@@ -26,8 +28,39 @@ function FilterControl({
         >
 
             <Select
+
                 value={value}
+
                 onChange={onChange}
+
+                displayEmpty
+
+                renderValue={(selected) => {
+
+                    if (
+                        selected === "" ||
+                        selected === null ||
+                        selected === undefined
+                    ) {
+
+                        return placeholder;
+
+                    }
+
+                    const option = options.find(
+
+                        (item) =>
+                            item.value === selected,
+
+                    );
+
+                    return (
+                        option?.label ??
+                        placeholder
+                    );
+
+                }}
+
             >
 
                 {options.map((option) => (

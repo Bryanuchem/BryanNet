@@ -3,10 +3,22 @@ import {
     Typography,
 } from "@mui/material";
 
+import Button from "@mui/material/Button";
+
 function PageHeader({
+
     title,
+
     subtitle,
+
     actions = null,
+
+    actionLabel,
+
+    actionIcon,
+
+    onAction,
+
 }) {
 
     return (
@@ -47,21 +59,37 @@ function PageHeader({
 
             </Box>
 
-            {actions && (
+                {(actions || actionLabel) && (
 
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                    }}
-                >
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                        }}
+                    >
 
-                    {actions}
+                        {actions ?? (
 
-                </Box>
+                            <Button
 
-            )}
+                                variant="contained"
+
+                                startIcon={actionIcon}
+
+                                onClick={onAction}
+
+                            >
+
+                                {actionLabel}
+
+                            </Button>
+
+                        )}
+
+                    </Box>
+
+                )}
 
         </Box>
 

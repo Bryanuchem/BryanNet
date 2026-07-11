@@ -1,283 +1,1294 @@
-import { useState } from "react";
+import {
+    useMemo,
+    useState,
+} from "react";
 
 import {
-    Box,
     Button,
-    MenuItem,
-    Paper,
     Stack,
-    TextField,
 } from "@mui/material";
 
+import { useRoles } from "../../hooks/useRoles";
+
 import AddIcon from "@mui/icons-material/Add";
-import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import AdminUsersTable from "../../components/admin/AdminUsersTable";
-import AdminUserDetailsDrawer from "../../components/admin/AdminUserDetailsDrawer";
-import AdminUserActionDialog from "../../components/admin/AdminUserActionDialog";
+import AdminUsersToolbar from "../../components/admin/admin-users/AdminUsersToolbar";
+import AdminUsersTable from "../../components/admin/admin-users/AdminUsersTable";
+import AdminUserForm from "../../components/admin/admin-users/AdminUserForm";
+import AdminUserDetailsDrawer from "../../components/admin/admin-users/AdminUserDetailsDrawer";
+import AdminUserActionDialog from "../../components/admin/admin-users/AdminUserActionDialog";
+import ChangeRoleDialog from "../../components/admin/admin-users/ChangeRoleDialog";
+import ResetPasswordDialog from "../../components/admin/admin-users/ResetPasswordDialog";
 
-export function AdminUsers() {
-    const [drawerOpen, setDrawerOpen] =
-        useState(false);
+import {
+    useAdminUsers,
+} from "../../hooks/useAdminUsers";
 
-    const [drawerMode, setDrawerMode] =
-        useState("details");
+import {
+    useCreateAdminUser,
+} from "../../hooks/useCreateAdminUser";
 
-    const [selectedAdministrator, setSelectedAdministrator] =
-        useState(null);
+import {
+    useUpdateAdminUser,
+} from "../../hooks/useUpdateAdminUser";
 
-    const [actionDialogOpen, setActionDialogOpen] =
-        useState(false);
+import {
+    useUpdateAdminActivation,
+} from "../../hooks/useUpdateAdminActivation";
 
-    const [actionType, setActionType] =
-        useState(null);
+import {
+    useChangeAdminRole,
+} from "../../hooks/useChangeAdminRole";
+
+import {
+    useChangeAdminPassword,
+} from "../../hooks/useChangeAdminPassword";
+
+import {
+    useCurrentPermissions,
+} from "../../hooks/useCurrentPermissions";
+
+function AdminUsers() {
+
+    // ==========================================================
+    // Filters
+    // ==========================================================
+
+    const [
+
+        search,
+
+        setSearch,
+
+    ] = useState("");
+
+    const [
+
+        role,
+
+        setRole,
+
+    ] = useState("");
+
+    const [
+
+        status,
+
+        setStatus,
+
+    ] = useState("");
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
+
+    const filters = useMemo(
+
+        () => ({
+
+            search:
+                search || undefined,
+
+            role_id:
+                role || undefined,
+
+            is_active:
+
+                status === ""
+
+                    ? undefined
+
+                    : status,
+
+        }),
+
+        [
+
+            search,
+
+            role,
+
+            status,
+
+        ],
+
+    );
+
+    // ==========================================================
+    // Queries
+    // ==========================================================
+
+    const {
+
+        data: administrators = [],
+
+        isLoading,
+
+        refetch,
+
+    } = useAdminUsers(
+        filters,
+    );
+
+    const {
+
+        data: roles = [],
+
+    } = useRoles();    
+
+    // ==========================================================
+    // Mutations
+    // ==========================================================
+
+    const createAdminUser =
+
+        useCreateAdminUser();
+
+    const updateAdminUser =
+
+        useUpdateAdminUser();
+
+    const updateAdminActivation =
+
+        useUpdateAdminActivation();
+
+    const changeAdminRole =
+
+        useChangeAdminRole();
+
+    const changeAdminPassword =
+
+        useChangeAdminPassword();
+
+    // ==========================================================
+    // Drawer
+    // ==========================================================
+
+    const [
+
+        drawerOpen,
+
+        setDrawerOpen,
+
+    ] = useState(false);
+
+    const [
+
+        selectedAdministrator,
+
+        setSelectedAdministrator,
+
+    ] = useState(null);
+
+    // ==========================================================
+    // Form Dialog
+    // ==========================================================
+
+    const [
+
+        formOpen,
+
+        setFormOpen,
+
+    ] = useState(false);
+
+    const [
+
+        editingAdministrator,
+
+        setEditingAdministrator,
+
+    ] = useState(null);
+
+    // ==========================================================
+    // Activation Dialog
+    // ==========================================================
+
+    const [
+
+        activationDialogOpen,
+
+        setActivationDialogOpen,
+
+    ] = useState(false);
+
+    const [
+
+        activationAdministrator,
+
+        setActivationAdministrator,
+
+    ] = useState(null);
+
+    // ==========================================================
+    // Role Dialog
+    // ==========================================================
+
+    const [
+
+        roleDialogOpen,
+
+        setRoleDialogOpen,
+
+    ] = useState(false);
+
+    const [
+
+        roleAdministrator,
+
+        setRoleAdministrator,
+
+    ] = useState(null);
+
+    const [
+
+        selectedRole,
+
+        setSelectedRole,
+
+    ] = useState("");
+
+    // ==========================================================
+    // Password Dialog
+    // ==========================================================
+
+    const [
+
+        passwordDialogOpen,
+
+        setPasswordDialogOpen,
+
+    ] = useState(false);
+
+    const [
+
+        passwordAdministrator,
+
+        setPasswordAdministrator,
+
+    ] = useState(null);
+
+    // ==========================================================
+    // Snackbar
+    // ==========================================================
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        severity: "success",
+
+        message: "",
+
+    });
+
+    // ==========================================================
+    // Event Handlers
+    // ==========================================================
+
+    const handleView = (
+
+        administrator,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.view",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setSelectedAdministrator(
+
+            administrator,
+
+        );
+
+        setDrawerOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleCreate = () => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.create",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setEditingAdministrator(
+
+            null,
+
+        );
+
+        setFormOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleEdit = (
+
+        administrator,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.edit",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setEditingAdministrator(
+
+            administrator,
+
+        );
+
+        setFormOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleToggleStatus = (
+
+        administrator,
+
+    ) => {
+
+        const canToggle =
+
+            administrator.is_active
+
+                ? hasPermission(
+
+                    "admin_users.deactivate",
+
+                )
+
+                : hasPermission(
+
+                    "admin_users.activate",
+
+                );
+
+        if (
+
+            !canToggle
+
+        ) {
+
+            return;
+
+        }
+
+        setActivationAdministrator(
+
+            administrator,
+
+        );
+
+        setActivationDialogOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleOpenRoleDialog = (
+
+        administrator,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.change_role",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setRoleAdministrator(
+
+            administrator,
+
+        );
+
+        setSelectedRole(
+
+            administrator.role_id,
+
+        );
+
+        setRoleDialogOpen(
+
+            true,
+
+        );
+
+    };
+
+    const handleOpenPasswordDialog = (
+
+        administrator,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.reset_password",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        setPasswordAdministrator(
+
+            administrator,
+
+        );
+
+        setPasswordDialogOpen(
+
+            true,
+
+        );
+
+    };
 
     const handleCloseDrawer = () => {
+
         setDrawerOpen(false);
-        setDrawerMode("details");
-        setSelectedAdministrator(null);
+
+        setSelectedAdministrator(
+            null,
+        );
+
     };
 
-    const handleViewAdministrator = (
-        administrator
-    ) => {
-        setSelectedAdministrator(administrator);
-        setDrawerMode("details");
-        setDrawerOpen(true);
+    const handleCloseForm = () => {
+
+        setFormOpen(false);
+
+        setEditingAdministrator(
+            null,
+        );
+
     };
 
-    const handleCreateAdministrator = () => {
-        setSelectedAdministrator({
-            name: "",
-            username: "",
-            email: "",
-            phone: "",
-            role: "",
-            status: "Active",
-            created: "",
-            lastLogin: "Never",
-        });
+    const handleCloseActivationDialog =
+        () => {
 
-        setDrawerMode("create");
-        setDrawerOpen(true);
-    };
+            setActivationDialogOpen(
+                false,
+            );
 
-    const handleEditAdministrator = (
-        administrator
-    ) => {
-        setSelectedAdministrator(administrator);
-        setDrawerMode("edit");
-        setDrawerOpen(true);
-    };
+            setActivationAdministrator(
+                null,
+            );
 
-    const openActionDialog = (
+        };
+
+    const handleCloseRoleDialog =
+        () => {
+
+            setRoleDialogOpen(
+                false,
+            );
+
+            setRoleAdministrator(
+                null,
+            );
+
+            setSelectedRole("");
+
+        };
+
+    const handleClosePasswordDialog =
+        () => {
+
+            setPasswordDialogOpen(
+                false,
+            );
+
+            setPasswordAdministrator(
+                null,
+            );
+
+        };
+
+    // ==========================================================
+    // Mutation Handlers
+    // ==========================================================
+
+    const handleSubmitAdministrator = async (
+
         administrator,
-        type
+
     ) => {
-        setSelectedAdministrator(administrator);
-        setActionType(type);
-        setActionDialogOpen(true);
+
+        if (
+
+            editingAdministrator
+
+                ? !hasPermission(
+
+                    "admin_users.edit",
+
+                )
+
+                : !hasPermission(
+
+                    "admin_users.create",
+
+                )
+
+        ) {
+
+            return;
+
+        }
+
+        try {
+
+            if (
+
+                editingAdministrator
+
+            ) {
+
+                await updateAdminUser.mutateAsync({
+
+                    adminUserId:
+
+                        editingAdministrator.admin_user_id,
+
+                    adminUser:
+
+                        administrator,
+
+                });
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Administrator updated successfully.",
+
+                });
+
+            } else {
+
+                await createAdminUser.mutateAsync(
+
+                    administrator,
+
+                );
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Administrator created successfully.",
+
+                });
+
+            }
+
+            handleCloseForm();
+
+        } catch (error) {
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "error",
+
+                message:
+
+                    error.response?.data?.detail ??
+
+                    "Unable to save administrator.",
+
+            });
+
+        }
+
     };
 
-    const handleCloseActionDialog = () => {
-        setActionDialogOpen(false);
-        setActionType(null);
+    const handleConfirmActivation = async () => {
+
+        const canToggle =
+
+            activationAdministrator?.is_active
+
+                ? hasPermission(
+
+                    "admin_users.deactivate",
+
+                )
+
+                : hasPermission(
+
+                    "admin_users.activate",
+
+                );
+
+        if (
+
+            !canToggle
+
+        ) {
+
+            return;
+
+        }
+
+        try {
+
+            await updateAdminActivation.mutateAsync({
+
+                adminUserId:
+
+                    activationAdministrator.admin_user_id,
+
+                isActive:
+
+                    !activationAdministrator.is_active,
+
+            });
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "success",
+
+                message:
+
+                    activationAdministrator.is_active
+
+                        ? "Administrator deactivated successfully."
+
+                        : "Administrator activated successfully.",
+
+            });
+
+            handleCloseActivationDialog();
+
+        } catch (error) {
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "error",
+
+                message:
+
+                    error.response?.data?.detail ??
+
+                    "Unable to update administrator.",
+
+            });
+
+        }
+
     };
 
-    const handleActionConfirm = (
-        administrator,
-        action
-    ) => {
-        console.log(action, administrator);
+    const handleSubmitRole = async () => {
 
-        handleCloseActionDialog();
+        if (
+
+            !hasPermission(
+
+                "admin_users.change_role",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        try {
+
+            await changeAdminRole.mutateAsync({
+
+                adminUserId:
+
+                    roleAdministrator.admin_user_id,
+
+                roleId:
+
+                    selectedRole,
+
+            });
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "success",
+
+                message:
+
+                    "Role updated successfully.",
+
+            });
+
+            handleCloseRoleDialog();
+
+        } catch (error) {
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "error",
+
+                message:
+
+                    error.response?.data?.detail ??
+
+                    "Unable to update role.",
+
+            });
+
+        }
+
+    };
+
+    const handleSubmitPassword = async (
+
+        password,
+
+    ) => {
+
+        if (
+
+            !hasPermission(
+
+                "admin_users.reset_password",
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        try {
+
+            await changeAdminPassword.mutateAsync({
+
+                adminUserId:
+
+                    passwordAdministrator.admin_user_id,
+
+                password,
+
+            });
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "success",
+
+                message:
+
+                    "Password reset successfully.",
+
+            });
+
+            handleClosePasswordDialog();
+
+        } catch (error) {
+
+            setSnackbar({
+
+                open: true,
+
+                severity: "error",
+
+                message:
+
+                    error.response?.data?.detail ??
+
+                    "Unable to reset password.",
+
+            });
+
+        }
+
+    };
+
+    // ==========================================================
+    // Temporary Role Options
+    // ==========================================================
+
+    const roleOptions = roles.map(
+
+        (role) => ({
+
+            value: role.role_id,
+
+            label: role.role_name,
+
+        }),
+
+    );
+
+    const handleCloseSnackbar = () => {
+
+        setSnackbar(
+
+            (previous) => ({
+
+                ...previous,
+
+                open: false,
+
+            }),
+
+        );
+
     };
 
     return (
+
         <>
+
             <PageHeader
+
                 title="Admin Users"
+
                 subtitle="Manage administrators who can access the BryanNet dashboard."
+
             />
 
-            <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                sx={{ mb: 3 }}
-                onClick={
-                    handleCreateAdministrator
-                }
+            <Stack
+                spacing={3}
             >
-                Add Administrator
-            </Button>
 
-            <Box
-                display="flex"
-                flexDirection="column"
-                gap={3}
-            >
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: 3,
-                        border: 1,
-                        borderColor: "divider",
-                        borderRadius: 2,
-                    }}
+            {hasPermission(
+
+                "admin_users.create",
+
+            ) && (
+
+                <Stack
+
+                    direction="row"
+
+                    justifyContent="space-between"
+
+                    alignItems="center"
+
                 >
-                    <Stack spacing={3}>
-                        <TextField
-                            fullWidth
-                            placeholder="Search administrators..."
-                            size="small"
-                        />
 
-                        <Stack
-                            direction={{
-                                xs: "column",
-                                md: "row",
-                            }}
-                            spacing={2}
-                            justifyContent="space-between"
-                            alignItems={{
-                                xs: "stretch",
-                                md: "center",
-                            }}
-                        >
-                            <Stack
-                                direction={{
-                                    xs: "column",
-                                    sm: "row",
-                                }}
-                                spacing={2}
-                            >
-                                <TextField
-                                    select
-                                    label="Role"
-                                    defaultValue="all"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 180,
-                                    }}
-                                >
-                                    <MenuItem value="all">
-                                        All
-                                    </MenuItem>
+                    <Button
 
-                                    <MenuItem value="Super Administrator">
-                                        Super Administrator
-                                    </MenuItem>
+                        variant="contained"
 
-                                    <MenuItem value="Administrator">
-                                        Administrator
-                                    </MenuItem>
+                        startIcon={<AddIcon />}
 
-                                    <MenuItem value="Support">
-                                        Support
-                                    </MenuItem>
-                                </TextField>
+                        onClick={
 
-                                <TextField
-                                    select
-                                    label="Status"
-                                    defaultValue="all"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 180,
-                                    }}
-                                >
-                                    <MenuItem value="all">
-                                        All
-                                    </MenuItem>
+                            handleCreate
 
-                                    <MenuItem value="Active">
-                                        Active
-                                    </MenuItem>
+                        }
 
-                                    <MenuItem value="Inactive">
-                                        Inactive
-                                    </MenuItem>
-                                </TextField>
-                            </Stack>
+                    >
 
-                            <Button
-                                variant="outlined"
-                                startIcon={<RefreshIcon />}
-                            >
-                                Refresh
-                            </Button>
-                        </Stack>
-                    </Stack>
-                </Paper>
+                        Add Administrator
+
+                    </Button>
+
+                </Stack>
+
+            )}
+
+                <AdminUsersToolbar
+
+                    search={search}
+
+                    onSearchChange={(event) =>
+
+                        setSearch(
+                            event.target.value,
+                        )
+
+                    }
+
+                    role={role}
+
+                    onRoleChange={(event) =>
+
+                        setRole(
+                            event.target.value,
+                        )
+
+                    }
+
+                    status={status}
+
+                    onStatusChange={(event) =>
+
+                        setStatus(
+                            event.target.value,
+                        )
+
+                    }
+
+                    roleOptions={roleOptions}
+
+                    administrators={
+                        administrators
+                    }
+
+                    onRefresh={refetch}
+
+                    onClear={() => {
+
+                        setSearch("");
+
+                        setRole("");
+
+                        setStatus("");
+
+                    }}
+
+                />
 
                 <AdminUsersTable
-                    onViewAdministrator={
-                        handleViewAdministrator
+
+                    administrators={
+                        administrators
                     }
-                    onEditAdministrator={
-                        handleEditAdministrator
+
+                    loading={
+                        isLoading
                     }
-                    onDeleteAdministrator={(
-                        administrator
-                    ) =>
-                        openActionDialog(
-                            administrator,
-                            "delete"
-                        )
+
+                    onRowClick={
+                        handleView
                     }
-                    onToggleAdministrator={(
-                        administrator
-                    ) =>
-                        openActionDialog(
-                            administrator,
-                            administrator.status ===
-                                "Active"
-                                ? "deactivate"
-                                : "activate"
-                        )
+
+                    onView={
+                        handleView
                     }
-                    onResetPassword={(
-                        administrator
-                    ) =>
-                        openActionDialog(
-                            administrator,
-                            "resetPassword"
-                        )
+
+                    onEdit={
+                        handleEdit
                     }
+
+                    onChangeRole={
+                        handleOpenRoleDialog
+                    }
+
+                    onResetPassword={
+                        handleOpenPasswordDialog
+                    }
+
+                    onToggleStatus={
+                        handleToggleStatus
+                    }
+
                 />
-            </Box>
+
+            </Stack>
+
+            {hasPermission(
+
+                "admin_users.view",
+
+            ) && (
 
             <AdminUserDetailsDrawer
-                open={drawerOpen}
+
+                open={
+                    drawerOpen
+                }
+
                 administrator={
                     selectedAdministrator
                 }
-                drawerMode={drawerMode}
-                onDrawerModeChange={
-                    setDrawerMode
-                }
+
                 onClose={
                     handleCloseDrawer
                 }
+
             />
+        )}
+
+        {hasPermission(
+
+            "admin_users.create",
+
+        ) ||
+
+        hasPermission(
+
+            "admin_users.edit",
+
+        ) ? (
+
+            <AdminUserForm
+
+                open={
+                    formOpen
+                }
+
+                loading={
+
+                    createAdminUser.isPending ||
+
+                    updateAdminUser.isPending
+
+                }
+
+                administrator={
+                    editingAdministrator
+                }
+
+                roles={roles}
+
+                onClose={
+                    handleCloseForm
+                }
+
+                onSubmit={
+                    handleSubmitAdministrator
+                }
+
+            />
+        ) : null}
+
+        {(
+
+            hasPermission(
+
+                "admin_users.activate",
+
+            ) ||
+
+            hasPermission(
+
+                "admin_users.deactivate",
+
+            )
+
+        ) && (
 
             <AdminUserActionDialog
-                open={actionDialogOpen}
-                type={actionType}
+
+                open={
+                    activationDialogOpen
+                }
+
+                loading={
+                    updateAdminActivation.isPending
+                }
+
                 administrator={
-                    selectedAdministrator
+                    activationAdministrator
                 }
+
+                activate={
+                    !activationAdministrator?.is_active
+                }
+
                 onClose={
-                    handleCloseActionDialog
+                    handleCloseActivationDialog
                 }
+
                 onConfirm={
-                    handleActionConfirm
+                    handleConfirmActivation
                 }
+
             />
+        )}
+
+            {hasPermission(
+
+                "admin_users.change_role",
+
+            ) && (
+
+            <ChangeRoleDialog
+
+                open={
+                    roleDialogOpen
+                }
+
+                loading={
+                    changeAdminRole.isPending
+                }
+
+                administrator={
+                    roleAdministrator
+                }
+
+                roles={roles}
+
+                selectedRole={
+                    selectedRole
+                }
+
+                onRoleChange={(event) =>
+
+                    setSelectedRole(
+                        event.target.value,
+                    )
+
+                }
+
+                onClose={
+                    handleCloseRoleDialog
+                }
+
+                onSubmit={
+                    handleSubmitRole
+                }
+
+            />
+        )}
+
+        {hasPermission(
+
+            "admin_users.reset_password",
+
+        ) && (
+
+            <ResetPasswordDialog
+
+                open={
+                    passwordDialogOpen
+                }
+
+                loading={
+                    changeAdminPassword.isPending
+                }
+
+                administrator={
+                    passwordAdministrator
+                }
+
+                onClose={
+                    handleClosePasswordDialog
+                }
+
+                onSubmit={
+                    handleSubmitPassword
+                }
+
+            />
+        )}
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={
+
+                    handleCloseSnackbar
+
+                }
+
+            />
+
         </>
+
     );
+
 }
 
-export default AdminUsers;                
+export default AdminUsers;        

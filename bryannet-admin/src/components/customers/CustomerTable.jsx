@@ -15,13 +15,22 @@ import ActionMenu from "../common/ActionMenu";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import BlockIcon from "@mui/icons-material/Block";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmptyState from "../common/EmptyState";
 
 import BadgeChip from "../common/BadgeChip";
 
 import {
+
     formatPhoneNumber,
+
 } from "../../utils/customerFormatter";
+
+import {
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
 
 function CustomerTable({
     customers,
@@ -33,9 +42,17 @@ function CustomerTable({
     onRowsPerPageChange,
     onRowClick,
     onEdit,
+    onToggleStatus,
 })
 
+
+
 {
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
 
     if (loading) {
         return (
@@ -63,13 +80,17 @@ function CustomerTable({
         }
 
         return (
+
             <EmptyState
+
                 title="No customers yet"
+
                 description="Customers who register through Telegram will appear here."
-                buttonText="Add Customer"
-                onButtonClick={() => {}}
+
             />
+
         );
+
     }
 
     return (
@@ -81,7 +102,6 @@ function CustomerTable({
 >               <Table stickyHeader>
                     <TableHead>
                         <TableRow
-                            key={customers.customer_id}
                             sx={{
                                 "&:nth-of-type(odd)": {
                                     bgcolor: "#FAFAFA",
@@ -116,7 +136,14 @@ function CustomerTable({
                                 }}
                             >
                                 Registered
+                            </TableCell>
 
+                            <TableCell
+                                sx={{
+                                    fontWeight: 700,
+                                }}
+                            >
+                                Status
                             </TableCell>
 
                             <TableCell
@@ -125,7 +152,7 @@ function CustomerTable({
                                 }}
                             >
                                 Telegram
-                            </TableCell>  
+                            </TableCell>
 
                             <TableCell
                                 align="center"
@@ -146,23 +173,71 @@ function CustomerTable({
                                 page * rowsPerPage + rowsPerPage
                             )
                             .map((customer) => (
-                                <TableRow
-                                    key={customer.customer_id}
-                                    hover
-                                    onClick={() => onRowClick(customer)}
-                                    sx={{
-                                        height: 60,
 
-                                        "&:nth-of-type(odd)": {
-                                            bgcolor: "#FAFAFA",
-                                        },
+                        <TableRow
 
-                                        "&:hover": {
-                                            bgcolor: "#F1F5F9",
-                                            cursor: "pointer",
-                                        },
-                                    }}
-                                >                                    <TableCell>
+                            key={
+
+                                customer.customer_id
+
+                            }
+
+                            hover
+
+                            onClick={() => {
+
+                                if (
+
+                                    hasPermission(
+
+                                        "customers.view",
+
+                                    )
+
+                                ) {
+
+                                    onRowClick?.(
+
+                                        customer,
+
+                                    );
+
+                                }
+
+                            }}
+
+                            sx={{
+
+                                height: 60,
+
+                                "&:nth-of-type(odd)": {
+
+                                    bgcolor: "#FAFAFA",
+
+                                },
+
+                                "&:hover": {
+
+                                    bgcolor: "#F1F5F9",
+
+                                    cursor:
+
+                                        hasPermission(
+
+                                            "customers.view",
+
+                                        )
+
+                                            ? "pointer"
+
+                                            : "default",
+
+                                },
+
+                            }}
+
+                        >                                
+                                <TableCell>
                                         {customer.full_name}
                                     </TableCell>
 
@@ -188,6 +263,21 @@ function CustomerTable({
                                     <TableCell align="center">
                                         <BadgeChip
                                             label={
+                                                customer.status === "active"
+                                                    ? "Active"
+                                                    : "Inactive"
+                                            }
+                                            color={
+                                                customer.status === "active"
+                                                    ? "success"
+                                                    : "error"
+                                            }
+                                        />
+                                    </TableCell>
+
+                                    <TableCell align="center">
+                                        <BadgeChip
+                                            label={
                                                 customer.telegram_user_id
                                                     ? "Linked"
                                                     : "Not Linked"
@@ -205,32 +295,153 @@ function CustomerTable({
                                         onClick={(event) => event.stopPropagation()}
                                     >
                                         <ActionMenu
+
                                             items={[
-                                                {
-                                                    label: "View Details",
-                                                    icon: (
-                                                        <VisibilityIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onRowClick(customer),
-                                                },
-                                                {
-                                                    label: "Edit Customer",
-                                                    icon: (
-                                                        <EditIcon fontSize="small" />
-                                                    ),
-                                                    onClick: () =>
-                                                        onEdit(customer),
-                                                },
-                                                {
-                                                    label: "Suspend Customer",
-                                                    icon: (
-                                                        <BlockIcon fontSize="small" />
-                                                    ),
-                                                    disabled: true,
-                                                },
+
+                                                ...(hasPermission(
+
+                                                    "customers.view",
+
+                                                )
+
+                                                    ? [
+
+                                                        {
+
+                                                            label: "View Details",
+
+                                                            icon: (
+
+                                                                <VisibilityIcon
+
+                                                                    fontSize="small"
+
+                                                                />
+
+                                                            ),
+
+                                                            onClick: () =>
+
+                                                                onRowClick?.(
+
+                                                                    customer,
+
+                                                                ),
+
+                                                        },
+
+                                                    ]
+
+                                                    : []),
+
+                                                ...(hasPermission(
+
+                                                    "customers.edit",
+
+                                                )
+
+                                                    ? [
+
+                                                        {
+
+                                                            label: "Edit Customer",
+
+                                                            icon: (
+
+                                                                <EditIcon
+
+                                                                    fontSize="small"
+
+                                                                />
+
+                                                            ),
+
+                                                            onClick: () =>
+
+                                                                onEdit?.(
+
+                                                                    customer,
+
+                                                                ),
+
+                                                        },
+
+                                                    ]
+
+                                                    : []),
+
+                                                ...(
+
+                                                    customer.status === "active"
+
+                                                        ? hasPermission(
+
+                                                            "customers.deactivate",
+
+                                                        )
+
+                                                        : hasPermission(
+
+                                                            "customers.activate",
+
+                                                        )
+
+                                                )
+
+                                                    ? [
+
+                                                        {
+
+                                                            label:
+
+                                                                customer.status === "active"
+
+                                                                    ? "Deactivate Customer"
+
+                                                                    : "Activate Customer",
+
+                                                            icon:
+
+                                                                customer.status === "active"
+
+                                                                    ? (
+
+                                                                        <BlockIcon
+
+                                                                            fontSize="small"
+
+                                                                        />
+
+                                                                    )
+
+                                                                    : (
+
+                                                                        <CheckCircleIcon
+
+                                                                            fontSize="small"
+
+                                                                        />
+
+                                                                    ),
+
+                                                            onClick: () =>
+
+                                                                onToggleStatus?.(
+
+                                                                    customer,
+
+                                                                ),
+
+                                                        },
+
+                                                    ]
+
+                                                    : [],
+
                                             ]}
-                                        />                                    </TableCell>
+
+                                        />                            
+                                    </TableCell>
                                 </TableRow>
                             ))}
                     </TableBody>

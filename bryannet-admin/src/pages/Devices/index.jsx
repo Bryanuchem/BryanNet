@@ -1,318 +1,1179 @@
 import { useMemo, useState } from "react";
 
-import {
-    Alert,
-    Box,
-    CircularProgress,
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import AddIcon from "@mui/icons-material/Add";
 
 import PageHeader from "../../components/common/PageHeader";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
-import AppSnackbar from "../../components/common/AppSnackbar";
 import SearchBar from "../../components/common/SearchBar";
+import AppSnackbar from "../../components/common/AppSnackbar";
+import FilterToolbar from "../../components/common/FilterToolbar";
+import ExportCsvButton from "../../components/common/ExportCsvButton";
 
+import DeviceFilters from "../../components/devices/DeviceFilters";
 import DeviceTable from "../../components/devices/DeviceTable";
 import DeviceDialog from "../../components/devices/DeviceDialog";
-import DeviceDetailsDialog from "../../components/devices/DeviceDetailsDialog";
+import DeviceDetailsDrawer from "../../components/devices/DeviceDetailsDrawer";
+import RenameDeviceDialog from "../../components/devices/RenameDeviceDialog";
+import ReplaceDeviceDialog from "../../components/devices/ReplaceDeviceDialog";
 
-import {
-    useDevices,
-    useRegisterDevice,
-    useRemoveDevice,
-} from "../../hooks/useDevices";
+import { useDevices } from "../../hooks/useDevices";
+
+import { useRegisterDevice } from "../../hooks/useRegisterDevice";
+import { useActivateDevice } from "../../hooks/useActivateDevice";
+import { useDeactivateDevice } from "../../hooks/useDeactivateDevice";
+import { useApproveDevice } from "../../hooks/useApproveDevice";
+import { useBlockDevice } from "../../hooks/useBlockDevice";
+import { useUnblockDevice } from "../../hooks/useUnblockDevice";
+import { useRenameDevice } from "../../hooks/useRenameDevice";
+import { useReplaceDevice } from "../../hooks/useReplaceDevice";
 
 import { useCustomers } from "../../hooks/useCustomers";
 
+import {
+
+    useCurrentPermissions,
+
+} from "../../hooks/useCurrentPermissions";
+
 function Devices() {
+
+    const {
+
+        hasPermission,
+
+    } = useCurrentPermissions();
 
     const {
         data: devices = [],
         isLoading,
         isError,
+        refetch,
     } = useDevices();
 
     const {
         data: customers = [],
     } = useCustomers();
 
-    const registerDeviceMutation =
+    const registerDevice =
         useRegisterDevice();
 
-    const removeDeviceMutation =
-        useRemoveDevice();
+    const activateDevice =
+        useActivateDevice();
 
-    const [registerDialogOpen, setRegisterDialogOpen] =
-        useState(false);
+    const deactivateDevice =
+        useDeactivateDevice();
 
-    const [detailsDialogOpen, setDetailsDialogOpen] =
-        useState(false);
+    const approveDevice =
+        useApproveDevice();
 
-    const [confirmDialogOpen, setConfirmDialogOpen] =
-        useState(false);
+    const blockDevice =
+        useBlockDevice();
 
-    const [selectedDevice, setSelectedDevice] =
-        useState(null);
+    const unblockDevice =
+        useUnblockDevice();
 
-    const [snackbar, setSnackbar] =
-        useState({
-            open: false,
+    const renameDevice =
+        useRenameDevice();
+
+    const replaceDevice =
+        useReplaceDevice();
+
+    const [
+        searchTerm,
+        setSearchTerm,
+    ] = useState("");
+
+    const [
+        statusFilter,
+        setStatusFilter,
+    ] = useState("all");
+
+    const [
+        approvalFilter,
+        setApprovalFilter,
+    ] = useState("all");
+
+    const [page, setPage] =
+        useState(0);
+
+    const [
+        rowsPerPage,
+        setRowsPerPage,
+    ] = useState(10);
+
+    const [
+        selectedDevice,
+        setSelectedDevice,
+    ] = useState(null);
+
+    const [
+        registerDialogOpen,
+        setRegisterDialogOpen,
+    ] = useState(false);
+
+    const [
+        detailsDialogOpen,
+        setDetailsDialogOpen,
+    ] = useState(false);
+
+    const [
+        renameDialogOpen,
+        setRenameDialogOpen,
+    ] = useState(false);
+
+    const [
+        replaceDialogOpen,
+        setReplaceDialogOpen,
+    ] = useState(false);
+
+    const [
+        snackbar,
+        setSnackbar,
+    ] = useState({
+
+        open: false,
+
+        severity: "success",
+
+        message: "",
+
+    });
+
+    const sortedCustomers =
+        useMemo(() => {
+
+            return [...customers].sort(
+                (a, b) =>
+                    (a.full_name ?? "")
+                        .localeCompare(
+                            b.full_name ?? "",
+                        ),
+            );
+
+        }, [customers]);
+
+    const filteredDevices =
+        useMemo(() => {
+
+            const query =
+                searchTerm
+                    .trim()
+                    .toLowerCase();
+
+            return devices.filter(
+                (device) => {
+
+                    const matchesSearch =
+
+                        !query ||
+
+                        device.customer_name
+                            ?.toLowerCase()
+                            .includes(query) ||
+
+                        device.device_name
+                            ?.toLowerCase()
+                            .includes(query) ||
+
+                        device.mac_address
+                            ?.toLowerCase()
+                            .includes(query);
+
+                    const matchesStatus =
+
+                        statusFilter === "all" ||
+
+                        device.device_status ===
+                        statusFilter;
+
+                    const matchesApproval =
+
+                        approvalFilter ===
+                            "all" ||
+
+                        (approvalFilter ===
+                            "approved" &&
+                            device.approved_by_customer) ||
+
+                        (approvalFilter ===
+                            "pending" &&
+                            !device.approved_by_customer);
+
+                    return (
+
+                        matchesSearch &&
+
+                        matchesStatus &&
+
+                        matchesApproval
+
+                    );
+
+                },
+            );
+
+        }, [
+
+            devices,
+
+            searchTerm,
+
+            statusFilter,
+
+            approvalFilter,
+
+        ]);
+
+    const handleClearFilters =
+        () => {
+
+            setSearchTerm("");
+
+            setStatusFilter("all");
+
+            setApprovalFilter("all");
+
+            setPage(0);
+
+        };
+
+    const handleOpenRegisterDialog =
+        () => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.create",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            setRegisterDialogOpen(
+                true,
+            );
+
+        };
+
+    const handleCloseRegisterDialog =
+        () => {
+
+            setRegisterDialogOpen(
+                false,
+            );
+
+        };
+
+    const handleOpenDetailsDialog =
+        (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.view",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            setSelectedDevice(
+                device,
+            );
+
+            setDetailsDialogOpen(
+                true,
+            );
+
+        };
+
+    const handleCloseDetailsDialog =
+        () => {
+
+            setSelectedDevice(
+                null,
+            );
+
+            setDetailsDialogOpen(
+                false,
+            );
+
+        };
+
+    const handleOpenRenameDialog =
+        (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.rename",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            setSelectedDevice(
+                device,
+            );
+
+            setRenameDialogOpen(
+                true,
+            );
+
+        };
+
+    const handleCloseRenameDialog =
+        () => {
+
+            setRenameDialogOpen(
+                false,
+            );
+
+            setSelectedDevice(
+                null,
+            );
+
+        };
+
+    const handleOpenReplaceDialog =
+        (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.replace",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            setSelectedDevice(
+                device,
+            );
+
+            setReplaceDialogOpen(
+                true,
+            );
+
+        };
+
+    const handleCloseReplaceDialog =
+        () => {
+
+            setReplaceDialogOpen(
+                false,
+            );
+
+            setSelectedDevice(
+                null,
+            );
+
+        };
+
+    const showSuccess = (
+        message,
+    ) => {
+
+        setSnackbar({
+
+            open: true,
+
             severity: "success",
-            message: "",
-        });
 
-    const [searchTerm, setSearchTerm] =
-        useState("");
-
-    const sortedCustomers = useMemo(() => {
-
-        return [...customers].sort((a, b) => {
-
-            const nameA =
-                a.full_name ??
-                `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim();
-
-            const nameB =
-                b.full_name ??
-                `${b.first_name ?? ""} ${b.last_name ?? ""}`.trim();
-
-            return nameA.localeCompare(nameB);
+            message,
 
         });
 
-    }, [customers]);
+    };
 
-    const filteredDevices = useMemo(() => {
+    const showError = (
+        error,
+        fallback,
+    ) => {
 
-        const query = searchTerm
-            .trim()
-            .toLowerCase();
+        setSnackbar({
 
-        if (!query) {
-            return devices;
-        }
+            open: true,
 
-        return devices.filter((device) => {
+            severity: "error",
 
-            return (
-                device.customer_name
-                    ?.toLowerCase()
-                    .includes(query) ||
+            message:
+                error.response?.data
+                    ?.detail ??
+                fallback,
 
-                String(device.customer_id)
-                    .includes(query) ||
+        });
 
-                device.device_name
-                    ?.toLowerCase()
-                    .includes(query) ||
+    };
 
-                device.mac_address
-                    ?.toLowerCase()
-                    .includes(query)
+    const handleCloseSnackbar =
+        () => {
+
+            setSnackbar(
+                (previous) => ({
+
+                    ...previous,
+
+                    open: false,
+
+                }),
             );
 
-        });
+        };
 
-    }, [devices, searchTerm]);
+    const handleRegisterDevice =
+        async (formData) => {
 
-    const handleOpenRegisterDialog = () => {
-        setRegisterDialogOpen(true);
-    };
+            if (
 
-    const handleCloseRegisterDialog = () => {
-        setRegisterDialogOpen(false);
-    };
+                !hasPermission(
 
-    const handleOpenDetailsDialog = (
-        device
-    ) => {
+                    "devices.create",
 
-        setSelectedDevice(device);
+                )
 
-        setDetailsDialogOpen(true);
-    };
+            ) {
 
-    const handleCloseDetailsDialog = () => {
+                return;
 
-        setSelectedDevice(null);
+            }
 
-        setDetailsDialogOpen(false);
-    };
+            try {
 
-    const handleOpenRemoveDialog = (
-        device
-    ) => {
+                await registerDevice.mutateAsync(
+                    formData,
+                );
 
-        setSelectedDevice(device);
-
-        setConfirmDialogOpen(true);
-    };
-
-    const handleCloseRemoveDialog = () => {
-
-        setSelectedDevice(null);
-
-        setConfirmDialogOpen(false);
-    };
-
-    const handleCloseSnackbar = () => {
-
-        setSnackbar((prev) => ({
-            ...prev,
-            open: false,
-        }));
-    };
-
-    const handleRegisterDevice = async (
-        formData
-    ) => {
-
-        try {
-
-            await registerDeviceMutation.mutateAsync(
-                formData
-            );
-
-            setSnackbar({
-                open: true,
-                severity: "success",
-                message:
+                showSuccess(
                     "Device registered successfully.",
-            });
+                );
 
-            handleCloseRegisterDialog();
+                handleCloseRegisterDialog();
 
-        } catch (error) {
+            } catch (error) {
 
-            setSnackbar({
-                open: true,
-                severity: "error",
-                message:
-                    error?.response?.data?.detail ??
+                showError(
+                    error,
                     "Failed to register device.",
-            });
+                );
 
-        }
+            }
+
+        };
+
+    const handleToggleStatus =
+        async (device) => {
+
+            const canToggle =
+
+                device.device_status === "active"
+
+                    ? hasPermission(
+
+                        "devices.deactivate",
+
+                    )
+
+                    : hasPermission(
+
+                        "devices.activate",
+
+                    );
+
+            if (
+
+                !canToggle
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                if (
+
+                    device.device_status === "active"
+
+                ) {
+
+                    await deactivateDevice.mutateAsync(
+
+                        device.device_id,
+
+                    );
+
+                    showSuccess(
+
+                        "Device deactivated successfully.",
+
+                    );
+
+                } else {
+
+                    await activateDevice.mutateAsync(
+
+                        device.device_id,
+
+                    );
+
+                    showSuccess(
+
+                        "Device activated successfully.",
+
+                    );
+
+                }
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Operation failed.",
+
+                );
+
+            }
+
+        };
+
+    const handleApproveDevice =
+        async (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.approve",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await approveDevice.mutateAsync(
+
+                    device.device_id,
+
+                );
+
+                showSuccess(
+
+                    "Device approved successfully.",
+
+                );
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Failed to approve device.",
+
+                );
+
+            }
+
+        };
+
+    const handleBlockDevice =
+        async (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.block",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await blockDevice.mutateAsync(
+
+                    device.device_id,
+
+                );
+
+                showSuccess(
+
+                    "Device blocked successfully.",
+
+                );
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Failed to block device.",
+
+                );
+
+            }
+
+        };
+
+    const handleUnblockDevice =
+        async (device) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.unblock",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await unblockDevice.mutateAsync(
+
+                    device.device_id,
+
+                );
+
+                showSuccess(
+
+                    "Device unblocked successfully.",
+
+                );
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Failed to unblock device.",
+
+                );
+
+            }
+
+        };
+
+    const handleRenameDevice =
+        async ({
+            deviceId,
+            deviceName,
+        }) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.rename",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await renameDevice.mutateAsync({
+
+                    deviceId,
+
+                    deviceName,
+
+                });
+
+                showSuccess(
+
+                    "Device renamed successfully.",
+
+                );
+
+                handleCloseRenameDialog();
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Failed to rename device.",
+
+                );
+
+            }
+
+        };
+
+    const handleReplaceDevice =
+        async (request) => {
+
+            if (
+
+                !hasPermission(
+
+                    "devices.replace",
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            try {
+
+                await replaceDevice.mutateAsync(
+
+                    request,
+
+                );
+
+                showSuccess(
+
+                    "Device replaced successfully.",
+
+                );
+
+                handleCloseReplaceDialog();
+
+            } catch (error) {
+
+                showError(
+
+                    error,
+
+                    "Failed to replace device.",
+
+                );
+
+            }
+
+        };
+
+    const handleChangePage = (
+        event,
+        newPage,
+    ) => {
+
+        setPage(
+            newPage,
+        );
 
     };
 
-    const handleRemoveDevice = async () => {
+    const handleChangeRowsPerPage =
+        (event) => {
 
-        if (!selectedDevice) {
-            return;
-        }
+            setRowsPerPage(
 
-        try {
+                parseInt(
+                    event.target.value,
+                    10,
+                ),
 
-            await removeDeviceMutation.mutateAsync(
-                selectedDevice.device_id
             );
 
-            setSnackbar({
-                open: true,
-                severity: "success",
-                message:
-                    "Device removed successfully.",
-            });
+            setPage(0);
 
-            handleCloseRemoveDialog();
-
-        } catch (error) {
-
-            setSnackbar({
-                open: true,
-                severity: "error",
-                message:
-                    error?.response?.data?.detail ??
-                    "Failed to remove device.",
-            });
-
-        }
-
-    };
+        };
 
     if (isLoading) {
+
         return (
+
             <Box
                 display="flex"
                 justifyContent="center"
                 py={8}
             >
+
                 <CircularProgress />
+
             </Box>
+
         );
+
     }
 
     if (isError) {
+
         return (
+
             <Alert severity="error">
+
                 Failed to load devices.
+
             </Alert>
+
         );
+
     }
 
-    // Part 2 starts with the return statement.
     return (
+
         <>
+
             <PageHeader
                 title="Devices"
                 subtitle="Manage registered customer devices."
-                actionLabel="Register Device"
-                actionIcon={<AddIcon />}
-                onAction={handleOpenRegisterDialog}
             />
 
-            <SearchBar
-                placeholder="Search by customer, customer ID, device name or MAC address..."
-                value={searchTerm}
-                onChange={(event) =>
-                    setSearchTerm(event.target.value)
-                }
-            />
+            {hasPermission(
+
+                "devices.create",
+
+            ) && (
+
+                <Button
+
+                    variant="contained"
+
+                    startIcon={<AddIcon />}
+
+                    onClick={
+
+                        handleOpenRegisterDialog
+
+                    }
+
+                    sx={{
+
+                        mb: 3,
+
+                    }}
+
+                >
+
+                    Register Device
+
+                </Button>
+
+            )}
+
+            <FilterToolbar>
+
+                <SearchBar
+                    value={searchTerm}
+                    onChange={(event) => {
+
+                        setSearchTerm(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+                    placeholder="Search customer, device or MAC address..."
+                    sx={{
+                        flex: 1,
+                    }}
+                />
+
+                <DeviceFilters
+
+                    status={statusFilter}
+
+                    approval={approvalFilter}
+
+                    onStatusChange={(
+                        event,
+                    ) => {
+
+                        setStatusFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onApprovalChange={(
+                        event,
+                    ) => {
+
+                        setApprovalFilter(
+                            event.target.value,
+                        );
+
+                        setPage(0);
+
+                    }}
+
+                    onRefresh={refetch}
+
+                    onClear={
+                        handleClearFilters
+                    }
+
+                />
+
+                <ExportCsvButton
+
+                    filename="devices"
+
+                    rows={filteredDevices}
+
+                    columns={[
+
+                        {
+
+                            key: "customer_name",
+
+                            label: "Customer",
+
+                        },
+
+                        {
+
+                            key: "device_name",
+
+                            label: "Device",
+
+                        },
+
+                        {
+
+                            key: "mac_address",
+
+                            label: "MAC Address",
+
+                        },
+
+                        {
+
+                            key: "device_status",
+
+                            label: "Status",
+
+                        },
+
+                        {
+
+                            key: "approved_by_customer",
+
+                            label: "Approved",
+
+                            formatter: (
+                                value,
+                            ) =>
+                                value
+                                    ? "Yes"
+                                    : "No",
+
+                        },
+
+                    ]}
+
+                />
+
+            </FilterToolbar>
 
             <DeviceTable
+
                 devices={filteredDevices}
-                onView={handleOpenDetailsDialog}
-                onDelete={handleOpenRemoveDialog}
-            />
 
-            <DeviceDialog
-                open={registerDialogOpen}
-                customers={sortedCustomers}
-                onClose={handleCloseRegisterDialog}
-                onSubmit={handleRegisterDevice}
-            />
+                loading={false}
 
-            <DeviceDetailsDialog
-                open={detailsDialogOpen}
-                device={selectedDevice}
-                onClose={handleCloseDetailsDialog}
-            />
+                searchTerm={searchTerm}
 
-            <ConfirmDialog
-                open={confirmDialogOpen}
-                title="Remove Device"
-                message={
-                    selectedDevice
-                        ? `Are you sure you want to remove "${selectedDevice.device_name}"?`
-                        : ""
+                page={page}
+
+                rowsPerPage={
+                    rowsPerPage
                 }
-                confirmText="Remove"
-                confirmColor="error"
-                onConfirm={handleRemoveDevice}
-                onClose={handleCloseRemoveDialog}
-            />
+
+                onPageChange={
+                    handleChangePage
+                }
+
+                onRowsPerPageChange={
+                    handleChangeRowsPerPage
+                }
+
+                onRowClick={
+                    handleOpenDetailsDialog
+                }
+
+                onToggleStatus={
+                    handleToggleStatus
+                }
+
+                onApprove={
+                    handleApproveDevice
+                }
+
+                onBlock={
+                    handleBlockDevice
+                }
+
+                onUnblock={
+                    handleUnblockDevice
+                }
+
+                onRename={
+                    handleOpenRenameDialog
+                }
+
+                onReplace={
+                    handleOpenReplaceDialog
+                }
+
+            />        
+
+            {hasPermission(
+
+                "devices.create",
+
+            ) && (
+
+                <DeviceDialog
+
+                    open={registerDialogOpen}
+
+                    customers={sortedCustomers}
+
+                    onClose={handleCloseRegisterDialog}
+
+                    onSubmit={handleRegisterDevice}
+
+                />
+
+            )}
+
+            {hasPermission(
+
+                "devices.view",
+
+            ) && (
+
+                <DeviceDetailsDrawer
+
+                    open={detailsDialogOpen}
+
+                    device={selectedDevice}
+
+                    onClose={handleCloseDetailsDialog}
+
+                />
+
+            )}
+
+            {hasPermission(
+
+                "devices.rename",
+
+            ) && (
+
+                <RenameDeviceDialog
+
+                    open={renameDialogOpen}
+
+                    device={selectedDevice}
+
+                    onClose={handleCloseRenameDialog}
+
+                    onSubmit={handleRenameDevice}
+
+                />
+
+            )}
+
+            {hasPermission(
+
+                "devices.replace",
+
+            ) && (
+
+                <ReplaceDeviceDialog
+
+                    open={replaceDialogOpen}
+
+                    device={selectedDevice}
+
+                    devices={devices.filter(
+
+                        (candidate) =>
+
+                            selectedDevice &&
+
+                            candidate.customer_id ===
+
+                                selectedDevice.customer_id,
+
+                    )}
+
+                    onClose={handleCloseReplaceDialog}
+
+                    onSubmit={handleReplaceDevice}
+
+                />
+
+            )}
 
             <AppSnackbar
                 open={snackbar.open}
-                severity={snackbar.severity}
-                message={snackbar.message}
-                onClose={handleCloseSnackbar}
+                severity={
+                    snackbar.severity
+                }
+                message={
+                    snackbar.message
+                }
+                onClose={
+                    handleCloseSnackbar
+                }
             />
+
         </>
+
     );
 
 }
 
-export default Devices;
+export default Devices;            

@@ -1,58 +1,112 @@
 import {
-  Checkbox,
-  FormControlLabel,
-  Paper,
-  Stack,
-  Typography,
+
+    Checkbox,
+
+    FormControlLabel,
+
+    Stack,
+
+    Typography,
+
 } from "@mui/material";
 
-export default function PermissionCheckbox({
-  permission,
-  groupId,
-  onChange,
+function PermissionCheckbox({
+
+    permission,
+
+    onChange,
+
 }) {
-  const handleChange = (event) => {
-    onChange?.({
-      groupId,
-      permissionId: permission.id,
-      checked: event.target.checked,
-    });
-  };
 
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: 2,
-        height: "100%",
-        borderRadius: 2,
-      }}
-    >
-      <Stack spacing={0.5}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={permission.enabled}
-              onChange={handleChange}
+    return (
+
+        <Stack
+            spacing={0.25}
+            sx={{
+                py: 0.75,
+            }}
+        >
+
+            <FormControlLabel
+
+                control={
+
+                    <Checkbox
+
+                        checked={
+
+                            permission.enabled
+
+                        }
+
+                        onChange={(event) =>
+
+                            onChange({
+
+                                permissionId:
+
+                                    permission.id,
+
+                                checked:
+
+                                    event.target.checked,
+
+                            })
+
+                        }
+
+                    />
+
+                }
+
+                label={
+
+                    <Typography
+                        fontWeight={500}
+                    >
+
+                        {permission.name}
+
+                    </Typography>
+
+                }
+
+                sx={{
+
+                    alignItems: "flex-start",
+
+                    m: 0,
+
+                }}
+
             />
-          }
-          label={
-            <Typography fontWeight={500}>
-              {permission.name}
-            </Typography>
-          }
-        />
 
-        {permission.description && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ pl: 4.5 }}
-          >
-            {permission.description}
-          </Typography>
-        )}
-      </Stack>
-    </Paper>
-  );
+            {permission.description && (
+
+                <Typography
+
+                    variant="body2"
+
+                    color="text.secondary"
+
+                    sx={{
+
+                        ml: 4.5,
+
+                    }}
+
+                >
+
+                    {permission.description}
+
+                </Typography>
+
+            )}
+
+        </Stack>
+
+    );
+
 }
+
+export default PermissionCheckbox;

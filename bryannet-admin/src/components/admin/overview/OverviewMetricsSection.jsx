@@ -1,7 +1,8 @@
-import { Grid } from "@mui/material";
+import { Box } from "@mui/material";
+
 import {
     AdminPanelSettings,
-    Badge,
+    Security,
     History,
     Login,
     Timeline,
@@ -21,57 +22,58 @@ export default function OverviewMetricsSection({
                 subtitle="Key administration statistics."
             />
 
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-                    <OverviewMetricCard
-                        title="Administrators"
-                        value={metrics?.admin_users ?? 0}
-                        subtitle="Administrator accounts"
-                        icon={<AdminPanelSettings color="primary" />}
-                        loading={loading}
-                    />
-                </Grid>
+            <Box
+                sx={{
+                    display: "grid",
 
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-                    <OverviewMetricCard
-                        title="Active Sessions"
-                        value={metrics?.active_sessions ?? 0}
-                        subtitle="Currently logged in"
-                        icon={<Login color="success" />}
-                        loading={loading}
-                    />
-                </Grid>
+                    gridTemplateColumns:
+                        "repeat(5, minmax(0, 1fr))",
 
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-                    <OverviewMetricCard
-                        title="Roles"
-                        value={metrics?.roles ?? 0}
-                        subtitle="Configured roles"
-                        icon={<Badge color="secondary" />}
-                        loading={loading}
-                    />
-                </Grid>
+                    gap: 3,
 
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 2.4 }}>
-                    <OverviewMetricCard
-                        title="Audit Events"
-                        value={metrics?.audit_events_today ?? 0}
-                        subtitle="Recorded today"
-                        icon={<History color="warning" />}
-                        loading={loading}
-                    />
-                </Grid>
+                    mb: 4,
+                }}
+            >
+                <OverviewMetricCard
+                    title="Administrators"
+                    value={metrics?.admin_users ?? 0}
+                    subtitle="Administrator accounts"
+                    icon={<AdminPanelSettings color="primary" />}
+                    loading={loading}
+                />
 
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 2.4 }}>
-                    <OverviewMetricCard
-                        title="System Events"
-                        value={metrics?.system_events_today ?? 0}
-                        subtitle="Generated today"
-                        icon={<Timeline color="info" />}
-                        loading={loading}
-                    />
-                </Grid>
-            </Grid>
+                <OverviewMetricCard
+                    title="Roles"
+                    value={metrics?.roles ?? 0}
+                    subtitle="Configured roles"
+                    icon={<Security color="secondary" />}
+                    loading={loading}
+                />
+
+                <OverviewMetricCard
+                    title="Audit Events"
+                    value={metrics?.audit_events_today ?? 0}
+                    subtitle="Recorded today"
+                    icon={<History color="warning" />}
+                    loading={loading}
+                />
+
+                <OverviewMetricCard
+                    title="Login Sessions"
+                    value={metrics?.login_sessions_today ?? 0}
+                    subtitle="Recorded today"
+                    icon={<Login color="success" />}
+                    loading={loading}
+                />
+
+                <OverviewMetricCard
+                    title="System Events"
+                    value={metrics?.system_events_today ?? 0}
+                    subtitle="Generated today"
+                    icon={<Timeline color="info" />}
+                    loading={loading}
+                />
+            </Box>
         </>
     );
 }

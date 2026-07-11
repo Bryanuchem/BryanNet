@@ -1,107 +1,341 @@
-import { useState } from "react";
 import {
-  Box,
-  Button,
-  Stack,
+
+    useEffect,
+
+    useState,
+
+} from "react";
+
+import {
+
+    Stack,
+
 } from "@mui/material";
 
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAlt";
-
 import PageHeader from "../../components/common/PageHeader";
+import AppSnackbar from "../../components/common/AppSnackbar";
 
-import TelegramIntegrationCard from "../../components/settings/integrations/TelegramIntegrationCard";
-import MikroTikIntegrationCard from "../../components/settings/integrations/MikroTikIntegrationCard";
-import PaymentGatewayCard from "../../components/settings/integrations/PaymentGatewayCard";
-import SmtpSettingsCard from "../../components/settings/integrations/SmtpSettingsCard";
+import SettingsPageActions from "../../components/settings/SettingsPageActions";
 
-const initialSettings = {
-  telegramEnabled: true,
-  telegramBotUsername: "@BryanNetBot",
-  telegramWebhookStatus: "Connected",
+import IntegrationSettingsForm from "../../components/settings/integrations/IntegrationSettingsForm";
+import IntegrationSettingsInfoCard from "../../components/settings/integrations/IntegrationSettingsInfoCard";
 
-  mikrotikEnabled: false,
-  defaultRouter: "Main Router",
-  routerConnectionStatus: "Disconnected",
+import {
 
-  paymentGatewayEnabled: false,
-  paymentProvider: "Paystack",
-  sandboxMode: true,
-  paymentConnectionStatus: "Disconnected",
+    useIntegrationSettings,
 
-  smtpEnabled: true,
-  smtpHost: "smtp.gmail.com",
-  smtpPort: 587,
-  smtpEncryption: "TLS",
-  smtpConnectionStatus: "Connected",
+    useUpdateIntegrationSettings,
+
+} from "../../hooks/useSettings";
+
+const defaultSettings = {
+
+    smtp_host: "",
+
+    smtp_port: 587,
+
+    smtp_username: "",
+
+    smtp_password: "",
+
+    smtp_use_tls: true,
+
+    sms_provider: "",
+
+    sms_api_key: "",
+
 };
 
 export default function Integrations() {
-  const [settings, setSettings] = useState(initialSettings);
 
-  const handleChange = (field, value) => {
-    setSettings((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
-  };
+    const {
 
-  const handleReset = () => {
-    setSettings(initialSettings);
-  };
+        data,
 
-  const handleSave = () => {
-    // Placeholder
-    console.log("Saving Integration Settings", settings);
-  };
+        isLoading,
 
-  return (
-    <Box>
-      <PageHeader
-        title="Integration Settings"
-        subtitle="Configure external services used by the BryanNet ISP Platform."
-        actions={
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<RestartAltRoundedIcon />}
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
+    } = useIntegrationSettings();
 
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </Stack>
+    const [
+
+        settings,
+
+        setSettings,
+
+    ] = useState(
+
+        defaultSettings,
+
+    );
+
+    const [
+
+        snackbar,
+
+        setSnackbar,
+
+    ] = useState({
+
+        open: false,
+
+        message: "",
+
+        severity: "success",
+
+    });
+
+    const updateSettings =
+
+        useUpdateIntegrationSettings({
+
+            onSuccess: () => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "success",
+
+                    message:
+
+                        "Integration settings updated successfully.",
+
+                });
+
+            },
+
+            onError: (
+
+                error,
+
+            ) => {
+
+                setSnackbar({
+
+                    open: true,
+
+                    severity: "error",
+
+                    message:
+
+                        error?.response?.data?.message ||
+
+                        error?.response?.data?.detail ||
+
+                        "Failed to update integration settings.",
+
+                });
+
+            },
+
+        });
+
+    useEffect(
+
+        () => {
+
+            if (
+
+                data
+
+            ) {
+
+                setSettings({
+
+                    ...defaultSettings,
+
+                    ...data,
+
+                });
+
+            }
+
+        },
+
+        [
+
+            data,
+
+        ],
+
+    );
+
+    function handleChange(
+
+        field,
+
+        value,
+
+    ) {
+
+        setSettings(
+
+            (
+
+                previous,
+
+            ) => ({
+
+                ...previous,
+
+                [
+
+                    field
+
+                ]: value,
+
+            }),
+
+        );
+
+    }
+
+    function handleSave() {
+
+        updateSettings.mutate(
+
+            settings,
+
+        );
+
+    }
+
+    function handleReset() {
+
+        if (
+
+            data
+
+        ) {
+
+            setSettings({
+
+                ...defaultSettings,
+
+                ...data,
+
+            });
+
         }
-      />
 
-      <Stack spacing={3}>
-        <TelegramIntegrationCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    }
 
-        <MikroTikIntegrationCard
-          settings={settings}
-          onChange={handleChange}
-        />
+    return (
 
-        <PaymentGatewayCard
-          settings={settings}
-          onChange={handleChange}
-        />
+        <>
 
-        <SmtpSettingsCard
-          settings={settings}
-          onChange={handleChange}
-        />
-      </Stack>
-    </Box>
-  );
+            <PageHeader
+
+                title="Integration Settings"
+
+                subtitle="Configure email and SMS integrations used by the BryanNet ISP Platform."
+
+            />
+
+            <Stack spacing={3}>
+
+                <IntegrationSettingsInfoCard
+
+                    settings={
+
+                        settings
+
+                    }
+
+                />
+
+                <IntegrationSettingsForm
+
+                    settings={
+
+                        settings
+
+                    }
+
+                    onChange={
+
+                        handleChange
+
+                    }
+
+                    disabled={
+
+                        isLoading ||
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+                <SettingsPageActions
+
+                    onSave={
+
+                        handleSave
+
+                    }
+
+                    onReset={
+
+                        handleReset
+
+                    }
+
+                    loading={
+
+                        updateSettings.isPending
+
+                    }
+
+                />
+
+            </Stack>
+
+            <AppSnackbar
+
+                open={
+
+                    snackbar.open
+
+                }
+
+                severity={
+
+                    snackbar.severity
+
+                }
+
+                message={
+
+                    snackbar.message
+
+                }
+
+                onClose={() =>
+
+                    setSnackbar(
+
+                        (
+
+                            previous,
+
+                        ) => ({
+
+                            ...previous,
+
+                            open: false,
+
+                        }),
+
+                    )
+
+                }
+
+            />
+
+        </>
+
+    );
+
 }

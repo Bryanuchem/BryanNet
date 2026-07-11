@@ -17,6 +17,7 @@ import {
 import PhoneIcon from "@mui/icons-material/Phone";
 import TelegramIcon from "@mui/icons-material/Telegram";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import BlockIcon from "@mui/icons-material/Block";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
@@ -44,7 +45,8 @@ function CustomerDetailsDrawer({
         formatPhoneNumber(customer.phone_number);
 
     const registrationStep =
-        customer.registration_step || "START";
+        customer.registration_step ??
+         "START";
 
     const initials = fullName
         .split(" ")
@@ -198,6 +200,24 @@ function CustomerDetailsDrawer({
                                                 customer.is_registered
                                                     ? "success"
                                                     : "warning"
+                                            }
+                                        />
+                                    </InfoField>
+
+                                    <InfoField
+                                        icon={<BlockIcon />}
+                                        label="Status"
+                                    >
+                                        <BadgeChip
+                                            label={
+                                                customer.status === "active"
+                                                    ? "Active"
+                                                    : "Inactive"
+                                            }
+                                            color={
+                                                customer.status === "active"
+                                                    ? "success"
+                                                    : "error"
                                             }
                                         />
                                     </InfoField>

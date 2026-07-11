@@ -1,69 +1,91 @@
-import apiClient from "./client";
+import api from "./axios";
 
-export const getSubscriptions = async () => {
-    const response = await apiClient.get("/subscriptions/");
-    return response.data;
-};
+/**
+ * Get all subscriptions.
+ */
+export const getSubscriptions = async (
+    params = {},
+) => {
 
-export const getSubscription = async (subscriptionId) => {
-    const response = await apiClient.get(
-        `/subscriptions/${subscriptionId}`
-    );
-
-    return response.data;
-};
-
-export const purchaseSubscription = async (data) => {
-    const response = await apiClient.post(
-        "/subscriptions/purchase",
-        data
-    );
-
-    return response.data;
-};
-
-export const updateSubscription = async ({
-    subscriptionId,
-    data,
-}) => {
-    const response = await apiClient.patch(
-        `/subscriptions/${subscriptionId}`,
-        data
-    );
-
-    return response.data;
-};
-
-export const updateSubscriptionStatus = async ({
-    subscriptionId,
-    status,
-}) => {
-    const response = await apiClient.patch(
-        `/subscriptions/${subscriptionId}/status`,
+    const response = await api.get(
+        "/subscriptions",
         {
-            status,
-        }
+            params,
+        },
     );
 
     return response.data;
+
 };
 
-export const renewSubscription = async (
-    subscriptionId
+/**
+ * Get a single subscription.
+ */
+export const getSubscription = async (
+    subscriptionId,
 ) => {
-    const response = await apiClient.post(
-        `/subscriptions/${subscriptionId}/renew`
+
+    const response = await api.get(
+        `/subscriptions/${subscriptionId}`,
     );
 
     return response.data;
+
 };
 
-export const deleteSubscription = async (
-    subscriptionId
-) => {
-    const response = await apiClient.delete(
-        `/subscriptions/${subscriptionId}`
-    );
+/**
+ * Purchase a subscription.
+ */
+export const purchaseSubscription =
+    async (subscriptionData) => {
 
-    return response.data;
-};
+        const response = await api.post(
+            "/subscriptions/purchase",
+            subscriptionData,
+        );
+
+        return response.data;
+
+    };
+
+/**
+ * Cancel a subscription.
+ */
+export const cancelSubscription =
+    async (subscriptionId) => {
+
+        const response = await api.patch(
+            `/subscriptions/${subscriptionId}/cancel`,
+        );
+
+        return response.data;
+
+    };
+
+/**
+ * Process expired subscriptions.
+ */
+export const processSubscriptions =
+    async () => {
+
+        const response = await api.post(
+            "/subscriptions/process",
+        );
+
+        return response.data;
+
+    };
+
+/**
+ * Get subscriptions for a customer.
+ */
+export const getCustomerSubscriptions =
+    async (customerId) => {
+
+        const response = await api.get(
+            `/subscriptions/customer/${customerId}`,
+        );
+
+        return response.data;
+
+    };
