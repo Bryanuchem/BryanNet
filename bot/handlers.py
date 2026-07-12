@@ -1,222 +1,263 @@
+from telegram import (
+    Update,
+)
+
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
 from bot.handler_modules.menu import (
     start,
     menu,
-    menu_callback,
-    cancel
+    show_help,
+    cancel,
+)
+
+from bot.handler_modules.onboarding import (
+    onboarding_handler,
 )
 
 from bot.handler_modules.subscriptions import (
-    BUY_PLAN,
-    CONFIRM_PURCHASE,
     plans,
     send_plans,
     status,
     send_status,
-    buy_start,
-    buy_plan_selection,
-    confirm_purchase,
-    buy_keyboard
+    buy_keyboard,
+    buy_callback,
+    confirm_purchase_callback,
+    cancel_purchase_callback,
 )
 
 from bot.handler_modules.devices import (
-    REMOVE_DEVICE,
-    CONFIRM_REMOVE_DEVICE,
     devices,
     send_devices,
-    remove_device_keyboard,
-    remove_device_start,
-    remove_device_selection,
-    confirm_remove_device
+    device_callback,
+    rename_device_start,
+    rename_device_finish,
+    activate_device,
+    deactivate_device,
+    block_device,
+    unblock_device,
+    back_to_devices,
 )
 
-from bot.handler_modules.onboarding import (
-    onboarding_handler
-)
 
-from telegram import Update
-
-
-from telegram.ext import (
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    ConversationHandler,
-    CallbackQueryHandler,
-    filters
-)
+# ==========================================================
+# Keyboard Handler
+# ==========================================================
 
 async def keyboard_handler(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ):
+
+    if context.user_data.get(
+        "awaiting_device_name",
+    ):
+
+        await rename_device_finish(
+            update,
+            context,
+        )
+
+        return
+
     text = update.message.text
 
     if text == "📊 My Status":
+
         await send_status(
             update.message,
-            update.effective_user.id
+            update.effective_user.id,
         )
 
     elif text == "📋 View Plans":
+
         await send_plans(
-            update.message
+            update.message,
         )
 
-    elif text == "💻 My Devices":
-        await send_devices(
-            update.message,
-            update.effective_user.id
-        )
     elif text == "🌐 Buy Internet":
 
         await buy_keyboard(
-            update
+            update,
         )
-    
-    elif text == "❌ Remove Device":
 
-        await remove_device_keyboard(
-            update
+    elif text == "💻 My Devices":
+
+        await send_devices(
+            update.message,
+            update.effective_user.id,
         )
-            
+
     elif text == "📡 Menu":
+
         await menu(
             update,
-            context
+            context,
         )
-        
+
+    elif text == "❓ Help":
+
+        await show_help(
+            update.message,
+        )
 
 
-def setup_handlers(app):
+# ==========================================================
+# Handler Registration
+# ==========================================================
+
+def setup_handlers(
+    app,
+):
+
+    # ------------------------------------------------------
+    # Commands
+    # ------------------------------------------------------
 
     app.add_handler(
         CommandHandler(
             "start",
-            start
+            start,
         )
     )
-    
+
     app.add_handler(
         CommandHandler(
             "menu",
-            menu
+            menu,
         )
     )
-        
+
     app.add_handler(
         CommandHandler(
             "plans",
-            plans
+            plans,
         )
     )
 
     app.add_handler(
-    CommandHandler(
-        "status",
-        status
-    )
-)
-    
-    app.add_handler(
-    CommandHandler(
-        "devices",
-        devices
-    )
-)
-    
-    remove_device_handler = (
-        ConversationHandler(
-            entry_points=[
-                CommandHandler(
-                    "remove_device",
-                    remove_device_start
-                )
-            ],
-            states={
-                REMOVE_DEVICE: [
-                    MessageHandler(
-                        filters.TEXT
-                        & ~filters.COMMAND,
-                        remove_device_selection
-                    )
-                ],
-                CONFIRM_REMOVE_DEVICE: [
-                    MessageHandler(
-                        filters.TEXT
-                        & ~filters.COMMAND,
-                        confirm_remove_device
-                    )
-                ]
-            },
-            fallbacks=[
-                CommandHandler(
-                    "cancel",
-                    cancel
-                )
-            ]
+        CommandHandler(
+            "status",
+            status,
         )
     )
-
-    app.add_handler(
-        remove_device_handler
-    )
     
-    buy_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler(
-                "buy",
-                buy_start
-            )
-        ],
-        states={
-            BUY_PLAN: [
-                MessageHandler(
-                    filters.TEXT
-                    & ~filters.COMMAND,
-                    buy_plan_selection
-                )
-            ],
-            CONFIRM_PURCHASE: [
-                MessageHandler(
-                    filters.TEXT
-                    & ~filters.COMMAND,
-                    confirm_purchase
-                )
-            ]            
-        },
-        fallbacks=[
-            CommandHandler(
-                "cancel",
-                cancel
-            )
-        ]
-    )
+    # ------------------------------------------------------
+    # Callback Queries
+    # ------------------------------------------------------
 
-    app.add_handler(
-        buy_handler
-    )
-    
     app.add_handler(
         CallbackQueryHandler(
-            menu_callback
+            buy_callback,
+            pattern="^buy_",
         )
-    )
-    
-    app.add_handler(
-        MessageHandler(
-            (
-                filters.TEXT |
-                filters.CONTACT
-            ) & ~filters.COMMAND,
-            onboarding_handler
-        ),
-        group=0
     )
 
     app.add_handler(
+        CallbackQueryHandler(
+            confirm_purchase_callback,
+            pattern="^confirm_purchase$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            cancel_purchase_callback,
+            pattern="^cancel_purchase$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            device_callback,
+            pattern="^device_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            rename_device_start,
+            pattern="^rename_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            activate_device,
+            pattern="^activate_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            deactivate_device,
+            pattern="^deactivate_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            block_device,
+            pattern="^block_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            unblock_device,
+            pattern="^unblock_",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            back_to_devices,
+            pattern="^devices$",
+        )
+    )
+
+    # ------------------------------------------------------
+    # Message Handlers
+    # ------------------------------------------------------
+
+    app.add_handler(
+
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            keyboard_handler
+
+            (
+                filters.TEXT
+                |
+                filters.CONTACT
+            )
+            &
+            ~filters.COMMAND,
+
+            onboarding_handler,
+
         ),
-        group=1
+
+        group=0,
+
+    )
+
+    app.add_handler(
+
+        MessageHandler(
+
+            filters.TEXT
+            &
+            ~filters.COMMAND,
+
+            keyboard_handler,
+
+        ),
+
+        group=1,
+
     )

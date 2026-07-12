@@ -12,7 +12,7 @@ class SessionService:
     ):
 
         response = requests.get(
-            f"{API_BASE_URL}/session/telegram/{telegram_user_id}",
+            f"{API_BASE_URL}/portal/session/{telegram_user_id}",
             params={
                 "first_login": first_login
             }

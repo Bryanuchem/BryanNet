@@ -73,6 +73,121 @@ class PaymentService:
         return payment
 
     @staticmethod
+    def _create_payment(
+        db,
+        customer_id,
+        plan_id,
+        payment_provider: PaymentProvider,
+        payment_channel,
+        payment_method=None,
+    ):
+
+        CustomerService.get_customer(
+            db,
+            customer_id,
+        )
+
+        plan = (
+            PlanService.get_plan(
+                db,
+                plan_id,
+            )
+        )
+
+        payment = Payment(
+
+            customer_id=customer_id,
+
+            plan_id=plan_id,
+
+            subscription_id=None,
+
+            amount=plan.price,
+
+            payment_provider=payment_provider,
+
+            payment_channel=payment_channel,
+
+            payment_method=payment_method,
+
+            payment_reference=(
+                PaymentService
+                ._generate_payment_reference()
+            ),
+
+            gateway_transaction_id=None,
+
+            status=PaymentStatus.PENDING,
+
+            payment_date=None,
+
+        )
+
+        db.add(
+            payment,
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
+    @staticmethod
+    def _complete_payment(
+        db,
+        payment_reference,
+        gateway_transaction_id=None,
+    ):
+
+        payment = (
+            PaymentService._find_payment(
+                db,
+                payment_reference,
+            )
+        )
+
+        if (
+            payment.status
+            != PaymentStatus.PENDING
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only pending payments "
+                    "can be completed."
+                ),
+            )
+
+        PaymentService._mark_successful(
+            payment,
+            gateway_transaction_id,
+        )
+
+        subscription = (
+            SubscriptionService._create_subscription(
+                db=db,
+                customer_id=payment.customer_id,
+                plan_id=payment.plan_id,
+            )
+        )
+
+        payment.subscription_id = (
+            subscription.subscription_id
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
+    @staticmethod
     def _mark_successful(
         payment,
         gateway_transaction_id=None,
@@ -172,52 +287,16 @@ class PaymentService:
         payment_method=None,
     ):
 
-        CustomerService.get_customer(
-            db,
-            customer_id,
-        )
-
-        plan = (
-            PlanService.get_plan(
-                db,
-                plan_id,
+        payment = (
+            PaymentService._create_payment(
+                db=db,
+                customer_id=customer_id,
+                plan_id=plan_id,
+                payment_provider=payment_provider,
+                payment_channel=payment_channel,
+                payment_method=payment_method,
             )
         )
-
-        payment = Payment(
-
-            customer_id=customer_id,
-
-            plan_id=plan_id,
-
-            subscription_id=None,
-
-            amount=plan.price,
-
-            payment_provider=payment_provider,
-
-            payment_channel=payment_channel,
-
-            payment_method=payment_method,
-
-            payment_reference=(
-                PaymentService
-                ._generate_payment_reference()
-            ),
-
-            gateway_transaction_id=None,
-
-            status=PaymentStatus.PENDING,
-
-            payment_date=None,
-
-        )
-
-        db.add(
-            payment,
-        )
-
-        db.flush()
 
         AuditLogService.log_admin_action(
 
@@ -237,14 +316,15 @@ class PaymentService:
                 payment.payment_id,
             ),
 
-                target_name=str(
-                    payment.payment_reference,
-                ),
+            target_name=str(
+                payment.payment_reference,
+            ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Payment '{payment.payment_reference}' was created."
+                f"Payment '{str(payment.payment_reference)}' "
+                "was created."
             ),
 
             new_values={
@@ -256,28 +336,26 @@ class PaymentService:
                     int,
                     payment.plan_id,
                 ),
-                "amount": float(
-                    cast(
-                        Decimal,
+                "amount": cast(
+                    float,
                     payment.amount,
-                    ),
                 ),
-                "payment_provider": payment.payment_provider.value,
-                "payment_channel": payment.payment_channel.value,
-                "payment_method": payment.payment_method,
-                "status": payment.status.value,
+                "payment_provider":
+                    str(
+                    payment.payment_provider.value
+                    ),
+                "payment_channel":
+                    payment.payment_channel.value,
+                "payment_method":
+                    payment.payment_method,
+                "status":
+                    payment.status.value,
             },
 
         )
 
-        return (
-            PaymentService
-            ._finalize_payment_change(
-                db,
-                payment,
-            )
-        )
-
+        return payment
+    
     @staticmethod
     def complete_payment(
         db,
@@ -287,42 +365,13 @@ class PaymentService:
     ):
 
         payment = (
-            PaymentService._find_payment(
-                db,
-                payment_reference,
-            )
-        )
-
-        if (
-            payment.status
-            != PaymentStatus.PENDING
-        ):
-
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Only pending payments "
-                    "can be completed."
+            PaymentService._complete_payment(
+                db=db,
+                payment_reference=payment_reference,
+                gateway_transaction_id=(
+                    gateway_transaction_id
                 ),
             )
-
-        old_status = payment.status
-
-        PaymentService._mark_successful(
-            payment,
-            gateway_transaction_id,
-        )
-
-        subscription = (
-            SubscriptionService.create_subscription(
-                db=db,
-                customer_id=payment.customer_id,
-                plan_id=payment.plan_id,
-            )
-        )
-
-        payment.subscription_id = (
-            subscription.subscription_id
         )
 
         AuditLogService.log_admin_action(
@@ -343,27 +392,24 @@ class PaymentService:
                 payment.payment_id,
             ),
 
-            target_name=payment.payment_reference,
+            target_name=str(
+                payment.payment_reference,
+            ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Payment '{payment.payment_reference}' was verified."
+                f"Payment '{str(payment.payment_reference)}' "
+                "was verified."
             ),
 
-            old_values={
-                "status": old_status.value,
-            },
-
             new_values={
-                "status": payment.status.value,
-                "gateway_transaction_id": (
-                    payment.gateway_transaction_id
-                ),
-                "subscription_id": cast(
-                    int,
+                "status":
+                    payment.status.value,
+                "gateway_transaction_id":
+                    payment.gateway_transaction_id,
+                "subscription_id":
                     payment.subscription_id,
-                ),
                 "payment_date": (
                     payment.payment_date.isoformat()
                     if payment.payment_date
@@ -373,13 +419,7 @@ class PaymentService:
 
         )
 
-        return (
-            PaymentService
-            ._finalize_payment_change(
-                db,
-                payment,
-            )
-        )
+        return payment
     
     @staticmethod
     def cancel_payment(

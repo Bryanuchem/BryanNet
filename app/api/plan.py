@@ -163,19 +163,6 @@ def deactivate_plan(
 
 
 # ==========================================================
-# Public Customer APIs
-# ==========================================================    
-@router.get(
-    "/public",
-    response_model=list[PlanResponse],
-)
-def get_public_plans(
-    db: Session = Depends(get_db),
-):
-
-    return PlanService.get_active_plans(db)
-
-# ==========================================================
 # Query Methods
 # ==========================================================
 

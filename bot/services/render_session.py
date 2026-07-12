@@ -1,7 +1,7 @@
 from telegram import (
-    KeyboardButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
+    KeyboardButton,
 )
 
 from app.enums.next_action import (
@@ -32,6 +32,10 @@ async def render_session(
         )
 
     if session is None:
+
+        await message_obj.reply_text(
+            "Unable to communicate with BryanNet."
+        )
 
         return None
 
@@ -120,11 +124,18 @@ async def render_session(
     # ======================================================
 
     if next_action == NextAction.SHOW_MAIN_MENU.value:
+        print(">>> SHOW_MAIN_MENU")
+        first_name = (
+            session.get(
+                "full_name",
+            )
+            or
+            "there" 
+        )
 
         await message_obj.reply_text(
 
-            f"👋 Welcome, "
-            f"{session['full_name']}!",
+            f"👋 Welcome, {first_name}!",
 
             reply_markup=get_main_keyboard(),
 
@@ -138,8 +149,7 @@ async def render_session(
 
     await message_obj.reply_text(
 
-        "Something went wrong. "
-        "Please try again later.",
+        "Something went wrong. Please try again later.",
 
         reply_markup=ReplyKeyboardRemove(),
 

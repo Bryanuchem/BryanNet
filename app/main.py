@@ -111,6 +111,9 @@ from app.core.settings import (
     settings,
 )
 
+from app.portal import (
+    router as portal_router,
+)
 
 app = FastAPI(
 
@@ -298,6 +301,14 @@ app.include_router(
     prefix=API_PREFIX,
 )
 
+# ----------------------------------------------------------
+# Customer API
+# ----------------------------------------------------------
+
+app.include_router(
+    portal_router,
+    prefix=API_PREFIX,
+)
 
 # ==========================================================
 # Exception Handlers

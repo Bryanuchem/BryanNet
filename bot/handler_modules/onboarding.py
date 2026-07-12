@@ -1,98 +1,155 @@
 from telegram import (
-    Update
+    Update,
 )
 
 from telegram.ext import (
-    ContextTypes
+    ContextTypes,
 )
 
-from bot.session import render_session
-from bot.services.customer_service import CustomerService
-from bot.services.session_service import SessionService
+from bot.session import (
+    render_session,
+)
+
+from bot.services.onboarding_service import (
+    OnboardingService,
+)
+
+from bot.services.session_service import (
+    SessionService,
+)
+
 
 async def onboarding_handler(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    telegram_user_id = update.effective_user.id
+    telegram_user_id = (
+        update.effective_user.id
+    )
 
-    session = SessionService.get_session(
-        telegram_user_id
+    session = (
+        SessionService.get_session(
+            telegram_user_id,
+        )
     )
 
     if session is None:
+
         return
 
-    next_action = session["next_action"]
+    next_action = session[
+        "next_action"
+    ]
 
-    # Customer is already fully onboarded.
-    # Let the normal keyboard handler process the message.
+    # ======================================================
+    # Customer already onboarded
+    # ======================================================
 
     if next_action == "SHOW_MAIN_MENU":
+
         return
 
-    # Save customer's full name
+    # ======================================================
+    # Start onboarding
+    # ======================================================
 
-    if next_action == "ENTER_NAME":
+    if next_action == "START_ONBOARDING":
 
-        if not update.message.text:
-            return
-
-        success = CustomerService.update_name(
-            telegram_user_id,
-            update.message.text
+        success = (
+            OnboardingService.start_onboarding(
+                telegram_user_id,
+            )
         )
 
         if not success:
 
             await update.message.reply_text(
-                "Unable to save your name."
+                "Unable to start onboarding.",
             )
 
             return
 
         await render_session(
             update.message,
-            telegram_user_id
+            telegram_user_id,
         )
 
         return
 
-    # Save customer's phone number
+    # ======================================================
+    # Save full name
+    # ======================================================
 
-    elif next_action == "ENTER_PHONE":
+    if next_action == "ENTER_NAME":
 
-        if update.message.contact is None:
-
-            await update.message.reply_text(
-                "Please tap '📱 Share Phone Number'."
-            )
+        if not update.message.text:
 
             return
 
-        success = CustomerService.update_phone(
-            telegram_user_id,
-            update.message.contact.phone_number
+        success = (
+            OnboardingService.update_name(
+                telegram_user_id,
+                update.message.text.strip(),
+            )
         )
 
         if not success:
 
             await update.message.reply_text(
-                "Unable to save your phone number."
+                "Unable to save your name.",
             )
 
             return
 
-        session = SessionService.get_session(
+        await render_session(
+            update.message,
             telegram_user_id,
-            first_login=True
+        )
+
+        return
+
+    # ======================================================
+    # Save phone number
+    # ======================================================
+
+    if next_action == "ENTER_PHONE_NUMBER":
+
+        if update.message.contact is None:
+
+            await update.message.reply_text(
+                "Please tap "
+                "'📱 Share Phone Number'.",
+            )
+
+            return
+
+        success = (
+            OnboardingService.update_phone(
+                telegram_user_id,
+                update.message.contact.phone_number,
+            )
+        )
+
+        if not success:
+
+            await update.message.reply_text(
+                "Unable to save your phone number.",
+            )
+
+            return
+
+        session = (
+            SessionService.get_session(
+                telegram_user_id,
+                first_login=True,
+            )
         )
 
         if session is None:
 
             await update.message.reply_text(
-                "Unable to retrieve your session."
+                "Unable to retrieve your session.",
             )
 
             return
@@ -100,7 +157,5 @@ async def onboarding_handler(
         await render_session(
             update.message,
             telegram_user_id,
-            session=session
+            session=session,
         )
-
-        return

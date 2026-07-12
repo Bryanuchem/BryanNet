@@ -14,7 +14,7 @@ def get_main_keyboard():
         ],
         [
             "📡 Menu",
-            "❌ Remove Device",  
+            "❓ Help",  
         ]
     ]
 

@@ -23,11 +23,8 @@ from app.database.permission_dependencies import (
 from app.schemas.customer import (
     CustomerCreate,
     CustomerListItem,
-    CustomerOnboardingStart,
     CustomerResponse,
     CustomerUpdate,
-    CustomerUpdateName,
-    CustomerUpdatePhone,
 )
 
 from app.schemas.page import (
@@ -168,69 +165,6 @@ def deactivate_customer(
 
 
 # ==========================================================
-# Public Onboarding
-# ==========================================================
-
-@router.post(
-    "/onboarding/start",
-    response_model=CustomerResponse,
-)
-def start_onboarding(
-    customer: CustomerOnboardingStart,
-    db: Session = Depends(
-        get_db,
-    ),
-):
-
-    return (
-        CustomerService.start_onboarding(
-            db=db,
-            telegram_user_id=customer.telegram_user_id,
-        )
-    )
-
-
-@router.patch(
-    "/onboarding/name",
-    response_model=CustomerResponse,
-)
-def update_full_name(
-    customer: CustomerUpdateName,
-    db: Session = Depends(
-        get_db,
-    ),
-):
-
-    return (
-        CustomerService.update_full_name(
-            db=db,
-            telegram_user_id=customer.telegram_user_id,
-            full_name=customer.full_name,
-        )
-    )
-
-
-@router.patch(
-    "/onboarding/phone",
-    response_model=CustomerResponse,
-)
-def update_phone_number(
-    customer: CustomerUpdatePhone,
-    db: Session = Depends(
-        get_db,
-    ),
-):
-
-    return (
-        CustomerService.update_phone_number(
-            db=db,
-            telegram_user_id=customer.telegram_user_id,
-            phone_number=customer.phone_number,
-        )
-    )
-
-
-# ==========================================================
 # Query Methods
 # ==========================================================
 
@@ -340,21 +274,3 @@ def get_customer_by_phone(
         )
     )
 
-
-@router.get(
-    "/telegram/{telegram_user_id}",
-    response_model=CustomerResponse,
-)
-def get_customer_by_telegram_id(
-    telegram_user_id: int,
-    db: Session = Depends(
-        get_db,
-    ),
-):
-
-    return (
-        CustomerService.get_customer_by_telegram_id(
-            db=db,
-            telegram_user_id=telegram_user_id,
-        )
-    )

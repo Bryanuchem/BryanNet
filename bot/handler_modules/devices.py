@@ -1,358 +1,820 @@
-import requests
-
 from telegram import (
     Update,
     InlineKeyboardButton,
-    InlineKeyboardMarkup
+    InlineKeyboardMarkup,
 )
 
 from telegram.ext import (
     ContextTypes,
-    ConversationHandler
+    ConversationHandler,
+)
+
+from bot.services.device_service import (
+    DeviceService,
 )
 
 
-from bot.services.helpers import (
-    get_customer_by_telegram_id
-)
-
-from bot.config import API_BASE_URL
-
-REMOVE_DEVICE = 3
-CONFIRM_REMOVE_DEVICE = 4
+RENAME_DEVICE = 1
 
 
-async def devices(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+# ==========================================================
+# Private Helpers
+# ==========================================================
+
+STATUS_ORDER = {
+
+    "active": 0,
+
+    "inactive": 1,
+
+    "blocked": 2,
+
+}
+
+
+def _sort_devices(
+    devices,
 ):
 
-    await send_devices(
-        update.message,
-        update.effective_user.id
-    ) 
+    devices["devices"] = sorted(
 
-async def send_devices(
-    message,
-    telegram_user_id
+        devices["devices"],
+
+        key=lambda device: (
+
+            STATUS_ORDER.get(
+                device["device_status"].lower(),
+                99,
+            ),
+
+            device["device_name"].lower(),
+
+        ),
+
+    )
+
+    return devices
+
+
+def _build_devices_text(
+    devices,
 ):
 
-    customer = get_customer_by_telegram_id(
-        telegram_user_id
+    used_slots = (
+
+        devices["allowed_devices"]
+
+        - devices["available_slots"]
+
     )
 
-    if not customer:
+    text = (
 
-        await message.reply_text(
-            "You are not registered. Use /register first."
-        )
+        "💻 Manage Devices\n\n"
 
-        return
+        f"Slots: {used_slots} / "
 
-    devices_response = requests.get(
-        f"{API_BASE_URL}/devices/"
-        f"{customer['customer_id']}"
+        f"{devices['allowed_devices']}\n\n"
+
     )
 
-    if devices_response.status_code != 200:
+    if not devices["devices"]:
 
-        await message.reply_text(
-            "Unable to retrieve devices."
+        return (
+
+            text
+
+            + "No registered devices found.\n\n"
+
+            "Connect to BryanNet WiFi and your "
+
+            "first device will be registered "
+
+            "automatically."
+
         )
 
-        return
+    status_icons = {
 
-    device_list = devices_response.json()
+        "active": "🟢",
 
-    if not device_list:
+        "inactive": "⚪",
 
-        await message.reply_text(
-            "No registered devices found.\n\n"
-            "Connect to BryanNet WiFi and your first device "
-            "will be registered automatically."
-        )
+        "blocked": "🔴",
 
-        return
+    }
 
-    text = "💻 Registered Devices\n\n"
-
-    for index, device in enumerate(
-        device_list,
-        start=1
-    ):
+    for device in devices["devices"]:
 
         status = (
             device["device_status"]
-            .title()
+            .lower()
+        )
+
+        icon = status_icons.get(
+            status,
+            "⚫",
         )
 
         text += (
-            f"{index}. {device['device_name']}\n"
-            f"   Status: {status}\n\n"
+
+            f"{icon} "
+
+            f"{device['device_name']}\n"
+
+            f"   {status.title()}\n\n"
+
         )
+
+    return text
+
+
+def _build_devices_keyboard(
+    devices,
+):
+
+    keyboard = []
+
+    for device in devices["devices"]:
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    device["device_name"],
+
+                    callback_data=(
+                        f"device_{device['device_id']}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+    return InlineKeyboardMarkup(
+        keyboard,
+    )
+
+
+def _build_actions_keyboard(
+    device,
+):
+
+    device_id = device["device_id"]
+
+    status = (
+        device["device_status"]
+        .lower()
+    )
+
+    keyboard = [
+
+        [
+
+            InlineKeyboardButton(
+
+                "✏ Rename",
+
+                callback_data=(
+                    f"rename_{device_id}"
+                ),
+
+            )
+
+        ]
+
+    ]
+
+    if status == "active":
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    "⚪ Deactivate",
+
+                    callback_data=(
+                        f"deactivate_{device_id}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    "🚫 Block",
+
+                    callback_data=(
+                        f"block_{device_id}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+    elif status == "inactive":
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    "🟢 Activate",
+
+                    callback_data=(
+                        f"activate_{device_id}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    "🚫 Block",
+
+                    callback_data=(
+                        f"block_{device_id}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+    elif status == "blocked":
+
+        keyboard.append(
+
+            [
+
+                InlineKeyboardButton(
+
+                    "✅ Unblock",
+
+                    callback_data=(
+                        f"unblock_{device_id}"
+                    ),
+
+                )
+
+            ]
+
+        )
+
+    keyboard.append(
+
+        [
+
+            InlineKeyboardButton(
+
+                "⬅ Back",
+
+                callback_data="devices",
+
+            )
+
+        ]
+
+    )
+
+    return InlineKeyboardMarkup(
+        keyboard,
+    )
+
+
+async def _refresh_devices(
+    message,
+    telegram_user_id,
+):
+
+    devices = DeviceService.get_devices(
+        telegram_user_id,
+    )
+
+    if devices is None:
+
+        await message.reply_text(
+            "Unable to retrieve devices.",
+        )
+
+        return
+
+    devices = _sort_devices(
+        devices,
+    )
 
     await message.reply_text(
-        text
+
+        _build_devices_text(
+            devices,
+        ),
+
+        reply_markup=_build_devices_keyboard(
+            devices,
+        ),
+
     )
-   
-async def remove_device_start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+
+
+async def _refresh_device_details(
+    message,
+    telegram_user_id,
+    device_id,
+    context,
 ):
 
-    telegram_user_id = (
-        update.effective_user.id
+    devices = DeviceService.get_devices(
+        telegram_user_id,
     )
 
-    customer = get_customer_by_telegram_id(
-        telegram_user_id
-    )
+    if devices is None:
 
-    if not customer:
-
-        await update.message.reply_text(
-            "You are not registered. Use /register first."
+        await message.reply_text(
+            "Unable to retrieve devices.",
         )
 
-        return ConversationHandler.END
+        return
 
-    devices_response = requests.get(
-        f"{API_BASE_URL}/devices/"
-        f"{customer['customer_id']}"
+    selected_device = next(
+
+        (
+
+            device
+
+            for device
+
+            in devices["devices"]
+
+            if device["device_id"] == device_id
+
+        ),
+
+        None,
+
     )
 
-    devices = devices_response.json()
+    if selected_device is None:
 
-    if not devices:
-
-        await update.message.reply_text(
-            "No registered devices found."
+        await message.reply_text(
+            "Device not found.",
         )
 
-        return ConversationHandler.END
-
-    context.user_data["devices"] = devices
-
-    message = (
-        "Which device would you like to remove?\n\n"
-    )
-
-    for index, device in enumerate(
-        devices,
-        start=1
-    ):
-
-        message += (
-            f"{index}. "
-            f"{device['device_name']}\n"
-        )
-
-    message += (
-        "\nReply with the device number."
-    )
-
-    await update.message.reply_text(
-        message
-    )
-
-    return REMOVE_DEVICE
-
-async def remove_device_selection(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    try:
-
-        selected_index = (
-            int(update.message.text)
-            - 1
-        )
-
-    except ValueError:
-
-        await update.message.reply_text(
-            "Please enter a valid number."
-        )
-
-        return REMOVE_DEVICE
-
-    devices = context.user_data.get(
-        "devices",
-        []
-    )
-
-    if (
-        selected_index < 0
-        or
-        selected_index >= len(devices)
-    ):
-
-        await update.message.reply_text(
-            "Invalid device number."
-        )
-
-        return REMOVE_DEVICE
-
-    selected_device = (
-        devices[selected_index]
-    )
+        return
 
     context.user_data[
         "selected_device"
     ] = selected_device
 
-    if len(devices) == 1:
+    status_icons = {
 
-        await update.message.reply_text(
-            "You currently have 1 registered device.\n\n"
-            "Removing this device will leave you "
-            "with no registered devices and may "
-            "interrupt your internet access.\n\n"
-            "Reply YES to continue or NO to cancel."
-        )
+        "active": "🟢",
 
-        return CONFIRM_REMOVE_DEVICE
+        "inactive": "⚪",
 
-    response = requests.delete(
-        f"{API_BASE_URL}/devices/"
-        f"{selected_device['device_id']}"
+        "blocked": "🔴",
+
+    }
+
+    status = (
+        selected_device["device_status"]
+        .lower()
     )
 
-    if response.status_code == 200:
+    icon = status_icons.get(
+        status,
+        "⚫",
+    )
 
-        await update.message.reply_text(
-            f"Device removed successfully.\n\n"
-            f"{selected_device['device_name']} "
-            f"has been removed."
-        )
+    await message.reply_text(
 
-    else:
+        "💻 Device\n\n"
 
-        await update.message.reply_text(
-            "Unable to remove device."
-        )
+        "Name\n"
 
-    return ConversationHandler.END
-  
-async def confirm_remove_device(
+        f"{selected_device['device_name']}\n\n"
+
+        "Status\n"
+
+        f"{icon} {status.title()}",
+
+        reply_markup=_build_actions_keyboard(
+            selected_device,
+        ),
+
+    )
+
+
+# ==========================================================
+# Device Management
+# ==========================================================
+
+async def devices(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ):
 
-    answer = (
-        update.message.text
-        .strip()
-        .upper()
+    await send_devices(
+
+        update.message,
+
+        update.effective_user.id,
+
     )
 
-    if answer == "NO":
 
-        await update.message.reply_text(
-            "Device removal cancelled."
-        )
-
-        return ConversationHandler.END
-
-    if answer != "YES":
-
-        await update.message.reply_text(
-            "Reply YES or NO."
-        )
-
-        return CONFIRM_REMOVE_DEVICE
-
-    selected_device = (
-        context.user_data[
-            "selected_device"
-        ]
-    )
-
-    response = requests.delete(
-        f"{API_BASE_URL}/devices/"
-        f"{selected_device['device_id']}"
-    )
-
-    if response.status_code == 200:
-
-        await update.message.reply_text(
-            f"Device removed successfully.\n\n"
-            f"{selected_device['device_name']} "
-            f"has been removed."
-        )
-
-    else:
-
-        await update.message.reply_text(
-            "Unable to remove device."
-        )
-
-    return ConversationHandler.END
-
-async def remove_device_keyboard(
-    update: Update
+async def send_devices(
+    message,
+    telegram_user_id,
 ):
 
-    customer = get_customer_by_telegram_id(
+    await _refresh_devices(
+
+        message,
+
+        telegram_user_id,
+
+    )
+
+
+async def device_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    device_id = int(
+        query.data.split("_")[1]
+    )
+
+    await query.delete_message()
+
+    await _refresh_device_details(
+
+        query.message,
+
+        update.effective_user.id,
+
+        device_id,
+
+        context,
+
+    )
+
+
+# ==========================================================
+# Navigation
+# ==========================================================
+
+async def back_to_devices(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    await query.delete_message()
+
+    await _refresh_devices(
+
+        query.message,
+
+        update.effective_user.id,
+
+    )
+    
+# ==========================================================
+# Rename Device
+# ==========================================================
+
+async def rename_device_start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    selected_device = context.user_data.get(
+        "selected_device",
+    )
+
+    if selected_device is None:
+
+        await query.answer(
+            "Device not found.",
+            show_alert=True,
+        )
+
+        return
+
+    context.user_data[
+        "awaiting_device_name"
+    ] = True
+
+    context.user_data[
+        "rename_device_id"
+    ] = selected_device["device_id"]
+
+    await query.edit_message_text(
+
+        "✏ Rename Device\n\n"
+
+        "Current Name\n"
+
+        f"{selected_device['device_name']}\n\n"
+
+        "Send the new device name.",
+
+    )
+
+async def rename_device_finish(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    if not context.user_data.get(
+        "awaiting_device_name",
+    ):
+
+        return
+
+    device_id = context.user_data.get(
+        "rename_device_id",
+    )
+
+    telegram_user_id = (
         update.effective_user.id
     )
 
-    if not customer:
+    device = DeviceService.rename_device(
 
-        await update.message.reply_text(
-            "You are not registered."
-        )
+        telegram_user_id,
 
-        return
+        device_id,
 
-    devices_response = requests.get(
-        f"{API_BASE_URL}/devices/"
-        f"{customer['customer_id']}"
+        update.message.text.strip(),
+
     )
 
-    if devices_response.status_code != 200:
-
-        await update.message.reply_text(
-            "Unable to retrieve devices."
-        )
-
-        return
-    
-    devices = devices_response.json()
-
-    if not devices:
-
-        await update.message.reply_text(
-            "No registered devices found."
-        )
-
-        return
-
-    keyboard = []
-
-    for device in devices:
-
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    device["device_name"],
-                    callback_data=f"remove_{device['device_id']}"
-                )
-            ]
-        )
-
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "⬅ Back",
-                callback_data="menu"
-            )
-        ]
+    context.user_data.pop(
+        "awaiting_device_name",
+        None,
     )
+
+    context.user_data.pop(
+        "rename_device_id",
+        None,
+    )
+
+    if device is None:
+
+        await update.message.reply_text(
+            "Unable to rename device.",
+        )
+
+        return
 
     await update.message.reply_text(
-        "💻 Select a device to remove:",
-        reply_markup=InlineKeyboardMarkup(
-            keyboard
+        "✅ Device renamed.",
+    )
+
+    await _refresh_device_details(
+
+        update.message,
+
+        telegram_user_id,
+
+        device_id,
+
+        context,
+
+    )
+
+# ==========================================================
+# Device Actions
+# ==========================================================
+
+async def activate_device(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    device_id = int(
+        query.data.split("_")[1]
+    )
+
+    telegram_user_id = (
+        update.effective_user.id
+    )
+
+    device = DeviceService.activate_device(
+
+        telegram_user_id,
+
+        device_id,
+
+    )
+
+    if device is None:
+
+        await query.answer(
+            "Unable to activate device.",
+            show_alert=True,
         )
+
+        return
+
+    await query.delete_message()
+
+    await _refresh_device_details(
+
+        query.message,
+
+        telegram_user_id,
+
+        device_id,
+
+        context,
+
+    )
+
+
+async def deactivate_device(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    device_id = int(
+        query.data.split("_")[1]
+    )
+
+    telegram_user_id = (
+        update.effective_user.id
+    )
+
+    device = DeviceService.deactivate_device(
+
+        telegram_user_id,
+
+        device_id,
+
+    )
+
+    if device is None:
+
+        await query.answer(
+            "Unable to deactivate device.",
+            show_alert=True,
+        )
+
+        return
+
+    await query.delete_message()
+
+    await _refresh_device_details(
+
+        query.message,
+
+        telegram_user_id,
+
+        device_id,
+
+        context,
+
+    )
+
+
+async def block_device(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    device_id = int(
+        query.data.split("_")[1]
+    )
+
+    telegram_user_id = (
+        update.effective_user.id
+    )
+
+    device = DeviceService.block_device(
+
+        telegram_user_id,
+
+        device_id,
+
+    )
+
+    if device is None:
+
+        await query.answer(
+            "Unable to block device.",
+            show_alert=True,
+        )
+
+        return
+
+    await query.delete_message()
+
+    await _refresh_device_details(
+
+        query.message,
+
+        telegram_user_id,
+
+        device_id,
+
+        context,
+
+    )
+
+
+async def unblock_device(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    device_id = int(
+        query.data.split("_")[1]
+    )
+
+    telegram_user_id = (
+        update.effective_user.id
+    )
+
+    device = DeviceService.unblock_device(
+
+        telegram_user_id,
+
+        device_id,
+
+    )
+
+    if device is None:
+
+        await query.answer(
+            "Unable to unblock device.",
+            show_alert=True,
+        )
+
+        return
+
+    await query.delete_message()
+
+    await _refresh_device_details(
+
+        query.message,
+
+        telegram_user_id,
+
+        device_id,
+
+        context,
+
     )

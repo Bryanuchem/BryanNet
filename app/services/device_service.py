@@ -209,6 +209,146 @@ class DeviceService:
             device_status=device.device_status,
 
         )
+        
+    @staticmethod
+    def _set_device_active(
+        db,
+        device,
+    ):
+
+        if device.device_status == DeviceStatus.BLOCKED:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Blocked devices cannot be activated.",
+            )
+
+        subscription = (
+            DeviceService._get_active_subscription(
+                db,
+                device.customer_id,
+            )
+        )
+
+        from app.services.plan_service import (
+            PlanService,
+        )
+
+        plan = (
+            PlanService.get_plan(
+                db,
+                subscription.plan_id,
+            )
+        )
+
+        DeviceService._validate_device_limit(
+            db,
+            device.customer_id,
+            plan,
+        )
+
+        device.device_status = (
+            DeviceStatus.ACTIVE
+        )
+
+        device.last_seen = (
+            datetime.now(UTC)
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db,
+                device,
+            )
+        )
+
+
+    @staticmethod
+    def _set_device_inactive(
+        db,
+        device,
+    ):
+
+        device.device_status = (
+            DeviceStatus.INACTIVE
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db,
+                device,
+            )
+        )
+
+
+    @staticmethod
+    def _set_device_blocked(
+        db,
+        device,
+    ):
+
+        if device.device_status == DeviceStatus.BLOCKED:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Device is already blocked.",
+            )
+
+        device.device_status = (
+            DeviceStatus.BLOCKED
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db,
+                device,
+            )
+        )
+
+
+    @staticmethod
+    def _set_device_unblocked(
+        db,
+        device,
+    ):
+
+        if device.device_status != DeviceStatus.BLOCKED:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Device is not blocked.",
+            )
+
+        device.device_status = (
+            DeviceStatus.INACTIVE
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db,
+                device,
+            )
+        )
+         
+    @staticmethod
+    def _set_device_name(
+        db,
+        device,
+        device_name,
+    ):
+
+        device.device_name = (
+            device_name
+        )
+
+        return (
+            DeviceService._finalize_device_change(
+                db,
+                device,
+                synchronize=False,
+            )
+        )
+        
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -353,43 +493,15 @@ class DeviceService:
             )
         )
 
-        if device.device_status == DeviceStatus.BLOCKED:
+        old_status = (
+            device.device_status.value
+        )
 
-            raise HTTPException(
-                status_code=400,
-                detail="Blocked devices cannot be activated.",
-            )
-
-        subscription = (
-            DeviceService._get_active_subscription(
+        device = (
+            DeviceService._set_device_active(
                 db,
-                device.customer_id,
+                device,
             )
-        )
-
-        from app.services.plan_service import PlanService
-
-        plan = (
-            PlanService.get_plan(
-                db,
-                subscription.plan_id,
-            )
-        )
-
-        DeviceService._validate_device_limit(
-            db,
-            device.customer_id,
-            plan,
-        )
-
-        old_status = device.device_status.value
-
-        device.device_status = (
-            DeviceStatus.ACTIVE
-        )
-
-        device.last_seen = (
-            datetime.now(UTC)
         )
 
         AuditLogService.log_admin_action(
@@ -412,13 +524,15 @@ class DeviceService:
 
             target_name=cast(
                 str,
-                device.device_name or device.mac_address,
+                device.device_name
+                or device.mac_address,
             ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Device '{device.device_name or device.mac_address}' was activated."
+                f"Device '{device.device_name or device.mac_address}' "
+                f"was activated."
             ),
 
             old_values={
@@ -431,14 +545,11 @@ class DeviceService:
 
         )
 
-        device = DeviceService._finalize_device_change(
-            db,
-            device,
-        )
-
-        return DeviceService._build_device_response(
-            db,
-            device,
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
+            )
         )
 
     @staticmethod
@@ -455,10 +566,15 @@ class DeviceService:
             )
         )
 
-        old_status = device.device_status.value
+        old_status = (
+            device.device_status.value
+        )
 
-        device.device_status = (
-            DeviceStatus.INACTIVE
+        device = (
+            DeviceService._set_device_inactive(
+                db,
+                device,
+            )
         )
 
         AuditLogService.log_admin_action(
@@ -481,13 +597,15 @@ class DeviceService:
 
             target_name=cast(
                 str,
-                device.device_name or device.mac_address,
+                device.device_name
+                or device.mac_address,
             ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Device '{device.device_name or device.mac_address}' was deactivated."
+                f"Device '{device.device_name or device.mac_address}' "
+                f"was deactivated."
             ),
 
             old_values={
@@ -500,14 +618,11 @@ class DeviceService:
 
         )
 
-        device = DeviceService._finalize_device_change(
-            db,
-            device,
-        )
-
-        return DeviceService._build_device_response(
-            db,
-            device,
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
+            )
         )
 
     @staticmethod
@@ -696,9 +811,17 @@ class DeviceService:
             )
         )
 
-        old_name = device.device_name
+        old_name = (
+            device.device_name
+        )
 
-        device.device_name = device_name
+        device = (
+            DeviceService._set_device_name(
+                db,
+                device,
+                device_name,
+            )
+        )
 
         AuditLogService.log_admin_action(
 
@@ -718,14 +841,18 @@ class DeviceService:
                 device.device_id,
             ),
 
-            target_name=device_name,
+            target_name=cast(
+                str,
+                device.device_name
+                or device.mac_address,
+            ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Device was renamed "
-                f"from '{old_name}' "
-                f"to '{device_name}'."
+                f"Device '{device.mac_address}' "
+                f"was renamed to "
+                f"'{device.device_name}'."
             ),
 
             old_values={
@@ -733,20 +860,16 @@ class DeviceService:
             },
 
             new_values={
-                "device_name": device_name,
+                "device_name": device.device_name,
             },
 
         )
 
-        device = DeviceService._finalize_device_change(
-            db,
-            device,
-            synchronize=False,
-        )
-
-        return DeviceService._build_device_response(
-            db,
-            device,
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
+            )
         )
 
     @staticmethod
@@ -757,22 +880,22 @@ class DeviceService:
     ):
 
         device = (
-            DeviceService.get_device(
-                db=db,
-                device_id=device_id,
+            DeviceService._find_device(
+                db,
+                device_id,
             )
         )
 
-        if device.device_status == DeviceStatus.BLOCKED:
+        old_status = (
+            device.device_status.value
+        )
 
-            raise HTTPException(
-                status_code=400,
-                detail="Device is already blocked.",
+        device = (
+            DeviceService._set_device_blocked(
+                db,
+                device,
             )
-
-        old_status = device.device_status
-
-        device.device_status = DeviceStatus.BLOCKED
+        )
 
         AuditLogService.log_admin_action(
 
@@ -794,33 +917,32 @@ class DeviceService:
 
             target_name=cast(
                 str,
-                device.device_name or device.mac_address,
+                device.device_name
+                or device.mac_address,
             ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Device '{device.device_name or device.mac_address}' was blocked."
+                f"Device '{device.device_name or device.mac_address}' "
+                f"was blocked."
             ),
 
             old_values={
-                "device_status": old_status.value,
+                "device_status": old_status,
             },
 
             new_values={
-                "device_status": DeviceStatus.BLOCKED.value,
+                "device_status": device.device_status.value,
             },
 
         )
 
-        device = DeviceService._finalize_device_change(
-            db=db,
-            device=device,
-        )
-
-        return DeviceService._build_device_response(
-            db,
-            device,
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
+            )
         )
 
     @staticmethod
@@ -831,22 +953,22 @@ class DeviceService:
     ):
 
         device = (
-            DeviceService.get_device(
-                db=db,
-                device_id=device_id,
+            DeviceService._find_device(
+                db,
+                device_id,
             )
         )
 
-        if device.device_status != DeviceStatus.BLOCKED:
+        old_status = (
+            device.device_status.value
+        )
 
-            raise HTTPException(
-                status_code=400,
-                detail="Device is not blocked.",
+        device = (
+            DeviceService._set_device_unblocked(
+                db,
+                device,
             )
-
-        old_status = device.device_status
-
-        device.device_status = DeviceStatus.INACTIVE
+        )
 
         AuditLogService.log_admin_action(
 
@@ -868,33 +990,32 @@ class DeviceService:
 
             target_name=cast(
                 str,
-                device.device_name or device.mac_address,
+                device.device_name
+                or device.mac_address,
             ),
 
             result=AuditResult.SUCCESS,
 
             description=(
-                f"Device '{device.device_name or device.mac_address}' was unblocked."
+                f"Device '{device.device_name or device.mac_address}' "
+                f"was unblocked."
             ),
 
             old_values={
-                "device_status": old_status.value,
+                "device_status": old_status,
             },
 
             new_values={
-                "device_status": DeviceStatus.INACTIVE.value,
+                "device_status": device.device_status.value,
             },
 
         )
 
-        device = DeviceService._finalize_device_change(
-            db=db,
-            device=device,
-        )
-
-        return DeviceService._build_device_response(
-            db,
-            device,
+        return (
+            DeviceService._build_device_response(
+                db,
+                device,
+            )
         )
 
     @staticmethod

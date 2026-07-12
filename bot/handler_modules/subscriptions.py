@@ -1,387 +1,238 @@
-import requests
-
 from telegram import (
-    Update,    
+    Update,
+    InlineKeyboardButton,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
 )
 
 from telegram.ext import (
     ContextTypes,
-    ConversationHandler
 )
 
-from bot.config import API_BASE_URL
-
-
-from bot.services.helpers import (
-    get_customer_by_telegram_id,
-    format_expiry_date
+from bot.services.plan_service import (
+    PlanService,
 )
 
-BUY_PLAN = 5
-CONFIRM_PURCHASE = 6
+from bot.services.subscription_service import (
+    SubscriptionService,
+)
 
-def get_active_plans():
+from bot.services.payment_service import (
+    PaymentService,
+)
 
-    url = f"{API_BASE_URL}/plans/public"
+from bot.services.formatters import (
+    format_currency,
+    format_duration,
+    format_expiry_date,
+)
 
-    response = requests.get(url)
 
-    return response.json() if response.status_code == 200 else None
+# ==========================================================
+# Plans
+# ==========================================================
 
 async def plans(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ):
 
     await send_plans(
-        update.message
-)
-    
+        update.message,
+    )
+
+
 async def send_plans(
-    message
+    message,
 ):
 
-    plans = get_active_plans()
+    plans = (
+        PlanService.get_all_plans()
+    )
 
     if plans is None:
 
         await message.reply_text(
-            "Unable to retrieve plans."
+            "Unable to retrieve plans.",
         )
 
         return
 
-    text = "🌐 Available Plans\n\n"
+    text = (
+        "🌐 Available Plans\n\n"
+    )
 
     for index, plan in enumerate(
         plans,
-        start=1
+        start=1,
     ):
 
-        duration = plan["duration_days"]
-
-        if duration == 0:
-            duration_text = "1 Hour"
-        elif duration == 1:
-            duration_text = "1 Day"
-        else:
-            duration_text = f"{duration} Days"
-
         text += (
-            f"{index}. {plan['plan_name']}\n"
-            f"💰 ₦{plan['price']}\n"
-            f"⚡ {plan['speed_limit_mbps']} Mbps\n"
-            f"⏱ {duration_text}\n\n"
+
+            f"{index}. "
+            f"{plan['plan_name']}\n"
+
+            f"💰 "
+            f"{format_currency(plan['price'])}\n"
+
+            f"⚡ "
+            f"{plan['speed_limit_mbps']} Mbps\n"
+
+            f"💻 "
+            f"{plan['max_devices']} Devices "
+            f"({plan['concurrent_devices']} Concurrent)\n"
+
+            f"⏱ "
+            f"{format_duration(plan['duration_days'])}"
+
+            "\n\n"
+
         )
 
     await message.reply_text(
-        text
+        text,
     )
-       
+
+
+# ==========================================================
+# Subscription Status
+# ==========================================================
+
 async def status(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ):
 
     await send_status(
+
         update.message,
-        update.effective_user.id
+
+        update.effective_user.id,
+
     )
 
 
 async def send_status(
     message,
-    telegram_user_id
+    telegram_user_id,
 ):
 
-    customer = get_customer_by_telegram_id(
-        telegram_user_id
+    status_data = (
+
+        SubscriptionService
+        .get_subscription_status(
+            telegram_user_id,
+        )
+
     )
 
-    if not customer:
+    if status_data is None:
 
         await message.reply_text(
-            "You are not registered."
-        )
 
-        return
-    
-    status_response = requests.get(
-        f"{API_BASE_URL}/subscriptions/status/"
-        f"{customer['customer_id']}"
-    )
-
-    if status_response.status_code != 200:
-
-        await message.reply_text(
-            "Unable to retrieve subscription status."
-        )
-
-        return
-
-    status_data = status_response.json()
-
-    plan_name = status_data.get(
-        "plan_name"
-    )
-
-    status_value = status_data.get(
-        "status"
-    )
-
-    expiry_date = status_data.get(
-        "expiry_date"
-    )
-
-    expiry_date = format_expiry_date(
-        expiry_date
-    )
-
-    queued_count = status_data.get(
-        "queued_subscriptions",
-        0
-    )
-
-    if not status_value:
-
-        text = (
-            "No active subscription found.\n"
-            f"Queued Plans: {queued_count}"
-        )
-
-    else:
-
-        text = (
             "📡 BryanNet Subscription\n\n"
-            f"Plan: {plan_name}\n"
-            f"Status: {status_value.title()}\n"
-            f"Expires: {expiry_date}\n\n"
-            f"Queued Plans: {queued_count}"
+
+            "You do not currently have "
+            "an active subscription.",
+
         )
+
+        return
+
+    text = (
+
+        "🛰 BryanNet Subscription\n\n"
+
+        f"🟢 "
+        f"{status_data['status'].title()}\n\n"
+
+        "📦 Plan\n"
+
+        f"{status_data['plan_name']}\n\n"
+
+        "⚡ Speed\n"
+
+        f"{status_data['speed_limit_mbps']} Mbps\n\n"
+
+        "💻 Devices\n"
+
+        f"{status_data['max_devices']} Registered\n"
+
+        f"{status_data['concurrent_devices']} Concurrent\n\n"
+
+        "⏳ Remaining\n"
+
+        f"{status_data['remaining_days']} Days\n\n"
+
+        "📅 Expires\n"
+
+        f"{format_expiry_date(status_data['expiry_date'])}\n\n"
+
+        "📚 Queued Plans\n"
+
+        f"{status_data['queued_subscriptions']}"
+
+    )
 
     await message.reply_text(
-        text
-    )
-        
-        
-async def buy_start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    plans = get_active_plans()
-
-    if plans is None:
-
-        await update.message.reply_text(
-            "Unable to retrieve plans."
-        )
-
-        return ConversationHandler.END
-
-    context.user_data["plans"] = plans
-
-    message = "Available Plans\n\n"
-
-    for index, plan in enumerate(
-        plans,
-        start=1
-    ):
-
-        message += (
-            f"{index}. {plan['plan_name']}\n"
-            f"   ₦{plan['price']}\n"
-            f"   {plan['speed_limit_mbps']} Mbps\n"
-            f"   {plan['duration_days']} Days\n\n"
-        )
-
-    message += (
-        "Reply with the plan number."
+        text,
     )
 
-    await update.message.reply_text(
-        message
+
+# ==========================================================
+# Purchase Helpers
+# ==========================================================
+
+def _build_purchase_keyboard():
+
+    return InlineKeyboardMarkup(
+
+        [
+
+            [
+
+                InlineKeyboardButton(
+
+                    "✅ Continue",
+
+                    callback_data=(
+                        "confirm_purchase"
+                    ),
+
+                ),
+
+                InlineKeyboardButton(
+
+                    "❌ Cancel",
+
+                    callback_data=(
+                        "cancel_purchase"
+                    ),
+
+                ),
+
+            ],
+
+        ],
+
     )
 
-    return BUY_PLAN
- 
 
-async def buy_plan_selection(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    try:
-
-        selected_index = (
-            int(update.message.text)
-            - 1
-        )
-
-    except ValueError:
-
-        await update.message.reply_text(
-            "Please enter a valid plan number."
-        )
-
-        return BUY_PLAN
-
-    plans = context.user_data.get(
-        "plans",
-        []
-    )
-
-    if (
-        selected_index < 0
-        or
-        selected_index >= len(plans)
-    ):
-
-        await update.message.reply_text(
-            "Invalid plan number."
-        )
-
-        return BUY_PLAN
-
-    selected_plan = plans[selected_index]
-
-    context.user_data["selected_plan"] = selected_plan
-
-    duration_days = selected_plan["duration_days"]
-
-    if duration_days == 0:
-        duration_text = "1 Hour"
-    elif duration_days == 1:
-        duration_text = "1 Day"
-    else:
-        duration_text = f"{duration_days} Days"
-
-    message = (
-        "Confirm Purchase\n\n"
-        f"Plan: {selected_plan['plan_name']}\n"
-        f"Price: ₦{selected_plan['price']}\n"
-        f"Speed: {selected_plan['speed_limit_mbps']} Mbps\n"
-        f"Duration: {duration_text}\n\n"
-        "Reply YES to confirm or NO to cancel."
-    )
-
-    await update.message.reply_text(
-        message
-    )
-
-    return CONFIRM_PURCHASE
-
-
-async def confirm_purchase(
-      
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    answer = (
-        update.message.text
-        .strip()
-        .upper()
-    )
-
-    if answer == "NO":
-
-        await update.message.reply_text(
-            "Purchase cancelled."
-        )
-
-        return ConversationHandler.END
-
-    if answer != "YES":
-
-        await update.message.reply_text(
-            "Reply YES or NO."
-        )
-
-        return CONFIRM_PURCHASE
-
-    telegram_user_id = (
-        update.effective_user.id
-    )
-
-    customer = get_customer_by_telegram_id(
-        telegram_user_id
-    )
-
-    if not customer:
-
-        await update.message.reply_text(
-            "Unable to locate your account."
-        )
-
-        return ConversationHandler.END
-
-    selected_plan = context.user_data[
-        "selected_plan"
-    ]
-
-
-    purchase_response = requests.post(
-        f"{API_BASE_URL}/subscriptions/purchase",
-        json={
-            "customer_id": customer["customer_id"],
-            "plan_id": selected_plan["plan_id"]
-        }
-    )
-
-    if purchase_response.status_code != 200:
-
-        await update.message.reply_text(
-            "Purchase failed."
-        )
-
-        return ConversationHandler.END
-
-    subscription = purchase_response.json()
-
-    status = subscription["status"].title()
-
-    if status == "Active":
-
-        message = (
-            "✅ Purchase Successful\n\n"
-            f"Plan: {selected_plan['plan_name']}\n"
-            f"Price: ₦{selected_plan['price']}\n"
-            f"Status: {status}\n\n"
-            "Your internet service is now active.\n\n"
-            "Thank you for choosing BryanNet!"
-        )
-
-    else:
-
-        message = (
-            "✅ Purchase Successful\n\n"
-            f"Plan: {selected_plan['plan_name']}\n"
-            f"Price: ₦{selected_plan['price']}\n"
-            f"Status: {status}\n\n"
-            "Your current plan is still active.\n"
-            "The new plan will activate automatically "
-            "when it expires."
-        )
-
-    await update.message.reply_text(
-        message
-    )
-
-    return ConversationHandler.END
+# ==========================================================
+# Buy Internet
+# ==========================================================
 
 async def buy_keyboard(
-    update: Update
+    update: Update,
 ):
 
-    plans = get_active_plans()
+    plans = (
+        PlanService.get_all_plans()
+    )
 
     if plans is None:
 
         await update.message.reply_text(
-            "Unable to retrieve plans."
+            "Unable to retrieve plans.",
         )
 
         return
@@ -391,17 +242,218 @@ async def buy_keyboard(
     for plan in plans:
 
         keyboard.append(
+
             [
+
                 InlineKeyboardButton(
-                    f"{plan['plan_name']} - ₦{plan['price']}",
-                    callback_data=f"buy_{plan['plan_id']}"
-                )
+
+                    (
+                        f"{plan['plan_name']} "
+                        f"- {format_currency(plan['price'])}"
+                    ),
+
+                    callback_data=(
+                        f"buy_{plan['plan_id']}"
+                    ),
+
+                ),
+
             ]
+
         )
 
     await update.message.reply_text(
-        "🌐 Choose a Plan",
-        reply_markup=InlineKeyboardMarkup(
-            keyboard
+
+        "🌐 Choose Your Internet Plan",
+
+        reply_markup=(
+            InlineKeyboardMarkup(
+                keyboard,
+            )
+        ),
+
+    )
+
+
+async def buy_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    plan_id = int(
+        query.data.split("_")[1]
+    )
+
+    plans = (
+        PlanService.get_all_plans()
+    )
+
+    if plans is None:
+
+        await query.edit_message_text(
+            "Unable to retrieve plans.",
         )
+
+        return
+
+    selected_plan = next(
+
+        (
+
+            plan
+
+            for plan
+
+            in plans
+
+            if plan["plan_id"] == plan_id
+
+        ),
+
+        None,
+
+    )
+
+    if selected_plan is None:
+
+        await query.edit_message_text(
+            "Plan not found.",
+        )
+
+        return
+
+    context.user_data[
+        "selected_plan"
+    ] = selected_plan
+
+    await query.edit_message_text(
+
+        "✳ Confirm Purchase\n\n"
+
+        "📦 Plan\n"
+
+        f"{selected_plan['plan_name']}\n\n"
+
+        "💰 Price\n"
+
+        f"{format_currency(selected_plan['price'])}\n\n"
+
+        "⚡ Speed\n"
+
+        f"{selected_plan['speed_limit_mbps']} Mbps\n\n"
+
+        "💻 Devices\n"
+
+        f"{selected_plan['max_devices']} Registered\n"
+        f"{selected_plan['concurrent_devices']} Concurrent\n\n"
+
+        "⏱ Duration\n"
+
+        f"{format_duration(selected_plan['duration_days'])}",
+
+        reply_markup=(
+            _build_purchase_keyboard()
+        ),
+
+    )
+    
+# ==========================================================
+# Purchase Actions
+# ==========================================================
+
+async def confirm_purchase_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    selected_plan = context.user_data.get(
+        "selected_plan",
+    )
+
+    if selected_plan is None:
+
+        await query.edit_message_text(
+            "No plan selected.",
+        )
+
+        return
+
+    payment = (
+        PaymentService.initialize_payment(
+            telegram_user_id=(
+                update.effective_user.id
+            ),
+            plan_id=(
+                selected_plan["plan_id"]
+            ),
+        )
+    )
+
+    if payment is None:
+
+        await query.edit_message_text(
+            "Unable to initialize payment.",
+        )
+
+        return
+
+    await query.edit_message_text(
+
+        "💳 Payment Initialized\n\n"
+
+        "📦 Plan\n"
+
+        f"{selected_plan['plan_name']}\n\n"
+
+        "💰 Price\n"
+
+        f"{format_currency(selected_plan['price'])}\n\n"
+
+        "📄 Payment Reference\n"
+
+        f"`{payment['payment_reference']}`\n\n"
+
+        "Complete your payment using "
+        "this reference.\n\n"
+
+        "Your subscription will be "
+        "activated automatically once "
+        "payment is confirmed.",
+
+        parse_mode="Markdown",
+
+    )
+
+    context.user_data.pop(
+        "selected_plan",
+        None,
+    )
+
+
+async def cancel_purchase_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    context.user_data.pop(
+        "selected_plan",
+        None,
+    )
+
+    await query.edit_message_text(
+
+        "❌ Purchase cancelled.",
+
     )

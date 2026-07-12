@@ -624,6 +624,7 @@ function DeviceTable({
 
                                             }
 
+                                        }                                        
                                             if (
 
                                                 device.device_status === "blocked" &&
@@ -661,7 +662,7 @@ function DeviceTable({
                                                 });
 
                                             }
-                                        }
+                                        
 
                                         return actions.length > 0 ? (
 

@@ -129,6 +129,40 @@ class SubscriptionService:
         )
 
     @staticmethod
+    def _find_subscription(
+        db,
+        subscription_id,
+    ):
+
+        subscription = (
+            db.query(
+                Subscription,
+            )
+            .options(
+                joinedload(
+                    Subscription.customer,
+                ),
+                joinedload(
+                    Subscription.plan,
+                ),
+            )
+            .filter(
+                Subscription.subscription_id
+                == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found.",
+            )
+
+        return subscription
+
+    @staticmethod
     def _get_next_activation_sequence(
         db,
         customer_id,
@@ -195,39 +229,15 @@ class SubscriptionService:
         )
 
     @staticmethod
-    def _apply_sort(
-        query,
-        sort_column,
-        sort_order,
-    ):
-
-        if sort_order.lower() == "desc":
-
-            return query.order_by(
-                sort_column.desc(),
-            )
-
-        return query.order_by(
-            sort_column.asc(),
-        )
-
-    # ==========================================================
-    # Business Commands
-    # ==========================================================
-
-    @staticmethod
-    def create_subscription(
+    def _create_subscription(
         db,
         customer_id,
         plan_id,
-        admin_id=None,
     ):
 
-        customer = (
-            CustomerService.get_customer(
-                db,
-                customer_id,
-            )
+        CustomerService.get_customer(
+            db,
+            customer_id,
         )
 
         plan = (
@@ -310,7 +320,10 @@ class SubscriptionService:
 
         db.flush()
 
-        if status == SubscriptionStatus.ACTIVE:
+        if (
+            status
+            == SubscriptionStatus.ACTIVE
+        ):
 
             SubscriptionService.activate_subscription(
                 db=db,
@@ -318,12 +331,128 @@ class SubscriptionService:
                 commit=False,
             )
 
+        db.commit()
+
+        db.refresh(
+            subscription,
+        )
+
+        RouterAccountService.synchronize_customer_access(
+            db,
+            customer_id,
+        )
+
+        return subscription
+
+
+    @staticmethod
+    def _cancel_queued_subscription(
+        db,
+        subscription_id,
+    ):
+
+        subscription = (
+            db.query(
+                Subscription,
+            )
+            .filter(
+                Subscription.subscription_id
+                == subscription_id
+            )
+            .first()
+        )
+
+        if not subscription:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Subscription not found.",
+            )
+
+        if (
+            subscription.status
+            != SubscriptionStatus.QUEUED
+        ):
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Only queued subscriptions "
+                    "can be cancelled."
+                ),
+            )
+
+        subscription.status = (
+            SubscriptionStatus.CANCELLED
+        )
+
+        db.commit()
+
+        db.refresh(
+            subscription,
+        )
+
+        return subscription
+    
+    @staticmethod
+    def _apply_sort(
+        query,
+        sort_column,
+        sort_order,
+    ):
+
+        if sort_order.lower() == "desc":
+
+            return query.order_by(
+                sort_column.desc(),
+            )
+
+        return query.order_by(
+            sort_column.asc(),
+        )
+
+    # ==========================================================
+    # Business Commands
+    # ==========================================================
+
+    @staticmethod
+    def create_subscription(
+        db,
+        customer_id,
+        plan_id,
+        admin_id=None,
+    ):
+
+        customer = (
+            CustomerService.get_customer(
+                db,
+                customer_id,
+            )
+        )
+
+        plan = (
+            PlanService.get_plan(
+                db,
+                plan_id,
+            )
+        )
+
+        subscription = (
+            SubscriptionService
+            ._create_subscription(
+                db,
+                customer_id,
+                plan_id,
+            )
+        )
+
         AuditLogService.log_admin_action(
 
             db=db,
 
-            admin_id=(
-                cast(int, admin_id)
+            admin_id=cast(
+                int,
+                admin_id,
             ),
 
             action=PURCHASE_SUBSCRIPTION,
@@ -342,37 +471,35 @@ class SubscriptionService:
             result=AuditResult.SUCCESS,
 
             description=(
-                f"{status.value.title()} subscription "
-                f"for '{customer.full_name}' "
+                f"{subscription.status.value.title()} "
+                f"subscription for "
+                f"'{customer.full_name}' "
                 f"was purchased using plan "
                 f"'{plan.plan_name}'."
             ),
 
             new_values={
-                "plan": str(plan.plan_name),
-                "status": status.value,
-                "activation_sequence": int(
-                    activation_sequence,
+
+                "plan": plan.plan_name,
+
+                "status": (
+                    subscription.status.value
                 ),
+
+                "activation_sequence": (
+                    subscription.activation_sequence
+                ),
+
                 "start_date": (
-                    start_date.isoformat()
+                    subscription.start_date.isoformat()
                 ),
+
                 "expiry_date": (
-                    expiry_date.isoformat()
+                    subscription.expiry_date.isoformat()
                 ),
+
             },
 
-        )
-
-        db.commit()
-
-        db.refresh(
-            subscription,
-        )
-
-        RouterAccountService.synchronize_customer_access(
-            db,
-            customer_id,
         )
 
         return subscription
@@ -518,38 +645,11 @@ class SubscriptionService:
     ):
 
         subscription = (
-            db.query(Subscription)
-            .filter(
-                Subscription.subscription_id
-                == subscription_id
+            SubscriptionService
+            ._cancel_queued_subscription(
+                db,
+                subscription_id,
             )
-            .first()
-        )
-
-        if not subscription:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Subscription not found.",
-            )
-
-        if (
-            subscription.status
-            != SubscriptionStatus.QUEUED
-        ):
-
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Only queued subscriptions "
-                    "can be cancelled."
-                ),
-            )
-
-        old_status = subscription.status
-
-        subscription.status = (
-            SubscriptionStatus.CANCELLED
         )
 
         AuditLogService.log_admin_action(
@@ -583,19 +683,13 @@ class SubscriptionService:
             ),
 
             old_values={
-                "status": old_status.value,
+                "status": SubscriptionStatus.QUEUED.value,
             },
 
             new_values={
                 "status": subscription.status.value,
             },
 
-        )
-
-        db.commit()
-
-        db.refresh(
-            subscription,
         )
 
         return subscription
