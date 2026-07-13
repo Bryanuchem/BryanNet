@@ -1,15 +1,20 @@
 import os
 
-import hmac
-
 import requests
+
+from app.domain.payment import (
+    PaymentInitializationResult,
+    PaymentValidationResult,
+    PaymentVerificationResult,
+    PaymentWebhookResult,
+)
+
+from app.enums import (
+    TransactionStatus,
+)
 
 from app.providers.payment.base import (
     PaymentProvider,
-)
-
-from app.services.payment_dispatcher_service import (
-    PaymentDispatcherService,
 )
 
 
@@ -55,15 +60,15 @@ class FlutterwaveProvider(
                 "is not configured."
             )
 
-        self.secret_key: str = (
+        self.secret_key = (
             secret_key
         )
 
-        self.webhook_secret: str = (
+        self.webhook_secret = (
             webhook_secret
         )
 
-        self.headers: dict[str, str] = {
+        self.headers = {
 
             "Authorization":
                 f"Bearer {self.secret_key}",
@@ -80,12 +85,10 @@ class FlutterwaveProvider(
     def initialize_payment(
         self,
         payment,
-    ):
+        transaction,
+    ) -> PaymentInitializationResult:
         """
         Initialize a payment with Flutterwave.
-
-        Returns the checkout link required
-        for the customer to complete payment.
         """
 
         payload = {
@@ -140,33 +143,43 @@ class FlutterwaveProvider(
 
         response.raise_for_status()
 
-        result = (
-            response.json()
+        result = response.json()
+
+        data = result["data"]
+
+        return PaymentInitializationResult(
+
+            authorization_url=(
+                data["link"]
+            ),
+
+            gateway_reference=(
+                payment.payment_reference
+            ),
+
+            gateway_status="INITIALIZED",
+
+            gateway_response=(
+                result.get(
+                    "message",
+                )
+            ),
+
+            metadata={
+
+                "provider":
+                    "flutterwave",
+
+            },
+
         )
-
-        data = (
-            result["data"]
-        )
-
-        return {
-
-            "checkout_url":
-                data["link"],
-
-            "reference":
-                payment.payment_reference,
-
-        }
 
     def verify_payment(
         self,
-        payment_reference,
-    ):
+        transaction,
+    ) -> PaymentVerificationResult:
         """
-        Verify a payment with Flutterwave.
-
-        Returns a standardized verification
-        response for BryanNet.
+        Verify a payment using Flutterwave.
         """
 
         response = requests.get(
@@ -174,7 +187,7 @@ class FlutterwaveProvider(
             (
                 f"{self.BASE_URL}"
                 "/transactions/verify_by_reference"
-                f"?tx_ref={payment_reference}"
+                f"?tx_ref={transaction.gateway_reference}"
             ),
 
             headers=self.headers,
@@ -185,112 +198,73 @@ class FlutterwaveProvider(
 
         response.raise_for_status()
 
-        result = (
-            response.json()
-        )
+        result = response.json()
 
-        data = (
-            result["data"]
-        )
+        data = result["data"]
 
-        return {
+        return PaymentVerificationResult(
 
-            "verified":
+            verified=(
                 data["status"]
-                == "successful",
+                == "successful"
+            ),
 
-            "payment_reference":
-                data["tx_ref"],
+            transaction_status=(
 
-            "gateway_transaction_id":
-                str(
-                    data["id"]
-                ),
+                TransactionStatus.SUCCESSFUL
 
-            "amount":
-                data["amount"],
+                if data["status"] == "successful"
 
-            "provider":
-                "flutterwave",
+                else TransactionStatus.FAILED
 
-        }
+            ),
 
-    # ==========================================================
-    # Webhook Helpers
-    # ==========================================================
+            gateway_reference=(
+                data["tx_ref"]
+            ),
 
-    def verify_signature(
+            gateway_transaction_id=(
+                str(data["id"])
+            ),
+
+            paid_at=None,
+
+            gateway_status=(
+                data["status"]
+            ),
+
+            gateway_response=(
+                result.get(
+                    "message",
+                )
+            ),
+
+            metadata={
+
+                "amount":
+                    data["amount"],
+
+            },
+
+        )
+
+    def validate_webhook(
+        self,
+        headers,
+        body,
+    ) -> PaymentValidationResult:
+
+        raise NotImplementedError(
+            "Flutterwave webhook validation "
+            "has not yet been implemented."
+        )
+
+    def parse_webhook(
         self,
         payload,
-        signature,
-    ):
-        """
-        Verify the Flutterwave webhook.
+    ) -> PaymentWebhookResult:
 
-        Flutterwave sends the webhook secret
-        directly in the signature header.
-        """
-
-        return hmac.compare_digest(
-
-            signature,
-
-            self.webhook_secret,
-
-        )
-
-    def process_webhook(
-        self,
-        db,
-        payload,
-    ):
-        """
-        Process a trusted Flutterwave webhook.
-
-        Assumes the webhook signature has
-        already been verified.
-        """
-
-        event = payload.get(
-            "event",
-        )
-
-        if event != "charge.completed":
-
-            return {
-
-                "processed": False,
-
-                "message":
-                    "Webhook ignored.",
-
-            }
-
-        data = payload.get(
-            "data",
-            {},
-        )
-
-        payment_reference = (
-            data.get(
-                "tx_ref",
-            )
-        )
-
-        if not payment_reference:
-
-            raise ValueError(
-                "Payment reference missing "
-                "from webhook payload."
-            )
-
-        return (
-            PaymentDispatcherService
-            .verify_payment(
-
-                db=db,
-
-                payment_reference=payment_reference,
-
-            )
+        raise NotImplementedError(
+            "Flutterwave webhook parsing "
+            "has not yet been implemented."
         )

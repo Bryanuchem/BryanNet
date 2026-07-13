@@ -1,4 +1,15 @@
-from app.providers.payment.base import (
+from app.domain.payment import (
+    PaymentInitializationResult,
+    PaymentValidationResult,
+    PaymentVerificationResult,
+    PaymentWebhookResult,
+)
+
+from app.enums import (
+    TransactionStatus,
+)
+
+from .base import (
     PaymentProvider,
 )
 
@@ -10,46 +21,76 @@ class ManualPaymentProvider(
     def initialize_payment(
         self,
         payment,
-    ):
-        """
-        Manual payments do not require an external
-        payment gateway.
+        transaction,
+    ) -> PaymentInitializationResult:
 
-        The customer completes the payment outside
-        BryanNet and an administrator later confirms
-        the payment.
-        """
+        return PaymentInitializationResult(
 
-        return {
-
-            "success": True,
-
-            "provider": "manual",
-
-            "payment_reference": (
-                payment.payment_reference
+            gateway_reference=(
+                transaction.gateway_reference
             ),
 
-            "message": (
-                "Awaiting manual payment confirmation."
+            gateway_status="MANUAL",
+
+            gateway_response=(
+                "Manual payment initialized."
             ),
 
-        }
+        )
 
     def verify_payment(
         self,
-        payment_reference,
-    ):
-        """
-        Manual payments are verified by an
-        administrator.
+        transaction,
+    ) -> PaymentVerificationResult:
 
-        Calling verify_payment() completes the
-        payment inside BryanNet.
-        """
+        return PaymentVerificationResult(
 
-        raise NotImplementedError(
-            "Manual payment verification must be "
-            "performed by an administrator using "
-            "PaymentService.complete_payment()."
+            verified=True,
+
+            transaction_status=(
+                TransactionStatus.SUCCESSFUL
+            ),
+
+            gateway_reference=(
+                transaction.gateway_reference
+            ),
+
+            gateway_status="SUCCESS",
+
+            gateway_response=(
+                "Manual payment verified."
+            ),
+
+        )
+
+    def validate_webhook(
+        self,
+        headers,
+        body,
+    ) -> PaymentValidationResult:
+
+        return PaymentValidationResult(
+
+            valid=True,
+
+            message=(
+                "Manual payments do not "
+                "require webhook validation."
+            ),
+
+        )
+
+    def parse_webhook(
+        self,
+        payload,
+    ) -> PaymentWebhookResult:
+
+        return PaymentWebhookResult(
+
+            valid=True,
+
+            event="manual.payment",
+
+            gateway_reference=None,
+
         )

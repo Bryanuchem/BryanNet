@@ -132,3 +132,10 @@ class Payment(Base):
         "Subscription",
         back_populates="payments",
     )
+    
+    transactions = relationship(
+        "PaymentTransaction",
+        back_populates="payment",
+        cascade="all, delete-orphan",
+        order_by="PaymentTransaction.created_at",
+    )

@@ -1,13 +1,21 @@
 from fastapi import HTTPException
 
-from app.enums import PaymentProvider
+from app.enums import (
+    PaymentProvider,
+)
+
+from app.providers.payment.base import (
+    PaymentProvider as PaymentProviderBase,
+)
 
 from app.providers.payment.flutterwave import (
     FlutterwaveProvider,
 )
+
 from app.providers.payment.manual import (
     ManualPaymentProvider,
 )
+
 from app.providers.payment.paystack import (
     PaystackProvider,
 )
@@ -15,51 +23,41 @@ from app.providers.payment.paystack import (
 
 class PaymentProviderFactory:
 
+    PROVIDERS = {
+
+        PaymentProvider.MANUAL:
+            ManualPaymentProvider,
+
+        PaymentProvider.PAYSTACK:
+            PaystackProvider,
+
+        PaymentProvider.FLUTTERWAVE:
+            FlutterwaveProvider,
+
+    }
+
     @staticmethod
     def get_provider(
         payment_provider: PaymentProvider,
-    ):
+    ) -> PaymentProviderBase:
 
-        if (
-            payment_provider
-            == PaymentProvider.PAYSTACK
-        ):
+        provider = (
 
-            return (
-                PaystackProvider()
+            PaymentProviderFactory
+            .PROVIDERS
+            .get(
+                payment_provider,
             )
 
-        if (
-            payment_provider
-            == PaymentProvider.FLUTTERWAVE
-        ):
-
-            return (
-                FlutterwaveProvider()
-            )
-
-        if (
-            payment_provider
-            == PaymentProvider.MONNIFY
-        ):
-
-            raise NotImplementedError(
-                "Monnify provider has not "
-                "been implemented yet."
-            )
-
-        if (
-            payment_provider
-            == PaymentProvider.MANUAL
-        ):
-
-            return (
-                ManualPaymentProvider()
-            )
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Unsupported payment provider."
-            ),
         )
+
+        if provider is None:
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Unsupported payment provider."
+                ),
+            )
+
+        return provider()

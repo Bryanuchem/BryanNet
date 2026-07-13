@@ -2,14 +2,21 @@ import os
 
 import requests
 
+from app.domain.payment import (
+    PaymentInitializationResult,
+    PaymentValidationResult,
+    PaymentVerificationResult,
+    PaymentWebhookResult,
+)
+
+from app.enums import (
+    TransactionStatus,
+)
+
 from app.providers.payment.base import (
     PaymentProvider,
 )
 
-
-from app.services.payment_dispatcher_service import (
-    PaymentDispatcherService,
-)
 
 class PaystackProvider(
     PaymentProvider,
@@ -18,10 +25,10 @@ class PaystackProvider(
     BASE_URL = (
         "https://api.paystack.co"
     )
-    
+
     SIGNATURE_HEADER = (
         "x-paystack-signature"
-    )    
+    )
 
     def __init__(
         self,
@@ -40,11 +47,11 @@ class PaystackProvider(
                 "is not configured."
             )
 
-        self.secret_key: str = (
+        self.secret_key = (
             secret_key
         )
 
-        self.headers: dict[str, str] = {
+        self.headers = {
 
             "Authorization":
                 f"Bearer {self.secret_key}",
@@ -61,12 +68,10 @@ class PaystackProvider(
     def initialize_payment(
         self,
         payment,
-    ):
+        transaction,
+    ) -> PaymentInitializationResult:
         """
         Initialize a payment with Paystack.
-
-        Returns the checkout details required
-        for the customer to complete payment.
         """
 
         payload = {
@@ -111,37 +116,43 @@ class PaystackProvider(
 
         response.raise_for_status()
 
-        result = (
-            response.json()
+        result = response.json()
+
+        data = result["data"]
+
+        return PaymentInitializationResult(
+
+            authorization_url=(
+                data["authorization_url"]
+            ),
+
+            gateway_reference=(
+                data["reference"]
+            ),
+
+            gateway_status="INITIALIZED",
+
+            gateway_response=(
+                result.get(
+                    "message",
+                )
+            ),
+
+            metadata={
+
+                "access_code":
+                    data["access_code"],
+
+            },
+
         )
-
-        data = (
-            result["data"]
-        )
-
-        return {
-
-            "authorization_url":
-                data["authorization_url"],
-
-            "access_code":
-                data["access_code"],
-
-            "reference":
-                data["reference"],
-
-        }
 
     def verify_payment(
         self,
-        payment_reference,
-    ):
+        transaction,
+    ) -> PaymentVerificationResult:
         """
-        Verify a payment using Paystack's
-        Verify Transaction endpoint.
-
-        Returns a standardized verification
-        response for BryanNet.
+        Verify a payment using Paystack.
         """
 
         response = requests.get(
@@ -149,7 +160,7 @@ class PaystackProvider(
             (
                 f"{self.BASE_URL}"
                 "/transaction/verify/"
-                f"{payment_reference}"
+                f"{transaction.gateway_reference}"
             ),
 
             headers=self.headers,
@@ -160,129 +171,78 @@ class PaystackProvider(
 
         response.raise_for_status()
 
-        result = (
-            response.json()
-        )
+        result = response.json()
 
-        data = (
-            result["data"]
-        )
+        data = result["data"]
 
-        return {
+        return PaymentVerificationResult(
 
-            "verified":
+            verified=(
                 data["status"]
-                == "success",
+                == "success"
+            ),
 
-            "payment_reference":
-                data["reference"],
+            transaction_status=(
 
-            "gateway_transaction_id":
-                str(
-                    data["id"]
-                ),
+                TransactionStatus.SUCCESSFUL
 
-            "amount":
-                data["amount"] / 100,
+                if data["status"] == "success"
 
-            "provider":
-                "paystack",
+                else TransactionStatus.FAILED
 
-        }
-        
-    # ==========================================================
-    # Webhook Helpers
-    # ==========================================================
+            ),
 
-    def verify_signature(
+            gateway_reference=(
+                data["reference"]
+            ),
+
+            gateway_transaction_id=(
+                str(data["id"])
+            ),
+
+            paid_at=None,
+
+            gateway_status=(
+                data["status"]
+            ),
+
+            gateway_response=(
+                result.get(
+                    "message",
+                )
+            ),
+
+            metadata={
+
+                "amount":
+                    data["amount"] / 100,
+
+                "access_code":
+                    data.get(
+                        "access_code",
+                    ),
+
+            },
+
+        )
+
+    def validate_webhook(
+        self,
+        headers,
+        body,
+    ) -> PaymentValidationResult:
+
+        raise NotImplementedError(
+            "Paystack webhook validation "
+            "has not yet been implemented."
+        )
+
+    def parse_webhook(
         self,
         payload,
-        signature,
-    ):
-        """
-        Verify the Paystack webhook signature.
+    ) -> PaymentWebhookResult:
 
-        This should be called by the webhook
-        endpoint before processing the payload.
-        """
-
-        import hashlib
-        import hmac
-        import json
-
-        expected_signature = (
-            hmac.new(
-
-                self.secret_key.encode(
-                    "utf-8",
-                ),
-
-                json.dumps(
-                    payload,
-                    separators=(",", ":"),
-                ).encode(
-                    "utf-8",
-                ),
-
-                hashlib.sha512,
-
-            ).hexdigest()
+        raise NotImplementedError(
+            "Paystack webhook parsing "
+            "has not yet been implemented."
         )
-
-        return hmac.compare_digest(
-            expected_signature,
-            signature,
-        )
-
-    def process_webhook(
-        self,
-        db,
-        payload,
-    ):
-        """
-        Process a trusted Paystack webhook.
-
-        Assumes the webhook signature has
-        already been verified.
-        """
-
-        event = payload.get(
-            "event",
-        )
-
-        if event != "charge.success":
-
-            return {
-
-                "processed": False,
-
-                "message":
-                    "Webhook ignored.",
-
-            }
-
-        data = payload.get(
-            "data",
-            {},
-        )
-
-        payment_reference = (
-            data.get(
-                "reference",
-            )
-        )
-
-        if not payment_reference:
-
-            raise ValueError(
-                "Payment reference missing "
-                "from webhook payload."
-            )
-
-        return (
-            PaymentDispatcherService
-            .verify_payment(
-                db=db,
-                payment_reference=payment_reference,
-            )
-        )        

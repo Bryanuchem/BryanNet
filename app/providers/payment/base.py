@@ -3,6 +3,13 @@ from abc import (
     abstractmethod,
 )
 
+from app.domain.payment import (
+    PaymentInitializationResult,
+    PaymentValidationResult,
+    PaymentVerificationResult,
+    PaymentWebhookResult,
+)
+
 
 class PaymentProvider(
     ABC,
@@ -12,12 +19,10 @@ class PaymentProvider(
     def initialize_payment(
         self,
         payment,
-    ):
+        transaction,
+    ) -> PaymentInitializationResult:
         """
-        Initialize a payment with the payment gateway.
-
-        Returns provider-specific initialization data,
-        such as an authorization URL or checkout link.
+        Initialize a payment with the payment provider.
         """
 
         raise NotImplementedError
@@ -25,13 +30,34 @@ class PaymentProvider(
     @abstractmethod
     def verify_payment(
         self,
-        payment_reference,
-    ):
+        transaction,
+    ) -> PaymentVerificationResult:
         """
-        Verify a payment with the payment gateway
-        using BryanNet's payment reference.
+        Verify a payment transaction with the payment provider.
+        """
 
-        Returns provider-specific verification data.
+        raise NotImplementedError
+
+    @abstractmethod
+    def validate_webhook(
+        self,
+        headers,
+        body,
+    ) -> PaymentValidationResult:
+        """
+        Validate an incoming webhook request.
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_webhook(
+        self,
+        payload,
+    ) -> PaymentWebhookResult:
+        """
+        Parse a validated webhook payload into
+        BryanNet's domain model.
         """
 
         raise NotImplementedError
