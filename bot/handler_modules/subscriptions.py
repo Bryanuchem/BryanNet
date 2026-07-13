@@ -4,6 +4,10 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 
+from bot.keyboards import (
+    get_payment_checkout_keyboard,
+)
+
 from telegram.ext import (
     ContextTypes,
 )
@@ -24,6 +28,7 @@ from bot.services.formatters import (
     format_currency,
     format_duration,
     format_expiry_date,
+    format_payment_initialization,
 )
 
 
@@ -405,32 +410,58 @@ async def confirm_purchase_callback(
 
         return
 
-    await query.edit_message_text(
-
-        "💳 Payment Initialized\n\n"
-
-        "📦 Plan\n"
-
-        f"{selected_plan['plan_name']}\n\n"
-
-        "💰 Price\n"
-
-        f"{format_currency(selected_plan['price'])}\n\n"
-
-        "📄 Payment Reference\n"
-
-        f"`{payment['payment_reference']}`\n\n"
-
-        "Complete your payment using "
-        "this reference.\n\n"
-
-        "Your subscription will be "
-        "activated automatically once "
-        "payment is confirmed.",
-
-        parse_mode="Markdown",
-
+    checkout_url = payment.get(
+        "checkout_url",
     )
+
+    if checkout_url:
+
+        await query.edit_message_text(
+
+            text=(
+                format_payment_initialization(
+                    payment,
+                )
+            ),
+
+            reply_markup=(
+                get_payment_checkout_keyboard(
+                    payment[
+                        "checkout_url"
+                    ],
+                )
+            ),
+
+        )
+
+    else:
+
+        await query.edit_message_text(
+
+            "💳 Payment Initialized\n\n"
+
+            "📦 Plan\n"
+
+            f"{selected_plan['plan_name']}\n\n"
+
+            "💰 Price\n"
+
+            f"{format_currency(selected_plan['price'])}\n\n"
+
+            "📄 Payment Reference\n"
+
+            f"`{payment['payment_reference']}`\n\n"
+
+            "Complete your payment using "
+            "this reference.\n\n"
+
+            "Your subscription will be "
+            "activated automatically once "
+            "payment is confirmed.",
+
+            parse_mode="Markdown",
+
+        )
 
     context.user_data.pop(
         "selected_plan",

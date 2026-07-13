@@ -31,6 +31,8 @@ class PortalSessionResponse(BaseModel):
     telegram_user_id: int
 
     next_action: NextAction
+    
+    has_active_subscription: bool
 
     class Config:
 

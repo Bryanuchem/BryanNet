@@ -43,6 +43,10 @@ from app.services.customer_service import (
     CustomerService,
 )
 
+from pydantic import (
+    EmailStr,
+)
+
 router = APIRouter(
     prefix="/customers",
     tags=["Customers"],
@@ -77,6 +81,7 @@ def register_customer(
             db=db,
             phone_number=customer.phone_number,
             full_name=customer.full_name,
+            email=customer.email,
         )
     )
 
@@ -274,3 +279,28 @@ def get_customer_by_phone(
         )
     )
 
+@router.get(
+    "/email/{email}",
+    response_model=CustomerResponse,
+)
+def get_customer_by_email(
+    email: EmailStr,
+    db: Session = Depends(
+        get_db,
+    ),
+    admin=Depends(
+        get_current_admin,
+    ),
+    _=Depends(
+        require_permission(
+            Permissions.CUSTOMERS_VIEW,
+        ),
+    ),
+):
+
+    return (
+        CustomerService.get_customer_by_email(
+            db=db,
+            email=email,
+        )
+    )

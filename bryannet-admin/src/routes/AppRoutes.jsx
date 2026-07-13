@@ -23,6 +23,7 @@ import NotFound from "../pages/NotFound";
 import Plans from "../pages/Plans";
 import Subscriptions from "../pages/Subscriptions";
 import Payments from "../pages/Payments";
+import PaymentSuccessPage from "../pages/Payments/PaymentSuccessPage";
 
 import Settings from "../pages/Settings";
 
@@ -62,6 +63,18 @@ export default function AppRoutes() {
                         path="/login"
 
                         element={<Login />}
+
+                    />
+
+                    <Route
+
+                        path="/payment/success"
+
+                        element={
+
+                            <PaymentSuccessPage />
+
+                        }
 
                     />
 

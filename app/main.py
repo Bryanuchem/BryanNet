@@ -71,6 +71,10 @@ from app.api.payment import (
     router as payment_router,
 )
 
+from app.api.payment_webhooks import (
+    router as payment_webhooks_router,
+)
+
 from app.api.plan import (
     router as plan_router,
 )
@@ -145,7 +149,13 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        settings.frontend_origin,
+
+        "http://localhost:5173",
+
+        "http://127.0.0.1:5173",
+
+        "http://192.168.1.116:5173",
+
     ],
 
     allow_credentials=True,
@@ -228,6 +238,11 @@ app.include_router(
 
 app.include_router(
     payment_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    payment_webhooks_router,
     prefix=API_PREFIX,
 )
 

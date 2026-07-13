@@ -16,6 +16,7 @@ from app.schemas.portal_onboarding import (
     PortalOnboardingStart,
     PortalUpdateName,
     PortalUpdatePhone,
+    PortalUpdateEmail,
 )
 
 from app.services.portal.onboarding_service import (
@@ -84,6 +85,24 @@ def update_phone_number(
 
     return (
         PortalOnboardingService.update_phone_number(
+            db,
+            request,
+        )
+    )
+    
+@router.patch(
+    "/email",
+    response_model=PortalOnboardingResponse,
+)
+def update_email(
+    request: PortalUpdateEmail,
+    db: Session = Depends(
+        get_db,
+    ),
+):
+
+    return (
+        PortalOnboardingService.update_email(
             db,
             request,
         )

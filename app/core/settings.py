@@ -54,7 +54,28 @@ class Settings(BaseSettings):
     # Telegram
     # ==========================================================
 
+    portal_url: str = ""
+    
     telegram_bot_token: str = ""
+
+    telegram_bot_username: str = ""
+
+    # ==========================================================
+    # Paystack
+    # ==========================================================
+
+    paystack_public_key: str = ""
+
+    paystack_secret_key: str =  ""
+    
+    payment_expiry_hours: int = 24
+    
+    # ==========================================================
+    # Flutterwave
+    # ==========================================================
+    flutterwave_secret_key: str = ""
+
+    flutterwave_webhook_secret: str = ""
 
     @property
     def database_url(self) -> URL:

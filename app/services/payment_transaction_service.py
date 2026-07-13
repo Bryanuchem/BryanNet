@@ -511,26 +511,36 @@ class PaymentTransactionService:
 
             PaymentTransactionService
             ._find_transaction(
+
                 db,
+
                 transaction_id,
+
             )
 
         )
 
         transaction.webhook_received_at = (
+
             datetime.now(
                 UTC,
             )
+
         )
 
-        transaction.metadata = metadata
+        transaction.gateway_metadata = (
+            metadata
+        )
 
         return (
 
             PaymentTransactionService
             ._finalize(
+
                 db,
+
                 transaction,
+
             )
 
         )
@@ -570,6 +580,45 @@ class PaymentTransactionService:
             )
 
         )
+
+    @staticmethod
+    def get_by_gateway_reference(
+        db,
+        gateway_reference,
+    ):
+
+        transaction = (
+
+            db.query(
+                PaymentTransaction,
+            )
+
+            .filter(
+
+                PaymentTransaction
+                .gateway_reference
+                == gateway_reference,
+
+            )
+
+            .first()
+
+        )
+
+        if transaction is None:
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail=(
+                    "Payment transaction "
+                    "not found."
+                ),
+
+            )
+
+        return transaction
 
     @staticmethod
     def get_payment_transactions(

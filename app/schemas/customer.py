@@ -1,4 +1,7 @@
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+    EmailStr,
+)
 
 from app.schemas.types import (
     FullName,
@@ -12,6 +15,8 @@ class CustomerCreate(BaseModel):
     phone_number: PhoneNumber
 
     full_name: FullName
+    
+    email: EmailStr
 
 
 class CustomerUpdate(BaseModel):
@@ -19,6 +24,8 @@ class CustomerUpdate(BaseModel):
     phone_number: PhoneNumber
 
     full_name: FullName
+    
+    email: EmailStr
 
 
 class CustomerOnboardingStart(BaseModel):
@@ -49,6 +56,8 @@ class CustomerResponse(BaseModel):
     full_name: str | None = None
 
     telegram_user_id: int | None = None
+    
+    email: EmailStr | None = None
 
     is_registered: bool
     
@@ -67,6 +76,8 @@ class CustomerListItem(BaseModel):
     phone_number: str | None = None
 
     full_name: str | None = None
+    
+    email: EmailStr | None = None
 
     telegram_user_id: int | None = None
 

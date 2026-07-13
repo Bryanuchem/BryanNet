@@ -32,6 +32,11 @@ from bot.handler_modules.subscriptions import (
     cancel_purchase_callback,
 )
 
+from bot.handler_modules.payment import (
+    payment_callback,
+    show_payments,
+)
+
 from bot.handler_modules.devices import (
     devices,
     send_devices,
@@ -92,6 +97,13 @@ async def keyboard_handler(
         await send_devices(
             update.message,
             update.effective_user.id,
+        )
+
+    elif text == "💳 Payments":
+
+        await show_payments(
+            update,
+            context,
         )
 
     elif text == "📡 Menu":
@@ -170,6 +182,15 @@ def setup_handlers(
         CallbackQueryHandler(
             cancel_purchase_callback,
             pattern="^cancel_purchase$",
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            payment_callback,
+            pattern=(
+                "^payment_"
+            ),
         )
     )
 

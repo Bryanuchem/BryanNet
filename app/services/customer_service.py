@@ -11,8 +11,6 @@ from app.services.audit_log_service import AuditLogService
 
 from app.constants.audit_actions import (
     REGISTER_CUSTOMER,
-    START_ONBOARDING,
-    COMPLETE_ONBOARDING,
     UPDATE_CUSTOMER,
     ACTIVATE_CUSTOMER,
     DEACTIVATE_CUSTOMER,
@@ -26,34 +24,168 @@ from app.enums.audit_result import AuditResult
 
 class CustomerService:
 
+    # ==========================================================
+    # Private Helpers
+    # ==========================================================
+
+    @staticmethod
+    def _find_customer(
+        db,
+        customer_id,
+    ):
+
+        customer = (
+
+            db.query(Customer)
+
+            .filter(
+                Customer.customer_id == customer_id,
+            )
+
+            .first()
+
+        )
+
+        if not customer:
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail="Customer not found.",
+
+            )
+
+        return customer
+
+
+    @staticmethod
+    def _validate_phone_available(
+        db,
+        phone_number,
+        customer_id=None,
+    ):
+
+        phone_number = (
+            normalize_nigerian_phone_number(
+                phone_number,
+            )
+        )
+
+        query = (
+
+            db.query(Customer)
+
+            .filter(
+                Customer.phone_number == phone_number,
+            )
+
+        )
+
+        if customer_id is not None:
+
+            query = query.filter(
+                Customer.customer_id != customer_id,
+            )
+
+        if query.first():
+
+            raise HTTPException(
+
+                status_code=400,
+
+                detail=(
+                    "Customer with this phone "
+                    "number already exists."
+                ),
+
+            )
+
+        return phone_number
+
+
+    @staticmethod
+    def _validate_email_available(
+        db,
+        email,
+        customer_id=None,
+    ):
+
+        query = (
+
+            db.query(Customer)
+
+            .filter(
+                Customer.email == email,
+            )
+
+        )
+
+        if customer_id is not None:
+
+            query = query.filter(
+                Customer.customer_id != customer_id,
+            )
+
+        if query.first():
+
+            raise HTTPException(
+
+                status_code=400,
+
+                detail=(
+                    "Customer with this email "
+                    "already exists."
+                ),
+
+            )
+
+    @staticmethod
+    def _apply_sort(
+        query,
+        sort_column,
+        sort_order,
+    ):
+
+        if sort_order.lower() == "desc":
+
+            return query.order_by(
+                sort_column.desc(),
+            )
+
+        return query.order_by(
+            sort_column.asc(),
+        )
+
+    # ==========================================================
+    # Business Commands
+    # ==========================================================
+
     @staticmethod
     def register_customer(
         db,
         phone_number,
         full_name,
+        email,
     ):
 
-        phone_number = normalize_nigerian_phone_number(
-            phone_number,
+        phone_number = (
+            CustomerService
+            ._validate_phone_available(
+                db,
+                phone_number,
+            )
         )
 
-        existing_customer = (
-            db.query(Customer)
-            .filter(
-                Customer.phone_number == phone_number
-            )
-            .first()
+        CustomerService._validate_email_available(
+            db,
+            email,
         )
-
-        if existing_customer:
-            raise HTTPException(
-                status_code=400,
-                detail="Customer with this phone number already exists.",
-            )
 
         customer = Customer(
             phone_number=phone_number,
             full_name=full_name,
+            email=email,
             telegram_user_id=None,
             status=CustomerStatus.ACTIVE,
             is_registered=True,
@@ -94,6 +226,7 @@ class CustomerService:
 
             new_values={
                 "phone_number": customer.phone_number,
+                "email": customer.email,
                 "status": customer.status.value,
             },
 
@@ -102,178 +235,6 @@ class CustomerService:
         db.commit()
 
         db.refresh(customer)
-
-        return customer
-
-    @staticmethod
-    def start_onboarding(
-        db,
-        telegram_user_id,
-    ):
-
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.telegram_user_id == telegram_user_id
-            )
-            .first()
-        )
-
-        if customer:
-            return customer
-
-        customer = Customer(
-            telegram_user_id=telegram_user_id,
-            is_registered=False,
-            registration_step=NextAction.START_ONBOARDING,
-        )
-
-        db.add(customer)
-        
-        AuditLogService.log_system_action(
-
-            db=db,
-
-            action=START_ONBOARDING,
-
-            entity_type="Customer",
-
-            target_name=str(telegram_user_id),
-
-            result=AuditResult.SUCCESS,
-
-            description=(
-                "Customer started Telegram onboarding."
-            ),
-
-            new_values={
-                "telegram_user_id": telegram_user_id,
-            },
-
-        )        
-        
-        db.commit()
-        db.refresh(customer)
-
-        return customer
-
-    @staticmethod
-    def update_full_name(
-        db,
-        telegram_user_id,
-        full_name,
-    ):
-
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.telegram_user_id == telegram_user_id
-            )
-            .first()
-        )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
-
-        customer.full_name = full_name
-
-        customer.registration_step = (
-            NextAction.ENTER_PHONE_NUMBER
-        )
-
-        db.commit()
-
-        db.refresh(
-            customer,
-        )
-
-        return customer
-
-    @staticmethod
-    def update_phone_number(
-        db,
-        telegram_user_id,
-        phone_number,
-    ):
-
-        phone_number = normalize_nigerian_phone_number(
-            phone_number,
-        )
-
-        existing_customer = (
-            db.query(Customer)
-            .filter(
-                Customer.phone_number == phone_number,
-                Customer.telegram_user_id != telegram_user_id,
-            )
-            .first()
-        )
-
-        if existing_customer:
-            raise HTTPException(
-                status_code=400,
-                detail="Customer with this phone number already exists.",
-            )
-
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.telegram_user_id == telegram_user_id
-            )
-            .first()
-        )
-
-        if not customer:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
-
-        customer.phone_number = phone_number
-
-        customer.status = CustomerStatus.ACTIVE
-
-        customer.is_registered = True
-
-        customer.registration_step = (
-            NextAction.COMPLETE
-        )
-
-        AuditLogService.log_system_action(
-
-            db=db,
-
-            action=COMPLETE_ONBOARDING,
-
-            entity_type="Customer",
-
-            target_name=customer.full_name,
-
-            entity_id=customer.customer_id,
-
-            result=AuditResult.SUCCESS,
-
-            description=(
-                "Customer completed Telegram onboarding."
-            ),
-
-            new_values={
-                "phone_number": customer.phone_number,
-                "status": customer.status.value,
-            },
-
-        )
-
-        db.commit()
-
-        db.refresh(
-            customer,
-        )
 
         return customer
 
@@ -284,48 +245,48 @@ class CustomerService:
         customer_data,
     ):
 
-        customer_data.phone_number = (
-            normalize_nigerian_phone_number(
-                customer_data.phone_number,
-            )
-        )
 
         customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+            CustomerService._find_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
 
-        if not customer:
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
+        customer_data.phone_number = (
+
+            CustomerService
+            ._validate_phone_available(
+
+                db,
+
+                customer_data.phone_number,
+
+                customer_id,
+
             )
 
-        existing_customer = (
-            db.query(Customer)
-            .filter(
-                Customer.phone_number == customer_data.phone_number,
-                Customer.customer_id != customer_id,
-            )
-            .first()
         )
 
-        if existing_customer:
-            raise HTTPException(
-                status_code=400,
-                detail="Customer with this phone number already exists.",
-            )
+        CustomerService._validate_email_available(
+
+            db,
+
+            customer_data.email,
+
+            customer_id,
+
+        )
 
         old_values = {
             "full_name": customer.full_name,
             "phone_number": customer.phone_number,
+            "email": customer.email,
         }
 
         customer.full_name = customer_data.full_name
         customer.phone_number = customer_data.phone_number
+        customer.email = customer_data.email
 
         AuditLogService.log_system_action(
 
@@ -356,6 +317,7 @@ class CustomerService:
             new_values={
                 "full_name": customer.full_name,
                 "phone_number": customer.phone_number,
+                "email": customer.email,
             },
 
         )
@@ -373,18 +335,11 @@ class CustomerService:
     ):
 
         customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+            CustomerService._find_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
-
-        if not customer:
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
 
         customer.status = CustomerStatus.ACTIVE
 
@@ -438,18 +393,11 @@ class CustomerService:
     ):
 
         customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+            CustomerService._find_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
-
-        if not customer:
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
 
         customer.status = CustomerStatus.SUSPENDED
 
@@ -502,21 +450,12 @@ class CustomerService:
         customer_id,
     ):
 
-        customer = (
-            db.query(Customer)
-            .filter(
-                Customer.customer_id == customer_id
+        return (
+            CustomerService._find_customer(
+                db,
+                customer_id,
             )
-            .first()
         )
-
-        if not customer:
-            raise HTTPException(
-                status_code=404,
-                detail="Customer not found.",
-            )
-
-        return customer
 
     @staticmethod
     def get_customer_by_phone(
@@ -566,21 +505,27 @@ class CustomerService:
         return customer
 
     @staticmethod
-    def _apply_sort(
-        query,
-        sort_column,
-        sort_order,
+    def get_customer_by_email(
+        db,
+        email,
     ):
 
-        if sort_order.lower() == "desc":
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.email == email,
+            )
+            .first()
+        )
 
-            return query.order_by(
-                sort_column.desc(),
+        if not customer:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Customer not found.",
             )
 
-        return query.order_by(
-            sort_column.asc(),
-        )
+        return customer
 
     @staticmethod
     def get_all_customers(
@@ -612,6 +557,12 @@ class CustomerService:
                     f"%{search}%"
                 )
 
+                |
+
+                Customer.email.ilike(
+                    f"%{search}%"
+                )
+
             )
 
         total = query.count()
@@ -626,6 +577,9 @@ class CustomerService:
 
             "phone_number":
                 Customer.phone_number,
+
+            "email":
+                Customer.email,
 
         }.get(
 

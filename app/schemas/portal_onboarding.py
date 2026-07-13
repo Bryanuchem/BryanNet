@@ -1,5 +1,7 @@
-from pydantic import BaseModel
-
+from pydantic import (
+    BaseModel,
+    EmailStr,
+)
 from app.schemas.types import (
     FullName,
     PhoneNumber,
@@ -30,6 +32,12 @@ class PortalUpdatePhone(BaseModel):
     phone_number: PhoneNumber
 
 
+class PortalUpdateEmail(BaseModel):
+
+    telegram_user_id: PositiveInt
+
+    email: EmailStr
+
 # ==========================================================
 # Response Schemas
 # ==========================================================
@@ -43,6 +51,8 @@ class PortalOnboardingResponse(BaseModel):
     full_name: str | None = None
 
     phone_number: str | None = None
+    
+    email: EmailStr | None = None
 
     is_registered: bool
 

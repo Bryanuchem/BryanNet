@@ -52,3 +52,19 @@ class OnboardingService:
         )
 
         return response.status_code == 200
+    
+    @staticmethod
+    def update_email(
+        telegram_user_id,
+        email,
+    ):
+
+        response = requests.patch(
+            f"{API_BASE_URL}/portal/onboarding/email",
+            json={
+                "telegram_user_id": telegram_user_id,
+                "email": email,
+            },
+        )
+
+        return response.status_code == 200    

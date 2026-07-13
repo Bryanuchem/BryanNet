@@ -1,5 +1,3 @@
-import os
-
 import requests
 
 from app.domain.payment import (
@@ -17,6 +15,9 @@ from app.providers.payment.base import (
     PaymentProvider,
 )
 
+from app.core.settings import (
+    settings,
+)
 
 class FlutterwaveProvider(
     PaymentProvider,
@@ -35,16 +36,12 @@ class FlutterwaveProvider(
     ):
 
         secret_key = (
-            os.getenv(
-                "FLUTTERWAVE_SECRET_KEY",
+                settings.flutterwave_secret_key,
             )
-        )
 
         webhook_secret = (
-            os.getenv(
-                "FLUTTERWAVE_WEBHOOK_SECRET",
+                settings.flutterwave_webhook_secret,
             )
-        )
 
         if secret_key is None:
 

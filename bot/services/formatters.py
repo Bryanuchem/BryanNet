@@ -58,3 +58,27 @@ def format_expiry_date(
         )
 
     )
+    
+# ==========================================================
+# Payments
+# ==========================================================
+
+def format_payment_initialization(
+    payment,
+):
+
+    return f"""💳 Payment Initialized
+
+📦 Plan
+{payment["plan_name"]}
+
+💰 Amount
+{format_currency(payment["amount"])}
+
+🧾 Payment Reference
+{payment["payment_reference"]}
+
+Tap the button below to complete your payment securely.
+
+Your subscription will be activated automatically once payment has been confirmed.
+"""

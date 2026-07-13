@@ -7,12 +7,12 @@ from app.schemas.portal_onboarding import (
     PortalOnboardingStart,
     PortalUpdateName,
     PortalUpdatePhone,
+    PortalUpdateEmail,
 )
 
-from app.services.customer_service import (
-    CustomerService,
+from app.services.onboarding_service import (
+    OnboardingService,
 )
-
 
 class PortalOnboardingService:
 
@@ -41,6 +41,10 @@ class PortalOnboardingService:
                 customer.phone_number
             ),
 
+            email=(
+                customer.email
+            ),
+
             is_registered=(
                 customer.is_registered
             ),
@@ -66,7 +70,7 @@ class PortalOnboardingService:
     ):
 
         customer = (
-            CustomerService.start_onboarding(
+            OnboardingService.start_onboarding(
                 db=db,
                 telegram_user_id=(
                     request.telegram_user_id
@@ -88,7 +92,7 @@ class PortalOnboardingService:
     ):
 
         customer = (
-            CustomerService.update_full_name(
+            OnboardingService.update_full_name(
                 db=db,
                 telegram_user_id=(
                     request.telegram_user_id
@@ -113,13 +117,39 @@ class PortalOnboardingService:
     ):
 
         customer = (
-            CustomerService.update_phone_number(
+            OnboardingService.update_phone_number(
                 db=db,
                 telegram_user_id=(
                     request.telegram_user_id
                 ),
                 phone_number=(
                     request.phone_number
+                ),
+            )
+        )
+
+        return (
+            PortalOnboardingService
+            ._build_response(
+                customer,
+            )
+        )
+        
+    @staticmethod
+    def update_email(
+        db: Session,
+        request: PortalUpdateEmail,
+    ):
+
+        customer = (
+            OnboardingService
+            .update_email(
+                db=db,
+                telegram_user_id=(
+                    request.telegram_user_id
+                ),
+                email=(
+                    request.email
                 ),
             )
         )

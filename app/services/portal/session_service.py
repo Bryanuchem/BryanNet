@@ -51,6 +51,10 @@ class PortalSessionService:
 
             telegram_user_id=telegram_user_id,
 
+            has_active_subscription=session[
+                "has_active_subscription"
+            ],
+
             next_action=session[
                 "next_action"
             ],

@@ -40,23 +40,6 @@ async def render_session(
     ]
 
     # ======================================================
-    # Start Onboarding
-    # ======================================================
-
-    if next_action == NextAction.START_ONBOARDING.value:
-
-        await message_obj.reply_text(
-
-            "👋 Welcome to BryanNet!\n\n"
-            "Let's get your account set up.",
-
-            reply_markup=ReplyKeyboardRemove(),
-
-        )
-
-        return session
-
-    # ======================================================
     # Enter Name
     # ======================================================
 
@@ -65,7 +48,13 @@ async def render_session(
         await message_obj.reply_text(
 
             "👋 Welcome to BryanNet!\n\n"
-            "Step 1 of 2\n\n"
+
+            "Let's create your BryanNet account.\n"
+
+            "This will only take a minute.\n\n"
+
+            "Step 1 of 3\n\n"
+
             "What is your full name?",
 
             reply_markup=ReplyKeyboardRemove(),
@@ -114,6 +103,30 @@ async def render_session(
         )
 
         return session
+    
+    # ======================================================
+    # Enter Email
+    # ======================================================
+
+    # ======================================================
+    # Enter Email
+    # ======================================================
+
+    if next_action == NextAction.ENTER_EMAIL.value:
+
+        await message_obj.reply_text(
+
+            "📧 Step 3 of 3\n\n"
+            "Almost done!\n\n"
+            "Please enter your email address.\n\n"
+            "Example:\n"
+            "name@example.com",
+
+            reply_markup=ReplyKeyboardRemove(),
+
+        )
+
+        return session
 
     # ======================================================
     # Main Menu
@@ -126,7 +139,13 @@ async def render_session(
             f"👋 Welcome, "
             f"{session['full_name']}!",
 
-            reply_markup=get_main_keyboard(),
+            reply_markup=get_main_keyboard(
+
+                session[
+                    "has_active_subscription"
+                ],
+
+            ),
 
         )
 

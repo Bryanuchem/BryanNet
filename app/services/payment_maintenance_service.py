@@ -1,6 +1,12 @@
-from datetime import datetime, timedelta, UTC
+from datetime import (
+    datetime,
+    timedelta,
+    UTC,
+)
 
-from sqlalchemy import func
+from sqlalchemy import (
+    func,
+)
 
 from app.services.audit_log_service import (
     AuditLogService,
@@ -10,9 +16,30 @@ from app.constants.audit_actions import (
     AUTOMATION_PAYMENTS,
 )
 
-from app.enums import PaymentStatus
+from app.services.payment_service import (
+    PaymentService,
+)
 
-from app.models.payment import Payment
+from app.services.payment_dispatcher_service import (
+    PaymentDispatcherService,
+)
+
+from app.services.payment_transaction_service import (
+    PaymentTransactionService,
+)
+
+from app.core.settings import (
+    settings,
+)
+
+from app.enums import (
+    PaymentStatus,
+    TransactionStatus,
+)
+
+from app.models.payment import (
+    Payment,
+)
 
 
 class PaymentMaintenanceService:
@@ -22,9 +49,113 @@ class PaymentMaintenanceService:
     # ==========================================================
 
     @staticmethod
+    def verify_pending_payments(
+        db,
+    ):
+        """
+        Retry verification for pending payments
+        whose gateway transactions are still
+        unresolved.
+        """
+
+        pending_payments = (
+
+            db.query(Payment)
+
+            .filter(
+
+                Payment.status
+                == PaymentStatus.PENDING,
+
+            )
+
+            .all()
+
+        )
+
+        processed = 0
+
+        verified = 0
+
+        failed = 0
+
+        skipped = 0
+
+        for payment in pending_payments:
+
+            transaction = (
+
+                PaymentTransactionService
+                .get_latest_transaction(
+
+                    db,
+
+                    payment.payment_id,
+
+                )
+
+            )
+
+            if transaction is None:
+
+                skipped += 1
+
+                continue
+
+            processed += 1
+
+            try:
+
+                result = (
+
+                    PaymentDispatcherService
+                    .verify_payment(
+
+                        db,
+
+                        transaction.transaction_id,
+
+                    )
+
+                )
+
+                if result.verified:
+
+                    PaymentDispatcherService.complete_payment(
+
+                        db,
+
+                        transaction.transaction_id,
+
+                    )
+
+                    verified += 1
+
+                else:
+
+                    failed += 1
+
+            except Exception:
+
+                failed += 1
+
+        db.commit()
+
+        return {
+
+            "processed": processed,
+
+            "verified": verified,
+
+            "failed": failed,
+
+            "skipped": skipped,
+
+        }
+
+    @staticmethod
     def expire_pending_payments(
         db,
-        expiry_hours=24,
     ):
         """
         Expire pending payments older than the
@@ -32,10 +163,15 @@ class PaymentMaintenanceService:
         """
 
         expiry_time = (
+
             datetime.now(UTC)
+
             - timedelta(
-                hours=expiry_hours,
+
+                hours=settings.payment_expiry_hours,
+
             )
+
         )
 
         expired_payments = (
@@ -58,8 +194,8 @@ class PaymentMaintenanceService:
 
         for payment in expired_payments:
 
-            payment.status = (
-                PaymentStatus.EXPIRED
+            PaymentService._mark_expired(
+                payment,
             )
 
         db.commit()
@@ -87,10 +223,13 @@ class PaymentMaintenanceService:
         """
 
         stale_date = (
+
             datetime.now(UTC)
+
             - timedelta(
                 days=stale_days,
             )
+
         )
 
         stale_payments = (
@@ -98,12 +237,16 @@ class PaymentMaintenanceService:
             db.query(Payment)
 
             .filter(
+
                 Payment.created_at
                 <= stale_date,
+
             )
 
             .order_by(
+
                 Payment.created_at,
+
             )
 
             .all()
@@ -125,11 +268,8 @@ class PaymentMaintenanceService:
         db,
     ):
         """
-        Placeholder for payment reconciliation.
-
-        Future implementations may compare
-        BryanNet payment records with payment
-        gateway records to detect mismatches.
+        Summarize payment state for
+        reconciliation reporting.
         """
 
         successful = (
@@ -137,8 +277,10 @@ class PaymentMaintenanceService:
             db.query(Payment)
 
             .filter(
+
                 Payment.status
                 == PaymentStatus.SUCCESSFUL,
+
             )
 
             .count()
@@ -150,8 +292,10 @@ class PaymentMaintenanceService:
             db.query(Payment)
 
             .filter(
+
                 Payment.status
                 == PaymentStatus.PENDING,
+
             )
 
             .count()
@@ -163,8 +307,10 @@ class PaymentMaintenanceService:
             db.query(Payment)
 
             .filter(
+
                 Payment.status
                 == PaymentStatus.FAILED,
+
             )
 
             .count()
@@ -176,8 +322,40 @@ class PaymentMaintenanceService:
             db.query(Payment)
 
             .filter(
+
                 Payment.status
                 == PaymentStatus.EXPIRED,
+
+            )
+
+            .count()
+
+        )
+
+        refunded = (
+
+            db.query(Payment)
+
+            .filter(
+
+                Payment.status
+                == PaymentStatus.REFUNDED,
+
+            )
+
+            .count()
+
+        )
+
+        cancelled = (
+
+            db.query(Payment)
+
+            .filter(
+
+                Payment.status
+                == PaymentStatus.CANCELLED,
+
             )
 
             .count()
@@ -198,11 +376,17 @@ class PaymentMaintenanceService:
             "expired":
                 expired,
 
+            "refunded":
+                refunded,
+
+            "cancelled":
+                cancelled,
+
             "status":
                 "Reconciliation complete.",
 
         }
-
+        
     @staticmethod
     def payment_health_check(
         db,
@@ -215,12 +399,17 @@ class PaymentMaintenanceService:
         """
 
         total_payments = (
+
             db.query(
+
                 func.count(
                     Payment.payment_id,
                 )
+
             )
+
             .scalar()
+
         )
 
         return {
@@ -231,13 +420,11 @@ class PaymentMaintenanceService:
                 total_payments,
 
             "message":
-                (
-                    "Payment subsystem "
-                    "operational."
-                ),
+
+                "Payment subsystem operational.",
 
         }
-        
+
     @staticmethod
     def run(
         db,
@@ -245,7 +432,19 @@ class PaymentMaintenanceService:
         session=None,
     ):
 
-        result = (
+        verification = (
+
+            PaymentMaintenanceService
+
+            .verify_pending_payments(
+
+                db,
+
+            )
+
+        )
+
+        expiration = (
 
             PaymentMaintenanceService
 
@@ -257,10 +456,49 @@ class PaymentMaintenanceService:
 
         )
 
+        reconciliation = (
+
+            PaymentMaintenanceService
+
+            .reconcile_payments(
+
+                db,
+
+            )
+
+        )
+
+        result = {
+
+            "processed": (
+
+                verification["processed"]
+
+                + expiration["processed"]
+
+            ),
+
+            "verified":
+                verification["verified"],
+
+            "failed":
+                verification["failed"],
+
+            "skipped":
+                verification["skipped"],
+
+            "expired_payments":
+                expiration["expired_payments"],
+
+            "reconciliation":
+                reconciliation,
+
+        }
+
         AuditLogService.log_system_action(
 
             db=db,
-            
+
             admin=admin,
 
             session=session,
@@ -269,11 +507,15 @@ class PaymentMaintenanceService:
 
             description=(
 
-                "Payment maintenance expired "
+                "Payment maintenance completed. "
 
-                f"{result['expired_payments']} "
+                f"Verified {result['verified']} payment(s), "
 
-                "pending payment(s)."
+                f"expired {result['expired_payments']} payment(s), "
+
+                f"failed {verification['failed']} verification(s), "
+
+                f"skipped {verification['skipped']} payment(s)."
 
             ),
 
@@ -283,9 +525,23 @@ class PaymentMaintenanceService:
 
             new_values={
 
-                "processed": result["processed"],
+                "processed":
+                    result["processed"],
 
-                "expired_payments": result["expired_payments"],
+                "verified":
+                    result["verified"],
+
+                "failed":
+                    verification["failed"],
+
+                "skipped":
+                    verification["skipped"],
+
+                "expired_payments":
+                    result["expired_payments"],
+
+                "reconciliation":
+                    result["reconciliation"],
 
             },
 
@@ -293,4 +549,4 @@ class PaymentMaintenanceService:
 
         db.commit()
 
-        return result      
+        return result

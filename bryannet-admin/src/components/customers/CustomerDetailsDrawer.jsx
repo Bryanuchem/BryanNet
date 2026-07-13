@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 
 import PhoneIcon from "@mui/icons-material/Phone";
+import EmailIcon from "@mui/icons-material/Email";
 import TelegramIcon from "@mui/icons-material/Telegram";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import BlockIcon from "@mui/icons-material/Block";
@@ -184,6 +185,15 @@ function CustomerDetailsDrawer({
                                                 </Tooltip>
                                             )}
                                         </Stack>
+                                    </InfoField>
+
+                                    <InfoField
+                                        icon={<EmailIcon />}
+                                        label="Email Address"
+                                    >
+                                        <Typography fontWeight={500}>
+                                            {customer.email ?? "Not provided"}
+                                        </Typography>
                                     </InfoField>
 
                                     <InfoField

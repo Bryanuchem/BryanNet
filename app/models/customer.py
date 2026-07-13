@@ -35,6 +35,12 @@ class Customer(Base):
         nullable=True,
     )
 
+    email = Column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
+
     full_name = Column(
         String(150),
         nullable=True,

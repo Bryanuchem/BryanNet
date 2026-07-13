@@ -6,10 +6,13 @@ from app.enums.next_action import (
     NextAction,
 )
 
+from app.enums.subscription_status import (
+    SubscriptionStatus,
+)
+
 from app.models.customer import (
     Customer,
 )
-
 
 class SessionService:
 
@@ -32,16 +35,38 @@ class SessionService:
         )
 
     @staticmethod
+    def _has_active_subscription(
+        customer,
+    ):
+
+        if customer is None:
+
+            return False
+
+        return any(
+
+            subscription.status
+            == SubscriptionStatus.ACTIVE
+
+            for subscription in customer.subscriptions
+
+        )
+
+    @staticmethod
     def _build_session(
         next_action,
         message,
         keyboard,
         customer=None,
+        has_active_subscription=False,
     ):
 
         return {
 
             "next_action": next_action,
+
+            "has_active_subscription":
+                has_active_subscription,
 
             "message": message,
 
@@ -68,6 +93,13 @@ class SessionService:
                 telegram_user_id,
             )
         )
+        
+        has_active_subscription = (
+            SessionService
+            ._has_active_subscription(
+                customer,
+            )
+        )
 
         # ======================================================
         # Brand New Customer
@@ -85,6 +117,8 @@ class SessionService:
                     keyboard=KeyboardType.REMOVE,
 
                     customer=None,
+
+                    has_active_subscription=False,
 
                 )
             )
@@ -104,15 +138,26 @@ class SessionService:
                     next_action=NextAction.ENTER_NAME,
 
                     message=(
+
                         "👋 Welcome to BryanNet!\n\n"
-                        "Let's get your account set up.\n\n"
-                        "Step 1 of 2\n\n"
+
+                        "Let's create your BryanNet account.\n"
+
+                        "This will only take a minute.\n\n"
+
+                        "Step 1 of 3\n\n"
+
                         "What is your full name?"
+
                     ),
 
                     keyboard=KeyboardType.REMOVE,
 
                     customer=customer,
+
+                    has_active_subscription=(
+                        has_active_subscription
+                    ),
 
                 )
             )
@@ -132,13 +177,52 @@ class SessionService:
                     next_action=NextAction.ENTER_PHONE_NUMBER,
 
                     message=(
-                        "📱 Step 2 of 2\n\n"
+                        "📱 Step 2 of 3\n\n"
                         "Please share your phone number."
                     ),
 
                     keyboard=KeyboardType.REQUEST_PHONE,
 
                     customer=customer,
+
+                    has_active_subscription=(
+                        has_active_subscription
+                    ),
+
+                )
+            )
+
+        # ======================================================
+        # Enter Email
+        # ======================================================
+
+        if (
+            customer.registration_step
+            == NextAction.ENTER_EMAIL
+        ):
+
+            return (
+                SessionService._build_session(
+
+                    next_action=NextAction.ENTER_EMAIL,
+
+                    message=(
+
+                        "📧 Step 3 of 3\n\n"
+
+                        "Almost done!\n\n"
+
+                        "Please enter your email address."
+
+                    ),
+
+                    keyboard=KeyboardType.REMOVE,
+
+                    customer=customer,
+
+                    has_active_subscription=(
+                        has_active_subscription
+                    ),
 
                 )
             )
@@ -178,6 +262,10 @@ class SessionService:
 
                     customer=customer,
 
+                    has_active_subscription=(
+                        has_active_subscription
+                    ),
+
                 )
             )
 
@@ -195,6 +283,10 @@ class SessionService:
                 keyboard=KeyboardType.REMOVE,
 
                 customer=customer,
+
+                has_active_subscription=(
+                    has_active_subscription
+                ),
 
             )
         )

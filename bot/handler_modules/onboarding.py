@@ -18,6 +18,9 @@ from bot.services.session_service import (
     SessionService,
 )
 
+from bot.handler_modules.payment import (
+    payment_return,
+)
 
 async def onboarding_handler(
     update: Update,
@@ -27,6 +30,40 @@ async def onboarding_handler(
     telegram_user_id = (
         update.effective_user.id
     )
+
+    # ======================================================
+    # Payment Deep Link
+    # ======================================================
+
+    if context.args:
+
+        payload = (
+            context.args[0]
+        )
+
+        if payload.startswith(
+            "payment_",
+        ):
+
+            payment_reference = (
+                payload.removeprefix(
+                    "payment_",
+                )
+            )
+
+            await payment_return(
+
+                update=update,
+
+                context=context,
+
+                payment_reference=(
+                    payment_reference
+                ),
+
+            )
+
+            return
 
     session = (
         SessionService.get_session(
@@ -159,3 +196,61 @@ async def onboarding_handler(
             telegram_user_id,
             session=session,
         )
+        
+    # ======================================================
+    # Save email
+    # ======================================================
+
+    if next_action == "ENTER_EMAIL":
+
+        if not update.message.text:
+
+            await update.message.reply_text(
+                "Please enter your email address.",
+            )
+
+            return
+
+        email = (
+            update.message.text
+            .strip()
+            .lower()
+        )
+
+        success = (
+            OnboardingService.update_email(
+                telegram_user_id,
+                email,
+            )
+        )
+
+        if not success:
+
+            await update.message.reply_text(
+                "Unable to save your email.",
+            )
+
+            return
+
+        session = (
+            SessionService.get_session(
+                telegram_user_id,
+                first_login=True,
+            )
+        )
+
+        if session is None:
+
+            await update.message.reply_text(
+                "Unable to retrieve your session.",
+            )
+
+            return
+
+        await render_session(
+            update.message,
+            telegram_user_id,
+            session=session,
+        )
+
+        return

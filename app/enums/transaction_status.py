@@ -6,14 +6,14 @@ class TransactionStatus(
     Enum,
 ):
 
-    PENDING = "PENDING"
+    PENDING = "pending"
 
-    SUCCESSFUL = "SUCCESSFUL"
+    SUCCESSFUL = "successful"
 
-    FAILED = "FAILED"
+    FAILED = "failed"
 
-    CANCELLED = "CANCELLED"
+    CANCELLED = "cancelled"
 
-    EXPIRED = "EXPIRED"
+    EXPIRED = "expired"
 
-    ABANDONED = "ABANDONED"
+    ABANDONED = "abandoned"

@@ -13,6 +13,7 @@ import {
 const initialForm = {
     full_name: "",
     phone_number: "",
+    email: "",
 };
 
 function CustomerDialog({
@@ -33,6 +34,8 @@ function CustomerDialog({
                     customer.full_name ?? "",
                 phone_number:
                     customer.phone_number ?? "",
+                email:
+                    customer.email ?? "",
             });
         } else {
             setFormData(initialForm);
@@ -101,6 +104,23 @@ function CustomerDialog({
                             }
                         />
                     </Grid>
+
+                    <Grid size={{ xs: 12 }}>
+                        <TextField
+                            fullWidth
+                            required
+                            type="email"
+                            label="Email Address"
+                            name="email"
+                            value={
+                                formData.email
+                            }
+                            onChange={
+                                handleChange
+                            }
+                        />
+                    </Grid>
+
                 </Grid>
             </DialogContent>
 

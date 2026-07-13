@@ -74,7 +74,7 @@ function CustomerTable({
             return (
                 <EmptyState
                     title="No matching customers"
-                    description="Try searching with a different name or phone number."
+                    description="Try searching with a different name or phone number OR email."
                 />
             );
         }
@@ -128,6 +128,14 @@ function CustomerTable({
                             >
                                 Phone
 
+                            </TableCell>
+
+                            <TableCell
+                                sx={{
+                                    fontWeight: 700,
+                                }}
+                            >
+                                Email
                             </TableCell>
 
                             <TableCell
@@ -243,6 +251,10 @@ function CustomerTable({
 
                                     <TableCell>
                                         {formatPhoneNumber(customer.phone_number)}
+                                    </TableCell>
+
+                                    <TableCell>
+                                        {customer.email ?? "—"}
                                     </TableCell>
 
                                     <TableCell align="center">

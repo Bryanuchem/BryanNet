@@ -8,6 +8,8 @@ class NextAction(str, Enum):
     ENTER_NAME = "ENTER_NAME"
 
     ENTER_PHONE_NUMBER = "ENTER_PHONE_NUMBER"
+    
+    ENTER_EMAIL = "ENTER_EMAIL"
 
     COMPLETE = "COMPLETE"
 

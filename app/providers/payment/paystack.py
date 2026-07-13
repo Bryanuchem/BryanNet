@@ -1,6 +1,7 @@
-import os
-
 import requests
+
+import hashlib
+import hmac
 
 from app.domain.payment import (
     PaymentInitializationResult,
@@ -10,16 +11,20 @@ from app.domain.payment import (
 )
 
 from app.enums import (
+    PaymentProvider,
     TransactionStatus,
 )
 
 from app.providers.payment.base import (
-    PaymentProvider,
+    PaymentProvider as BasePaymentProvider,
 )
 
+from app.core.settings import (
+    settings,
+)
 
 class PaystackProvider(
-    PaymentProvider,
+    BasePaymentProvider,
 ):
 
     BASE_URL = (
@@ -35,9 +40,7 @@ class PaystackProvider(
     ):
 
         secret_key = (
-            os.getenv(
-                "PAYSTACK_SECRET_KEY",
-            )
+            settings.paystack_secret_key
         )
 
         if secret_key is None:
@@ -87,7 +90,24 @@ class PaystackProvider(
                     payment.amount * 100
                 ),
 
+            "callback_url": (
+
+                f"https://t.me/"
+                f"{settings.telegram_bot_username}"
+
+                f"?start="
+
+                f"payment_{payment.payment_reference}"
+
+            ),
+
             "metadata": {
+
+                "telegram_user_id":
+                    payment.customer.telegram_user_id,
+
+                "payment_reference":
+                    payment.payment_reference,
 
                 "customer_id":
                     payment.customer_id,
@@ -226,15 +246,46 @@ class PaystackProvider(
 
         )
 
+# ==========================================================
+# Webhooks
+# ==========================================================
+
     def validate_webhook(
         self,
         headers,
         body,
     ) -> PaymentValidationResult:
 
-        raise NotImplementedError(
-            "Paystack webhook validation "
-            "has not yet been implemented."
+        signature = headers.get(
+            "x-paystack-signature",
+        )
+
+        if not signature:
+
+            return PaymentValidationResult(
+                valid=False,
+            )
+
+        expected_signature = hmac.new(
+
+            settings.paystack_secret_key.encode(),
+
+            body,
+
+            hashlib.sha512,
+
+        ).hexdigest()
+
+        return PaymentValidationResult(
+
+            valid=hmac.compare_digest(
+
+                signature,
+
+                expected_signature,
+
+            ),
+
         )
 
     def parse_webhook(
@@ -242,7 +293,39 @@ class PaystackProvider(
         payload,
     ) -> PaymentWebhookResult:
 
-        raise NotImplementedError(
-            "Paystack webhook parsing "
-            "has not yet been implemented."
+        event = payload.get(
+            "event",
+        )
+
+        if event != "charge.success":
+
+            return PaymentWebhookResult(
+
+                valid=False,
+
+                provider=PaymentProvider.PAYSTACK,
+
+                event=event,
+
+            )
+
+        data = payload.get(
+            "data",
+            {},
+        )
+
+        return PaymentWebhookResult(
+
+            valid=True,
+
+            provider=PaymentProvider.PAYSTACK,
+
+            event=event,
+
+            gateway_reference=(
+                data.get(
+                    "reference",
+                )
+            ),
+
         )

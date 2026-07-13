@@ -24,6 +24,7 @@ from app.services.plan_service import PlanService
 from app.services.subscription_service import (
     SubscriptionService,
 )
+
 from app.services.audit_log_service import AuditLogService
 from app.enums.audit_result import AuditResult
 
@@ -71,6 +72,61 @@ class PaymentService:
             )
 
         return payment
+
+    @staticmethod
+    def _find_pending_payment(
+        db,
+        customer_id,
+        plan_id,
+    ):
+
+        return (
+
+            db.query(
+                Payment,
+            )
+
+            .filter(
+
+                Payment.customer_id
+                == customer_id,
+
+                Payment.plan_id
+                == plan_id,
+
+                Payment.status
+                == PaymentStatus.PENDING,
+
+            )
+
+            .order_by(
+                Payment.created_at.desc(),
+            )
+
+            .first()
+
+        )
+
+    @staticmethod
+    def _pending_payment_expired(
+        payment,
+    ):
+
+        if payment is None:
+
+            return False
+
+        age = (
+            datetime.now()
+            -
+            payment.created_at
+        )
+
+        return (
+            age.total_seconds()
+            >=
+            30 * 60
+        )
 
     @staticmethod
     def _create_payment(
@@ -149,6 +205,17 @@ class PaymentService:
             )
         )
 
+        # ==========================================================
+        # Idempotency
+        # ==========================================================
+
+        if (
+            payment.status
+            == PaymentStatus.SUCCESSFUL
+        ):
+
+            return payment
+
         if (
             payment.status
             != PaymentStatus.PENDING
@@ -157,8 +224,9 @@ class PaymentService:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "Only pending payments "
-                    "can be completed."
+                    f"Cannot complete a "
+                    f"{payment.status.value} "
+                    "payment."
                 ),
             )
 
@@ -202,7 +270,7 @@ class PaymentService:
         )
 
         payment.payment_date = (
-            datetime.now(UTC)
+            datetime.now()
         )
 
     @staticmethod
@@ -242,6 +310,24 @@ class PaymentService:
         )
 
     @staticmethod
+    def _expire_payment(
+        db,
+        payment,
+    ):
+
+        PaymentService._mark_expired(
+            payment,
+        )
+
+        db.commit()
+
+        db.refresh(
+            payment,
+        )
+
+        return payment
+
+    @staticmethod
     def _finalize_payment_change(
         db,
         payment,
@@ -271,6 +357,46 @@ class PaymentService:
         return query.order_by(
             sort_column.asc(),
         )
+
+    @staticmethod
+    def expire_pending_payments(
+        db,
+    ):
+
+        pending_payments = (
+
+            db.query(
+                Payment,
+            )
+
+            .filter(
+                Payment.status
+                == PaymentStatus.PENDING,
+            )
+
+            .all()
+
+        )
+
+        expired = 0
+
+        for payment in pending_payments:
+
+            if (
+                PaymentService._pending_payment_expired(
+                    payment,
+                )
+            ):
+
+                PaymentService._mark_expired(
+                    payment,
+                )
+
+                expired += 1
+
+        db.commit()
+
+        return expired
 
     # ==========================================================
     # Business Commands

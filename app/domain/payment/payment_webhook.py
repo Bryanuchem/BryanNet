@@ -2,6 +2,10 @@ from dataclasses import (
     dataclass,
 )
 
+from app.enums import (
+    PaymentProvider,
+)
+
 from .payment_result import (
     PaymentResult,
 )
@@ -15,6 +19,8 @@ class PaymentWebhookResult(
 ):
 
     valid: bool = False
+
+    provider: PaymentProvider | None = None
 
     event: str | None = None
 

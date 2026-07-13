@@ -17,6 +17,9 @@ from app.providers.payment.factory import (
     PaymentProviderFactory,
 )
 
+from app.enums.transaction_status import (
+    TransactionStatus,
+)
 
 class PaymentDispatcherService:
 
@@ -42,15 +45,8 @@ class PaymentDispatcherService:
     @staticmethod
     def initialize_payment(
         db,
-        payment_reference,
+        payment,
     ) -> PaymentInitializationResult:
-
-        payment = (
-            PaymentService.get_payment(
-                db,
-                payment_reference,
-            )
-        )
 
         transaction = (
 
@@ -215,5 +211,62 @@ class PaymentDispatcherService:
         return (
             provider.parse_webhook(
                 payload,
+            )
+        )
+        
+    @staticmethod
+    def complete_payment(
+        db,
+        transaction_id,
+        admin_id=None,
+    ):
+
+        transaction = (
+            PaymentTransactionService
+            .get_transaction(
+                db,
+                transaction_id,
+            )
+        )
+
+        # ==========================================================
+        # Idempotency
+        # ==========================================================
+
+        if (
+            transaction.payment.status.value
+            == "successful"
+        ):
+
+            return transaction.payment
+
+        if (
+            transaction.transaction_status
+            != TransactionStatus.SUCCESSFUL
+        ):
+
+            raise ValueError(
+                "Cannot complete payment "
+                "before successful "
+                "verification."
+            )
+
+        return (
+            PaymentService.complete_payment(
+
+                db=db,
+
+                payment_reference=(
+                    transaction.payment
+                    .payment_reference
+                ),
+
+                gateway_transaction_id=(
+                    transaction
+                    .gateway_transaction_id
+                ),
+
+                admin_id=admin_id,
+
             )
         )
