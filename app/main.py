@@ -119,6 +119,30 @@ from app.portal import (
     router as portal_router,
 )
 
+from app.api.router import (
+    router as router_router,
+)
+
+from app.api.router_runtime import (
+    router as router_runtime_router,
+)
+
+from app.api.router_account_runtime import (
+    router as router_account_runtime_router,
+)
+
+from app.api.router_profile import (
+    router as router_profile_router,
+)
+
+from app.api.router_secret import (
+    router as router_secret_router,
+)
+
+from app.api.router_session import (
+    router as router_session_router,
+)
+
 app = FastAPI(
 
     title=settings.app_name,
@@ -231,6 +255,39 @@ app.include_router(
     prefix=API_PREFIX,
 )
 
+# ----------------------------------------------------------
+# Router Management
+# ----------------------------------------------------------
+
+app.include_router(
+    router_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    router_runtime_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    router_account_runtime_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    router_profile_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    router_secret_router,
+    prefix=API_PREFIX,
+)
+
+app.include_router(
+    router_session_router,
+    prefix=API_PREFIX,
+)
 
 # ----------------------------------------------------------
 # Operations

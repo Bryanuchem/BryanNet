@@ -339,6 +339,8 @@ class PaymentTransactionService:
         db,
         transaction_id,
         gateway_reference=None,
+        checkout_url=None,
+        access_code=None,
         gateway_status=None,
         gateway_response=None,
         metadata=None,
@@ -358,6 +360,14 @@ class PaymentTransactionService:
             gateway_reference
         )
 
+        transaction.checkout_url = (
+            checkout_url
+        )
+
+        transaction.access_code = (
+            access_code
+        )
+
         transaction.gateway_status = (
             gateway_status
         )
@@ -366,7 +376,9 @@ class PaymentTransactionService:
             gateway_response
         )
 
-        transaction.gateway_metadata = metadata
+        transaction.gateway_metadata = (
+            metadata
+        )
 
         return (
 
@@ -377,7 +389,7 @@ class PaymentTransactionService:
             )
 
         )
-
+    
     @staticmethod
     def record_verification(
         db,

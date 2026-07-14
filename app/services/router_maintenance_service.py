@@ -11,7 +11,7 @@ from app.services.audit_log_service import (
 )
 
 from app.constants.audit_actions import (
-    AUTOMATION_DEVICES,
+    AUTOMATION_ROUTERS,
 )
 
 from app.services.notification_service import (
@@ -131,6 +131,10 @@ class RouterMaintenanceService:
 
         checked = 0
 
+        synchronized = 0
+
+        synchronization_failures = 0
+
         for router in routers:
 
             is_online = (
@@ -144,6 +148,28 @@ class RouterMaintenanceService:
             checked += 1
 
             if is_online:
+
+                synchronization = (
+
+                    RouterService
+
+                    .synchronize_router(
+
+                        db,
+
+                        router.router_id,
+
+                    )
+
+                )
+
+                if synchronization["success"]:
+
+                    synchronized += 1
+
+                else:
+
+                    synchronization_failures += 1
 
                 RouterMaintenanceService \
                     ._handle_router_online(
@@ -183,6 +209,12 @@ class RouterMaintenanceService:
             "offline":
                 offline,
 
+            "synchronized":
+                synchronized,
+
+            "synchronization_failures":
+                synchronization_failures,
+
         }
 
         AuditLogService.log_system_action(
@@ -193,7 +225,7 @@ class RouterMaintenanceService:
 
             session=session,
 
-            action=AUTOMATION_DEVICES,
+            action=AUTOMATION_ROUTERS,
 
             description=(
 

@@ -1,23 +1,27 @@
-import secrets
-import string
-
 from fastapi import HTTPException
 
-from app.domain import RouterContext
-
-from app.models.router_account import RouterAccount
-
-from app.services.customer_service import CustomerService
-from app.services.device_service import DeviceService
-from app.services.router_service import RouterService
-
-
-from app.models.subscription import (
-    Subscription,
+from app.models.router_account import (
+    RouterAccount,
 )
 
-from app.enums import (
-    SubscriptionStatus,
+from app.services.customer_service import (
+    CustomerService,
+)
+
+from app.services.router_assignment_service import (
+    RouterAssignmentService,
+)
+
+from app.services.router_credential_manager import (
+    RouterCredentialManager,
+)
+
+from app.core.settings import (
+    settings,
+)
+
+from app.utils.phone import(
+    local_nigerian_phone_number,
 )
 
 class RouterAccountService:
@@ -66,144 +70,28 @@ class RouterAccountService:
             .first()
         )
 
+
     @staticmethod
-    def _generate_username(
+    def _generate_router_username(
         customer,
     ):
 
         if customer.phone_number:
 
             return (
-                f"BRN{customer.phone_number}"
+
+                f"{settings.router_username_prefix}"
+
+                f"{local_nigerian_phone_number(
+
+                    customer.phone_number,
+
+                )}"
+
             )
 
         return (
             f"CUST{customer.customer_id:06d}"
-        )
-
-    @staticmethod
-    def _generate_password():
-
-        alphabet = (
-            string.ascii_letters
-            + string.digits
-        )
-
-        return "".join(
-
-            secrets.choice(alphabet)
-
-            for _ in range(12)
-
-        )
-
-    @staticmethod
-    def _validate_router(
-        db,
-        router_id,
-    ):
-
-        return (
-            RouterService.get_router(
-                db,
-                router_id,
-            )
-        )
-
-    # ==========================================================
-    # Context Builder
-    # ==========================================================
-
-    @staticmethod
-    def build_router_context(
-        db,
-        customer_id,
-    ):
-
-        customer = (
-            CustomerService.get_customer(
-                db,
-                customer_id,
-            )
-        )
-
-        subscription = (
-
-            db.query(
-                Subscription,
-            )
-
-            .filter(
-
-                Subscription.customer_id
-                == customer_id,
-
-                Subscription.status
-                == SubscriptionStatus.ACTIVE,
-
-            )
-
-            .first()
-
-        )
-
-        if not subscription:
-
-            raise HTTPException(
-                status_code=400,
-                detail="Customer has no active subscription.",
-            )
-        from app.services.plan_service import PlanService
-        plan = (
-            PlanService.get_plan(
-                db,
-                subscription.plan_id,
-            )
-        )
-
-        router_account = (
-            db.query(RouterAccount)
-            .filter(
-                RouterAccount.customer_id == customer_id,
-            )
-            .first()
-        )
-
-        if not router_account:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Router account not found.",
-            )
-
-        router = (
-            RouterService.get_router(
-                db,
-                router_account.router_id,
-            )
-        )
-
-        devices = (
-            DeviceService.get_active_devices(
-                db,
-                customer_id,
-            )
-        )
-
-        return RouterContext(
-
-            customer=customer,
-
-            subscription=subscription,
-
-            plan=plan,
-
-            router=router,
-
-            router_account=router_account,
-
-            devices=devices,
-
         )
 
     # ==========================================================
@@ -211,10 +99,9 @@ class RouterAccountService:
     # ==========================================================
 
     @staticmethod
-    def create_router_account(
+    def ensure_router_account(
         db,
         customer_id,
-        router_id,
     ):
 
         customer = (
@@ -224,9 +111,17 @@ class RouterAccountService:
             )
         )
 
-        RouterAccountService._validate_router(
-            db,
-            router_id,
+        router = (
+
+            RouterAssignmentService
+            .assign_router(
+
+                db,
+
+                customer_id,
+
+            )
+
         )
 
         existing_account = (
@@ -238,7 +133,7 @@ class RouterAccountService:
 
                 customer_id,
 
-                router_id,
+                router.router_id,
 
             )
 
@@ -246,35 +141,40 @@ class RouterAccountService:
 
         if existing_account:
 
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Customer already has a "
-                    "router account on this router."
-                ),
+            return existing_account
+
+        password = (
+
+            RouterCredentialManager
+            .generate_password()
+
+        )
+
+        encrypted_password = (
+
+            RouterCredentialManager
+            .encrypt(
+                password,
             )
+
+        )
 
         account = RouterAccount(
 
             customer_id=customer_id,
 
-            router_id=router_id,
+            router_id=router.router_id,
 
             username=(
 
                 RouterAccountService
-                ._generate_username(
+                ._generate_router_username(
                     customer,
                 )
 
             ),
 
-            password=(
-
-                RouterAccountService
-                ._generate_password()
-
-            ),
+            encrypted_password=encrypted_password,
 
             is_enabled=False,
 
@@ -364,56 +264,6 @@ class RouterAccountService:
             "message":
                 "Router account removed successfully."
         }
-
-    @staticmethod
-    def synchronize_customer_access(
-        db,
-        customer_id,
-    ):
-
-        try:
-
-            context = (
-
-                RouterAccountService
-                .build_router_context(
-
-                    db,
-
-                    customer_id,
-
-                )
-
-            )
-
-        except HTTPException as exception:
-
-            if (
-
-                exception.status_code == 404
-
-                and
-
-                exception.detail == "Router account not found."
-
-            ):
-
-                return None
-
-            raise
-
-        return (
-
-            RouterService
-            .synchronize_customer(
-
-                db,
-
-                context,
-
-            )
-
-        )
 
     # ==========================================================
     # Query Methods

@@ -105,6 +105,16 @@ class PaymentTransaction(Base):
         nullable=True,
     )
 
+    checkout_url = Column(
+        Text,
+        nullable=True,
+    )
+
+    access_code = Column(
+        String(255),
+        nullable=True,
+    )
+
     paid_at = Column(
         TIMESTAMP,
         nullable=True,

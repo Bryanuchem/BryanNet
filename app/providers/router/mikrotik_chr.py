@@ -1,6 +1,4 @@
-import routeros_api
-
-from fastapi import HTTPException
+import time
 
 from app.domain import (
     RouterContext,
@@ -11,447 +9,53 @@ from app.providers.router.base import (
     RouterProvider,
 )
 
+from app.providers.router.mikrotik_connection import (
+    MikroTikConnection,
+)
+
+from app.providers.router.mikrotik_profile_repository import (
+    MikroTikProfileRepository,
+)
+
+from app.providers.router.mikrotik_secret_repository import (
+    MikroTikSecretRepository,
+)
+
+from app.providers.router.mikrotik_session_repository import (
+    MikroTikSessionRepository,
+)
+
 
 class MikroTikCHRProvider(
     RouterProvider,
 ):
 
     # ==========================================================
-    # Connection Helpers
+    # Constructor
     # ==========================================================
 
-    def _connect(
+    def __init__(
         self,
-        router,
     ):
 
-        try:
-
-            api_pool = (
-                routeros_api.RouterOsApiPool(
-
-                    host=router.ip_address,
-
-                    username=router.api_username,
-
-                    password=router.api_password,
-
-                    port=router.api_port,
-
-                    plaintext_login=True,
-
-                )
-            )
-
-            api = (
-                api_pool.get_api()
-            )
-
-            return (
-                api_pool,
-                api,
-            )
-
-        except Exception as ex:
-
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    f"Unable to connect to router: {ex}"
-                ),
-            )
-
-    def _disconnect(
-        self,
-        api_pool,
-    ):
-
-        if api_pool:
-
-            api_pool.disconnect()
-
-    def _execute(
-        self,
-        api,
-        resource,
-    ):
-
-        try:
-
-            return api.get_resource(
-                resource,
-            )
-
-        except Exception as ex:
-
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    f"RouterOS resource error: {ex}"
-                ),
-            )
-            
-    # ==========================================================
-    # PPP Secret Helpers
-    # ==========================================================
-
-    def _find_secret(
-        self,
-        api,
-        username,
-    ):
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
+        self.connection = (
+            MikroTikConnection()
         )
 
-        secrets = (
-            secret_resource.get(
-                name=username,
-            )
+        self.profiles = (
+            MikroTikProfileRepository()
         )
 
-        if not secrets:
-
-            return None
-
-        return secrets[0]
-
-    def _create_secret(
-        self,
-        api,
-        context: RouterContext,
-    ):
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
+        self.secrets = (
+            MikroTikSecretRepository()
         )
 
-        profile = (
-            self._find_or_create_profile(
-                api,
-                context,
-            )
-        )
-
-        secret_resource.add(
-
-            name=(
-                context.router_account.username
-            ),
-
-            password=(
-                context.router_account.password
-            ),
-
-            profile=profile,
-
-            disabled=(
-                "no"
-                if context.router_account.is_enabled
-                else "yes"
-            ),
-
-            comment=(
-                f"BryanNet Customer "
-                f"{context.customer.customer_id}"
-            ),
-
-        )
-
-    def _update_secret(
-        self,
-        api,
-        context: RouterContext,
-    ):
-
-        secret = (
-            self._find_secret(
-                api,
-                context.router_account.username,
-            )
-        )
-
-        if not secret:
-
-            self._create_secret(
-                api,
-                context,
-            )
-
-            return
-
-        profile = (
-            self._find_or_create_profile(
-                api,
-                context,
-            )
-        )
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
-        )
-
-        secret_resource.set(
-
-            id=secret[".id"],
-
-            password=(
-                context.router_account.password
-            ),
-
-            profile=profile,
-
-            disabled=(
-                "no"
-                if context.router_account.is_enabled
-                else "yes"
-            ),
-
-            comment=(
-                f"BryanNet Customer "
-                f"{context.customer.customer_id}"
-            ),
-
-        )
-
-    def _enable_secret(
-        self,
-        api,
-        username,
-    ):
-
-        secret = (
-            self._find_secret(
-                api,
-                username,
-            )
-        )
-
-        if not secret:
-
-            return
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
-        )
-
-        secret_resource.set(
-
-            id=secret[".id"],
-
-            disabled="no",
-
-        )
-
-    def _disable_secret(
-        self,
-        api,
-        username,
-    ):
-
-        secret = (
-            self._find_secret(
-                api,
-                username,
-            )
-        )
-
-        if not secret:
-
-            return
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
-        )
-
-        secret_resource.set(
-
-            id=secret[".id"],
-
-            disabled="yes",
-
-        )
-
-    def _delete_secret(
-        self,
-        api,
-        username,
-    ):
-
-        secret = (
-            self._find_secret(
-                api,
-                username,
-            )
-        )
-
-        if not secret:
-
-            return
-
-        secret_resource = (
-            self._execute(
-                api,
-                "/ppp/secret",
-            )
-        )
-
-        secret_resource.remove(
-            id=secret[".id"],
-        )            
-        
-    # ==========================================================
-    # PPP Profile Helpers
-    # ==========================================================
-
-    def _find_profile(
-        self,
-        api,
-        profile_name,
-    ):
-
-        profile_resource = (
-            self._execute(
-                api,
-                "/ppp/profile",
-            )
-        )
-
-        profiles = (
-            profile_resource.get(
-                name=profile_name,
-            )
-        )
-
-        if not profiles:
-
-            return None
-
-        return profiles[0]
-
-    def _create_profile(
-        self,
-        api,
-        context: RouterContext,
-    ):
-
-        profile_resource = (
-            self._execute(
-                api,
-                "/ppp/profile",
-            )
-        )
-
-        profile_resource.add(
-
-            name=(
-                context.plan.plan_name
-            ),
-
-            rate_limit=(
-                f"{context.plan.speed_limit_mbps}M/"
-                f"{context.plan.speed_limit_mbps}M"
-            ),
-
-        )
-
-        return (
-            context.plan.plan_name
-        )
-
-    def _update_profile(
-        self,
-        api,
-        context: RouterContext,
-    ):
-
-        profile = (
-            self._find_profile(
-                api,
-                context.plan.plan_name,
-            )
-        )
-
-        if not profile:
-
-            return (
-                self._create_profile(
-                    api,
-                    context,
-                )
-            )
-
-        profile_resource = (
-            self._execute(
-                api,
-                "/ppp/profile",
-            )
-        )
-
-        profile_resource.set(
-
-            id=profile[".id"],
-
-            rate_limit=(
-                f"{context.plan.speed_limit_mbps}M/"
-                f"{context.plan.speed_limit_mbps}M"
-            ),
-
-        )
-
-        return (
-            context.plan.plan_name
-        )
-
-    def _find_or_create_profile(
-        self,
-        api,
-        context: RouterContext,
-    ):
-
-        profile = (
-            self._find_profile(
-                api,
-                context.plan.plan_name,
-            )
-        )
-
-        if profile:
-
-            self._update_profile(
-                api,
-                context,
-            )
-
-            return (
-                context.plan.plan_name
-            )
-
-        return (
-            self._create_profile(
-                api,
-                context,
-            )
+        self.sessions = (
+            MikroTikSessionRepository()
         )
 
     # ==========================================================
-    # RouterProvider Implementation
+    # Customer Synchronization
     # ==========================================================
 
     def synchronize_customer(
@@ -460,49 +64,125 @@ class MikroTikCHRProvider(
         context: RouterContext,
     ):
 
-        api_pool = None
+        api = None
 
         try:
 
-            api_pool, api = (
-                self._connect(
+            api = (
+
+                self.connection
+
+                .connect(
+
                     context.router,
+
                 )
+
             )
 
-            self._update_secret(
-                api,
-                context,
-            )
+            profile_name = (
 
-            if context.router_account.is_enabled:
+                self.profiles
 
-                self._enable_secret(
+                .ensure(
+
                     api,
-                    context.router_account.username,
+
+                    context.plan.plan_id,
+
+                    context.plan.speed_limit_mbps,
+
+                )
+
+            )
+
+            password = (
+
+                context.plaintext_password
+
+            )
+
+            secret = (
+
+                self.secrets
+
+                .ensure(
+
+                    api,
+
+                    username=(
+                        context.router_account.username
+                    ),
+
+                    password=password,
+
+                    profile=profile_name,
+
+                    enabled=(
+                        context.router_account.is_enabled
+                    ),
+
+                )
+
+            )
+
+            if (
+
+                context.router_account.is_enabled
+
+            ):
+
+                self.secrets.enable(
+
+                    api,
+
+                    secret,
+
                 )
 
             else:
 
-                self._disable_secret(
+                self.secrets.disable(
+
                     api,
+
+                    secret,
+
+                )
+
+                self.sessions.disconnect_username(
+
+                    api,
+
                     context.router_account.username,
+
                 )
 
             return {
 
                 "success": True,
 
-                "message":
-                    "Customer synchronized successfully.",
+                "message": (
+
+                    "Customer synchronized "
+
+                    "successfully."
+
+                ),
 
             }
 
         finally:
 
-            self._disconnect(
-                api_pool,
+            self.connection.disconnect(
+
+                api,
+
             )
+            
+    # ==========================================================
+    # Customer Connection
+    # ==========================================================
 
     def disconnect_customer(
         self,
@@ -510,38 +190,78 @@ class MikroTikCHRProvider(
         context: RouterContext,
     ):
 
-        api_pool = None
+        api = None
 
         try:
 
-            api_pool, api = (
-                self._connect(
+            api = (
+
+                self.connection
+
+                .connect(
+
                     context.router,
+
                 )
+
             )
 
-            self._disable_secret(
+            secret = (
+
+                self.secrets
+
+                .find(
+
+                    api,
+
+                    context.router_account.username,
+
+                )
+
+            )
+
+            if secret:
+
+                self.secrets.disable(
+
+                    api,
+
+                    secret,
+
+                )
+
+            self.sessions.disconnect_username(
+
                 api,
+
                 context.router_account.username,
+
             )
 
             return {
 
                 "success": True,
 
-                "message":
-                    "Customer disconnected successfully.",
+                "message": (
+
+                    "Customer disconnected "
+
+                    "successfully."
+
+                ),
 
             }
 
         finally:
 
-            self._disconnect(
-                api_pool,
+            self.connection.disconnect(
+
+                api,
+
             )
 
     # ==========================================================
-    # Health Check
+    # Router Health
     # ==========================================================
 
     def health_check(
@@ -549,20 +269,57 @@ class MikroTikCHRProvider(
         router,
     ):
 
-        api_pool = None
+        start = time.perf_counter()
+
+        api = None
 
         try:
 
-            api_pool, api = (
-                self._connect(
+            api = (
+
+                self.connection
+
+                .connect(
+
                     router,
+
                 )
+
             )
 
-            self._execute(
-                api,
-                "/system/resource",
+            resource = (
+
+                self.connection
+
+                .path(
+
+                    api,
+
+                    "system",
+
+                    "resource",
+
+                )
+
             )
+
+            system = next(
+
+                iter(
+
+                    resource,
+
+                )
+
+            )
+
+            latency = (
+
+                time.perf_counter()
+
+                - start
+
+            ) * 1000
 
             return RouterHealth(
 
@@ -570,12 +327,28 @@ class MikroTikCHRProvider(
 
                 connected=True,
 
-                latency_ms=None,
+                latency_ms=round(
 
-                router_os_version=None,
+                    latency,
+
+                    2,
+
+                ),
+
+                router_os_version=(
+
+                    system.get(
+
+                        "version",
+
+                    )
+
+                ),
 
                 message=(
-                    "Router connection successful."
+
+                    "Router reachable."
+
                 ),
 
             )
@@ -592,12 +365,18 @@ class MikroTikCHRProvider(
 
                 router_os_version=None,
 
-                message=str(ex),
+                message=str(
+
+                    ex,
+
+                ),
 
             )
 
         finally:
 
-            self._disconnect(
-                api_pool,
-            )        
+            self.connection.disconnect(
+
+                api,
+
+            )

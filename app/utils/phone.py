@@ -50,3 +50,45 @@ def normalize_nigerian_phone_number(
         NIGERIA_COUNTRY_CODE
         + phone_number
     )
+    
+def local_nigerian_phone_number(
+    phone_number: str,
+) -> str:
+    """
+    Convert any supported Nigerian phone number into
+    the local format:
+
+        08031234567
+
+    Examples
+    --------
+    08031234567
+        -> 08031234567
+
+    8031234567
+        -> 08031234567
+
+    2348031234567
+        -> 08031234567
+
+    +2348031234567
+        -> 08031234567
+    """
+
+    normalized = (
+
+        normalize_nigerian_phone_number(
+
+            phone_number,
+
+        )
+
+    )
+
+    return (
+
+        "0"
+
+        + normalized[len(NIGERIA_COUNTRY_CODE):]
+
+    )

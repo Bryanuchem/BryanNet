@@ -2,6 +2,10 @@ from sqlalchemy import (
     Column,
     BigInteger,
     String,
+    Integer,
+    Boolean,
+    Float,
+    DateTime,
     TIMESTAMP,
 )
 
@@ -40,7 +44,7 @@ class Router(Base):
         nullable=True,
     )
 
-    management_ip = Column(
+    hostname = Column(
         String(50),
         nullable=False,
         unique=True,
@@ -53,6 +57,49 @@ class Router(Base):
         ),
         nullable=False,
         default=RouterProviderType.SIMULATED,
+    )
+
+    api_port = Column(
+        Integer,
+        nullable=False,
+        default=8728,
+    )
+
+    api_username = Column(
+        String(100),
+        nullable=False,
+    )
+
+    encrypted_api_password = Column(
+        String(500),
+        nullable=False,
+    )
+
+    use_ssl = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    connection_timeout = Column(
+        Integer,
+        nullable=False,
+        default=10,
+    )
+
+    last_health_check = Column(
+    DateTime,
+    nullable=True,
+)
+
+    last_latency_ms = Column(
+        Float,
+        nullable=True,
+    )
+
+    router_os_version = Column(
+        String(100),
+        nullable=True,
     )
 
     status = Column(

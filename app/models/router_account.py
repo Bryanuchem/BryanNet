@@ -4,7 +4,8 @@ from sqlalchemy import (
     String,
     DateTime,
     TIMESTAMP,
-    Enum,
+    Boolean,
+    Integer,
     ForeignKey,
 )
 
@@ -43,8 +44,8 @@ class RouterAccount(Base):
         nullable=False,
     )
 
-    password_hash = Column(
-        String(255),
+    encrypted_password = Column(
+        String(500),
         nullable=False,
     )
 
@@ -53,20 +54,41 @@ class RouterAccount(Base):
         nullable=True,
     )
 
-    status = Column(
-        Enum(
-            "active",
-            "suspended",
-            "expired",
-            name="router_account_status",
-        ),
+    is_enabled = Column(
+        Boolean,
         nullable=False,
-        default="active",
+        default=False,
     )
 
-    last_sync_at = Column(
+    last_synchronized_at = Column(
         DateTime,
         nullable=True,
+    )
+
+    last_connected_at = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    last_disconnected_at = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    last_sync_status = Column(
+        String(50),
+        nullable=True,
+    )
+
+    last_sync_message = Column(
+        String(500),
+        nullable=True,
+    )
+
+    sync_attempts = Column(
+        Integer,
+        nullable=False,
+        default=0,
     )
 
     created_at = Column(

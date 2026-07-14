@@ -91,8 +91,7 @@ class PaystackProvider(
                 ),
 
             "callback_url": (
-
-                f"https://t.me/"
+                f"https://telegram.me/"
                 f"{settings.telegram_bot_username}"
 
                 f"?start="
@@ -118,7 +117,7 @@ class PaystackProvider(
             },
 
         }
-
+        
         response = requests.post(
 
             (
@@ -158,12 +157,15 @@ class PaystackProvider(
                 )
             ),
 
-            metadata={
+        metadata={
 
-                "access_code":
-                    data["access_code"],
+            "access_code":
+                data["access_code"],
 
-            },
+            "authorization_url":
+                data["authorization_url"],
+
+        },
 
         )
 

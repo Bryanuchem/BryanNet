@@ -6,8 +6,9 @@ from datetime import (
     
 )
 
-from sqlalchemy.orm import joinedload
+from typing import cast
 
+from sqlalchemy.orm import joinedload
 
 from fastapi import HTTPException
 
@@ -20,11 +21,10 @@ from app.models.subscription import Subscription
 from app.schemas.subscription import SubscriptionAdminResponse
 from app.services.customer_service import CustomerService
 from app.services.plan_service import PlanService
-from app.services.router_account_service import (
-    RouterAccountService,
-)
 
-from typing import cast
+from app.services.router_provisioning_service import (
+    RouterProvisioningService,
+)
 
 from app.services.audit_log_service import (
     AuditLogService,
@@ -33,6 +33,7 @@ from app.services.audit_log_service import (
 from app.enums.audit_result import (
     AuditResult,
 )
+
 
 from app.constants.audit_actions import (
     PURCHASE_SUBSCRIPTION,
@@ -337,11 +338,6 @@ class SubscriptionService:
             subscription,
         )
 
-        RouterAccountService.synchronize_customer_access(
-            db,
-            customer_id,
-        )
-
         return subscription
 
 
@@ -552,6 +548,14 @@ class SubscriptionService:
 
         )
 
+        RouterProvisioningService.suspend_customer_access(
+
+            db,
+
+            subscription.customer_id,
+
+        )
+        
         if commit:
 
             db.commit()
@@ -559,12 +563,7 @@ class SubscriptionService:
             db.refresh(
                 subscription,
             )
-
-            RouterAccountService.synchronize_customer_access(
-                db,
-                subscription.customer_id,
-            )
-
+            
         return subscription
 
     @staticmethod
@@ -621,6 +620,14 @@ class SubscriptionService:
             },
 
         )
+        
+        RouterProvisioningService.ensure_customer_access(
+
+            db,
+
+            subscription.customer_id,
+
+        )
 
         if commit:
 
@@ -628,11 +635,6 @@ class SubscriptionService:
 
             db.refresh(
                 subscription,
-            )
-
-            RouterAccountService.synchronize_customer_access(
-                db,
-                subscription.customer_id,
             )
 
         return subscription

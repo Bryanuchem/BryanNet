@@ -22,4 +22,6 @@ class RouterContext:
 
     router_account: RouterAccount
 
+    plaintext_password: str
+
     devices: List[Device]

@@ -38,10 +38,6 @@ class PaymentDispatcherService:
             )
         )
 
-    # ==========================================================
-    # Business Commands
-    # ==========================================================
-
     @staticmethod
     def initialize_payment(
         db,
@@ -65,18 +61,59 @@ class PaymentDispatcherService:
 
         )
 
+        # ==========================================================
+        # Reuse Existing Checkout
+        # ==========================================================
+
+        if transaction.checkout_url:
+
+            return PaymentInitializationResult(
+
+                authorization_url=(
+                    transaction.checkout_url
+                ),
+
+                access_code=(
+                    transaction.access_code
+                ),
+
+                gateway_reference=(
+                    transaction.gateway_reference
+                ),
+
+                gateway_status=(
+                    transaction.gateway_status
+                ),
+
+                gateway_response=(
+                    transaction.gateway_response
+                ),
+
+                metadata=(
+                    transaction.gateway_metadata
+                ),
+
+            )
+
         provider = (
+
             PaymentDispatcherService
             ._get_provider(
                 payment.payment_provider,
             )
+
         )
 
         result = (
+
             provider.initialize_payment(
+
                 payment,
+
                 transaction,
+
             )
+
         )
 
         PaymentTransactionService.record_initialization(
@@ -89,6 +126,14 @@ class PaymentDispatcherService:
 
             gateway_reference=(
                 result.gateway_reference
+            ),
+
+            checkout_url=(
+                result.authorization_url
+            ),
+
+            access_code=(
+                result.access_code
             ),
 
             gateway_status=(
@@ -114,24 +159,37 @@ class PaymentDispatcherService:
     ) -> PaymentVerificationResult:
 
         transaction = (
+
             PaymentTransactionService
             .get_transaction(
+
                 db,
+
                 transaction_id,
+
             )
+
         )
 
         provider = (
+
             PaymentDispatcherService
             ._get_provider(
+
                 transaction.payment.payment_provider,
+
             )
+
         )
 
         result = (
+
             provider.verify_payment(
+
                 transaction,
+
             )
+
         )
 
         PaymentTransactionService.record_verification(

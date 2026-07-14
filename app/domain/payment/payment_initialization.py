@@ -16,6 +16,8 @@ class PaymentInitializationResult(
 
     authorization_url: str | None = None
 
+    access_code: str | None = None
+
     gateway_reference: str | None = None
 
     gateway_status: str | None = None

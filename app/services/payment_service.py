@@ -21,6 +21,7 @@ from app.schemas.payment import (
 
 from app.services.customer_service import CustomerService
 from app.services.plan_service import PlanService
+
 from app.services.subscription_service import (
     SubscriptionService,
 )
@@ -199,10 +200,15 @@ class PaymentService:
     ):
 
         payment = (
+
             PaymentService._find_payment(
+
                 db,
+
                 payment_reference,
+
             )
+
         )
 
         # ==========================================================
@@ -210,47 +216,73 @@ class PaymentService:
         # ==========================================================
 
         if (
+
             payment.status
+
             == PaymentStatus.SUCCESSFUL
+
         ):
 
             return payment
 
         if (
+
             payment.status
+
             != PaymentStatus.PENDING
+
         ):
 
             raise HTTPException(
+
                 status_code=400,
+
                 detail=(
+
                     f"Cannot complete a "
+
                     f"{payment.status.value} "
+
                     "payment."
+
                 ),
+
             )
 
         PaymentService._mark_successful(
+
             payment,
+
             gateway_transaction_id,
+
         )
 
         subscription = (
+
             SubscriptionService._create_subscription(
+
                 db=db,
+
                 customer_id=payment.customer_id,
+
                 plan_id=payment.plan_id,
+
             )
+
         )
 
         payment.subscription_id = (
+
             subscription.subscription_id
+
         )
 
         db.commit()
 
         db.refresh(
+
             payment,
+
         )
 
         return payment
