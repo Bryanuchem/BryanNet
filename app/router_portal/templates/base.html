@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}
+            {{ settings.browser_title }}
+        {% endblock %}
+    </title>
+
+    <meta
+        name="description"
+        content="{% block description %}{{ settings.meta_description }}{% endblock %}"
+    >
+
+    <meta
+        name="theme-color"
+        content="{{ settings.theme_color }}"
+    >
+
+    <link
+        rel="icon"
+        href="{{ favicon_url }}"
+    >
+
+    <!-- ======================================================
+         Stylesheets
+         ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="{{ static_url }}/css/variables.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ static_url }}/css/main.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ static_url }}/css/components.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ static_url }}/css/responsive.css"
+    >
+
+    {% block head %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+    <!-- ======================================================
+         Page Content
+         ====================================================== -->
+
+    {% block content %}
+    {% endblock %}
+
+    <!-- ======================================================
+         JavaScript
+         ====================================================== -->
+
+    <script
+        src="{{ static_url }}/js/validation.js"
+    ></script>
+
+    <script
+        src="{{ static_url }}/js/animations.js"
+    ></script>
+
+    <script
+        src="{{ static_url }}/js/hotspot.js"
+    ></script>
+
+    <script
+        src="{{ static_url }}/js/app.js"
+    ></script>
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+
+</html>

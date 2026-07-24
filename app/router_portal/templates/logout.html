@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Logged Out
+{% endblock %}
+
+{% block description %}
+    You have successfully disconnected from BryanNet.
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card">
+
+            {% include "partials/_header.html" %}
+
+            <section class="login-container">
+
+                <div class="status-icon success">
+
+                    ✓
+
+                </div>
+
+                <h2 class="login-title">
+
+                    Successfully Disconnected
+
+                </h2>
+
+                <p class="login-description">
+
+                    You have been disconnected from the BryanNet network.
+
+                </p>
+
+                <p class="login-description">
+
+                    Thank you for using BryanNet.
+
+                </p>
+
+                <form
+                    action="{{ hotspot.link_login }}"
+                    method="get"
+                    class="login-form"
+                >
+
+                    <button
+                        class="connect-button"
+                        type="submit"
+                    >
+
+                        Connect Again
+
+                    </button>
+
+                </form>
+
+            </section>
+
+            {% include "partials/_support.html" %}
+
+            {% include "partials/_footer.html" %}
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+
+{{ super() }}
+
+<script>
+
+    sessionStorage.removeItem(
+        "router-login-submitted"
+    );
+
+</script>
+
+{% endblock %}

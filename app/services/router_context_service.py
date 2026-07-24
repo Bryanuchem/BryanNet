@@ -2,6 +2,10 @@ from fastapi import (
     HTTPException,
 )
 
+from datetime import (
+    datetime,
+)
+
 from sqlalchemy.orm import (
     Session,
 )
@@ -32,6 +36,10 @@ from app.models.router_account import (
 
 from app.models.subscription import (
     Subscription,
+)
+
+from app.enums import (
+    SubscriptionStatus,
 )
 
 from app.services.router_credential_manager import (
@@ -123,6 +131,55 @@ class RouterContextService:
 
         )
 
+    @staticmethod
+    def _session_time_left(
+        subscription: Subscription,
+    ) -> str:
+
+        expires_at = subscription.expiry_date
+
+        if expires_at is None:
+
+            return "Unlimited"
+
+        remaining = expires_at - datetime.utcnow()
+
+        if remaining.total_seconds() <= 0:
+
+            return "Expired"
+
+        days = remaining.days
+
+        hours = (
+
+            remaining.seconds // 3600
+
+        )
+
+        minutes = (
+
+            (remaining.seconds % 3600) // 60
+
+        )
+
+        if days > 0:
+
+            return (
+
+                f"{days}d {hours}h"
+
+            )
+
+        if hours > 0:
+
+            return (
+
+                f"{hours}h {minutes}m"
+
+            )
+
+        return f"{minutes}m"
+    
     # ==========================================================
     # Context Builder
     # ==========================================================
@@ -157,8 +214,11 @@ class RouterContextService:
 
             .filter(
 
-                Subscription.subscription_id
-                == router_account.subscription_id,
+                Subscription.customer_id
+                == router_account.customer_id,
+
+                Subscription.status
+                == SubscriptionStatus.ACTIVE,
 
             )
 
@@ -170,9 +230,15 @@ class RouterContextService:
 
             raise HTTPException(
 
-                status_code=404,
+                status_code=400,
 
-                detail="Subscription not found.",
+                detail=(
+
+                    "Customer has no active "
+
+                    "subscription."
+
+                ),
 
             )
 

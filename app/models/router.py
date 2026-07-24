@@ -39,6 +39,12 @@ class Router(Base):
         unique=True,
     )
 
+    router_identifier = Column(
+        String(100),
+        nullable=False,
+        unique=True
+    )
+
     location_name = Column(
         String(200),
         nullable=True,
@@ -124,7 +130,28 @@ class Router(Base):
         nullable=False,
     )
 
+    router_secret = Column(
+        String(128),
+        nullable=False,
+        unique=True,
+    )
+
     router_accounts = relationship(
         "RouterAccount",
+        back_populates="router",
+    )
+    
+    router_sessions = relationship(
+        "RouterSession",
+        back_populates="router",
+    )
+    
+    portal_sessions = relationship(
+        "PortalSession",
+        back_populates="router",
+    )
+    
+    pending_logins = relationship(
+        "PendingLogin",
         back_populates="router",
     )

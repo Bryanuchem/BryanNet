@@ -63,7 +63,12 @@ class MikroTikConnection:
     @staticmethod
     def disconnect(
         api,
+        persistent=False,
     ):
+
+        if persistent:
+
+            return
 
         if api is None:
 
@@ -103,6 +108,38 @@ class MikroTikConnection:
 
                     f"Unable to access RouterOS path "
                     f"'{'/'.join(parts)}': {ex}"
+
+                ),
+
+            )
+            
+    @staticmethod
+    def execute(
+        api,
+        command,
+        **kwargs,
+    ):
+
+        try:
+
+            return api(
+                command,
+                **kwargs,
+            )
+
+        except Exception as ex:
+
+            raise HTTPException(
+
+                status_code=500,
+
+                detail=(
+
+                    f"Unable to execute "
+
+                    f"RouterOS command "
+
+                    f"'{command}': {ex}"
 
                 ),
 

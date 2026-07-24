@@ -1,0 +1,204 @@
+/* ==========================================================
+   BryanNet Router Portal
+   Design System Variables
+   ========================================================== */
+
+:root {
+
+    /* ======================================================
+       Brand Colors
+       ====================================================== */
+
+    --color-primary: #2563EB;
+    --color-primary-dark: #1D4ED8;
+    --color-primary-light: #60A5FA;
+
+    --color-accent: #3B82F6;
+
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+
+    /* ======================================================
+       Neutral Colors
+       ====================================================== */
+
+    --color-white: #FFFFFF;
+
+    --color-background: #F8FAFC;
+
+    --color-surface: #FFFFFF;
+
+    --color-border: #E5E7EB;
+
+    --color-divider: #CBD5E1;
+
+    /* ======================================================
+       Typography
+       ====================================================== */
+
+    --color-heading: #111827;
+
+    --color-text: #374151;
+
+    --color-muted: #6B7280;
+
+    --color-placeholder: #9CA3AF;
+
+    /* ======================================================
+       Gradients
+       ====================================================== */
+
+    --gradient-primary:
+        linear-gradient(
+            135deg,
+            #2563EB,
+            #1D4ED8
+        );
+
+    --gradient-background:
+        radial-gradient(
+            circle at top left,
+            rgba(37, 99, 235, .10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at bottom right,
+            rgba(96, 165, 250, .12),
+            transparent 40%
+        ),
+        #F8FAFC;
+
+    /* ======================================================
+       Typography
+       ====================================================== */
+
+    --font-family:
+        Inter,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    --font-size-xs: .75rem;
+
+    --font-size-sm: .875rem;
+
+    --font-size-md: 1rem;
+
+    --font-size-lg: 1.125rem;
+
+    --font-size-xl: 1.5rem;
+
+    --font-size-2xl: 2rem;
+
+    --font-weight-regular: 400;
+
+    --font-weight-medium: 500;
+
+    --font-weight-semibold: 600;
+
+    --font-weight-bold: 700;
+
+    --line-height: 1.6;
+
+    /* ======================================================
+       Spacing
+       ====================================================== */
+
+    --space-1: .25rem;
+
+    --space-2: .5rem;
+
+    --space-3: .75rem;
+
+    --space-4: 1rem;
+
+    --space-5: 1.5rem;
+
+    --space-6: 2rem;
+
+    --space-7: 2.5rem;
+
+    --space-8: 3rem;
+
+    --space-9: 4rem;
+
+    /* ======================================================
+       Border Radius
+       ====================================================== */
+
+    --radius-sm: .5rem;
+
+    --radius-md: .875rem;
+
+    --radius-lg: 1.25rem;
+
+    --radius-xl: 1.5rem;
+
+    --radius-pill: 999px;
+
+    /* ======================================================
+       Shadows
+       ====================================================== */
+
+    --shadow-sm:
+        0 2px 6px rgba(15, 23, 42, .05);
+
+    --shadow-md:
+        0 10px 25px rgba(15, 23, 42, .08);
+
+    --shadow-lg:
+        0 20px 50px rgba(15, 23, 42, .10);
+
+    --shadow-focus:
+        0 0 0 4px rgba(37, 99, 235, .15);
+
+    /* ======================================================
+       Component Sizes
+       ====================================================== */
+
+    --input-height: 3.5rem;
+
+    --button-height: 3.5rem;
+
+    --card-width: 420px;
+
+    --container-width: 1200px;
+
+    /* ======================================================
+       Animation
+       ====================================================== */
+
+    --transition-fast: .15s ease;
+
+    --transition-normal: .25s ease;
+
+    --transition-slow: .4s ease;
+
+    /* ======================================================
+       Layering
+       ====================================================== */
+
+    --z-base: 1;
+
+    --z-dropdown: 100;
+
+    --z-modal: 1000;
+
+    --z-toast: 2000;
+
+    /* ======================================================
+       Responsive Breakpoints
+       ====================================================== */
+
+    --breakpoint-sm: 576px;
+
+    --breakpoint-md: 768px;
+
+    --breakpoint-lg: 992px;
+
+    --breakpoint-xl: 1200px;
+
+}

@@ -86,3 +86,8 @@ class Plan(Base):
         "Payment",
         back_populates="plan",
     )    
+        
+    pending_logins = relationship(
+        "PendingLogin",
+        back_populates="plan",
+    )

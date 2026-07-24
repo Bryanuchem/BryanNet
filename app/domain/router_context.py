@@ -24,4 +24,4 @@ class RouterContext:
 
     plaintext_password: str
 
-    devices: List[Device]
+    devices: List[Device]  

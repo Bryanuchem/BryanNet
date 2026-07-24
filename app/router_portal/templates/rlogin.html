@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+<?xml version="1.0" encoding="UTF-8"?>
+<WISPAccessGatewayParam
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://{{ hotspot.hostname }}/xml/WISPAccessGatewayParam.xsd">
+
+    <Redirect>
+
+        <AccessProcedure>1.0</AccessProcedure>
+
+        <AccessLocation>{{ hotspot.location_id }}</AccessLocation>
+
+        <LocationName>{{ hotspot.location_name }}</LocationName>
+
+        <LoginURL>{{ hotspot.link_login_only }}?target=xml</LoginURL>
+
+        <MessageType>100</MessageType>
+
+        <ResponseCode>0</ResponseCode>
+
+    </Redirect>
+
+</WISPAccessGatewayParam>
+-->
+
+<head>
+
+    {% if hotspot.http_status == "302" %}
+    Hotspot login required
+    {% endif %}
+
+    {% if hotspot.http_header == "Location" %}
+    {{ hotspot.link_redirect }}
+    {% endif %}
+
+    <meta charset="utf-8">
+
+    <title>Router Login</title>
+
+    <meta
+        http-equiv="refresh"
+        content="0; url={{ hotspot.link_redirect }}"
+    >
+
+    <meta
+        http-equiv="pragma"
+        content="no-cache"
+    >
+
+    <meta
+        http-equiv="expires"
+        content="-1"
+    >
+
+</head>
+
+<body>
+
+</body>
+
+</html>

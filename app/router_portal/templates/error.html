@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ settings.error_title }}
+{% endblock %}
+
+{% block description %}
+    {{ settings.error_message }}
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card">
+
+            {% include "partials/_header.html" %}
+
+                <section class="login-container">
+
+                    <img
+                        src="{{ static_url }}/icons/status/error.svg"
+                        class="status-icon-svg"
+                        alt=""
+                        aria-hidden="true"
+                    >
+
+                    <h2 class="login-title">
+
+                        {{ settings.error_title }}
+
+                    </h2>
+
+                    <p class="login-description">
+
+                        {{ hotspot.error_message or settings.error_message }}
+
+                    </p>
+
+                    <p class="login-description">
+
+                        Please verify your credentials and try again.
+
+                    </p>
+
+                    <a
+                        href="{{ hotspot.login_url or '/portal/preview/login' }}"
+                        class="connect-button return-button"
+                    >
+
+                        Return to Login
+
+                    </a>
+
+                </section>
+
+            {% include "partials/_support.html" %}
+
+            {% include "partials/_footer.html" %}
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+
+{{ super() }}
+
+<script>
+
+    sessionStorage.removeItem(
+        "router-login-submitted"
+    );
+
+</script>
+
+{% endblock %}

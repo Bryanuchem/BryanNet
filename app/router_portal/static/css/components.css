@@ -1,0 +1,551 @@
+/* ==========================================================
+   BryanNet Router Portal
+   Reusable Components
+   ========================================================== */
+
+/* ==========================================================
+   Cards
+   ========================================================== */
+
+.card {
+
+    background: var(--color-surface);
+
+    border-radius: var(--radius-xl);
+
+    box-shadow: var(--shadow-md);
+
+}
+
+/* ==========================================================
+   Buttons
+   ========================================================== */
+
+.connect-button {
+
+    position: relative;
+
+    overflow: hidden;
+
+}
+
+.connect-button::before {
+
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.25),
+        transparent
+    );
+
+    transform: translateX(-100%);
+
+    transition: transform .6s ease;
+
+}
+
+.connect-button:hover::before {
+
+    transform: translateX(100%);
+
+}
+
+.connect-button:disabled {
+
+    cursor: not-allowed;
+
+    opacity: .75;
+
+    transform: none;
+
+    box-shadow: none;
+
+}
+
+.connect-button.loading {
+
+    pointer-events: none;
+
+}
+
+.connect-button.loading::after {
+
+    content: "";
+
+    width: 18px;
+
+    height: 18px;
+
+    border: 2px solid rgba(255,255,255,.35);
+
+    border-top-color: var(--color-white);
+
+    border-radius: 50%;
+
+    position: absolute;
+
+    right: var(--space-4);
+
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    animation: spin .8s linear infinite;
+
+}
+
+/* ==========================================================
+   Inputs
+   ========================================================== */
+
+.form-group {
+
+    position: relative;
+
+}
+
+.form-group input {
+
+    appearance: none;
+
+}
+
+.form-group input:disabled {
+
+    background: #F3F4F6;
+
+    cursor: not-allowed;
+
+}
+
+.form-group input.error {
+
+    border-color: var(--color-danger);
+
+}
+
+.form-group input.success {
+
+    border-color: var(--color-success);
+
+}
+
+.form-group input.error:focus {
+
+    box-shadow:
+        0 0 0 4px rgba(239,68,68,.15);
+
+}
+
+.form-group input.success:focus {
+
+    box-shadow:
+        0 0 0 4px rgba(16,185,129,.15);
+
+}
+
+/* ==========================================================
+   Checkbox
+   ========================================================== */
+
+.remember-device {
+
+    user-select: none;
+
+}
+
+.remember-device input {
+
+    accent-color: var(--color-primary);
+
+}
+
+/* ==========================================================
+   Status Message
+   ========================================================== */
+
+.status-message {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: var(--space-3);
+
+    border: 1px solid transparent;
+
+    animation: fadeIn .25s ease;
+
+}
+
+.status-message.success {
+
+    color: var(--color-success);
+
+    background: rgba(16,185,129,.10);
+
+    border-color: rgba(16,185,129,.20);
+
+}
+
+.status-message.error {
+
+    color: var(--color-danger);
+
+    background: rgba(239,68,68,.10);
+
+    border-color: rgba(239,68,68,.20);
+
+}
+
+.status-message.warning {
+
+    color: var(--color-warning);
+
+    background: rgba(245,158,11,.10);
+
+    border-color: rgba(245,158,11,.20);
+
+}
+
+.status-message.info {
+
+    color: var(--color-primary);
+
+    background: rgba(37,99,235,.10);
+
+    border-color: rgba(37,99,235,.20);
+
+}
+
+/* ==========================================================
+   Loading Overlay
+   ========================================================== */
+
+.loading-overlay {
+
+    position: absolute;
+
+    inset: 0;
+
+    background: rgba(255,255,255,.80);
+
+    backdrop-filter: blur(3px);
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    border-radius: inherit;
+
+    z-index: var(--z-dropdown);
+
+}
+
+.loading-overlay.hidden {
+
+    display: none;
+
+}
+
+.loading-spinner {
+
+    width: 42px;
+
+    height: 42px;
+
+    border-radius: 50%;
+
+    border: 3px solid rgba(37,99,235,.20);
+
+    border-top-color: var(--color-primary);
+
+    animation: spin 1s linear infinite;
+
+}
+
+/* ==========================================================
+   Divider
+   ========================================================== */
+
+.divider {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: var(--space-3);
+
+    color: var(--color-muted);
+
+    font-size: var(--font-size-sm);
+
+}
+
+.divider::before,
+
+.divider::after {
+
+    content: "";
+
+    flex: 1;
+
+    height: 1px;
+
+    background: var(--color-border);
+
+}
+
+/* ==========================================================
+   Badge
+   ========================================================== */
+
+.badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: .35rem .75rem;
+
+    border-radius: var(--radius-pill);
+
+    font-size: var(--font-size-xs);
+
+    font-weight: var(--font-weight-semibold);
+
+}
+
+.badge.success {
+
+    background: rgba(16,185,129,.12);
+
+    color: var(--color-success);
+
+}
+
+.badge.warning {
+
+    background: rgba(245,158,11,.12);
+
+    color: var(--color-warning);
+
+}
+
+.badge.error {
+
+    background: rgba(239,68,68,.12);
+
+    color: var(--color-danger);
+
+}
+
+.badge.primary {
+
+    background: rgba(37,99,235,.12);
+
+    color: var(--color-primary);
+
+}
+
+/* ==========================================================
+   Utility Classes
+   ========================================================== */
+
+.text-center {
+
+    text-align: center;
+
+}
+
+.w-100 {
+
+    width: 100%;
+
+}
+
+.mt-1 {
+
+    margin-top: var(--space-1);
+
+}
+
+.mt-2 {
+
+    margin-top: var(--space-2);
+
+}
+
+.mt-3 {
+
+    margin-top: var(--space-3);
+
+}
+
+.mt-4 {
+
+    margin-top: var(--space-4);
+
+}
+
+.mt-5 {
+
+    margin-top: var(--space-5);
+
+}
+
+.mb-1 {
+
+    margin-bottom: var(--space-1);
+
+}
+
+.mb-2 {
+
+    margin-bottom: var(--space-2);
+
+}
+
+.mb-3 {
+
+    margin-bottom: var(--space-3);
+
+}
+
+.mb-4 {
+
+    margin-bottom: var(--space-4);
+
+}
+
+.mb-5 {
+
+    margin-bottom: var(--space-5);
+
+}
+
+.hidden {
+
+    display: none !important;
+
+}
+
+.fade-in {
+
+    animation: fadeIn .3s ease;
+
+}
+
+/* ==========================================================
+   Session Summary
+   ========================================================== */
+
+.session-summary {
+
+    width: 100%;
+
+    margin: 1.5rem 0;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    overflow: hidden;
+
+    box-shadow: var(--shadow-sm);
+
+}
+
+.summary-row {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: var(--space-4);
+
+    padding: var(--space-4);
+
+    border-bottom: 1px solid var(--color-border);
+
+}
+
+.summary-row:last-child {
+
+    border-bottom: none;
+
+}
+
+.summary-row span:first-child {
+
+    color: var(--color-muted);
+
+    font-weight: var(--font-weight-medium);
+
+}
+
+.summary-row span:last-child {
+
+    color: var(--color-text);
+
+    font-weight: var(--font-weight-semibold);
+
+    text-align: right;
+
+    word-break: break-word;
+
+}
+
+/* ==========================================================
+   Animations
+   ========================================================== */
+
+@keyframes spin {
+
+    from {
+
+        transform: rotate(0deg);
+
+    }
+
+    to {
+
+        transform: rotate(360deg);
+
+    }
+
+}
+
+@keyframes fadeIn {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(8px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+}

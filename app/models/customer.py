@@ -124,3 +124,15 @@ class Customer(Base):
         back_populates="customer",
         cascade="all, delete-orphan",
     )    
+    
+    portal_sessions = relationship(
+        "PortalSession",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
+    
+    pending_logins = relationship(
+        "PendingLogin",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )

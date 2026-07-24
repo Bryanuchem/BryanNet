@@ -26,8 +26,8 @@ from app.services.plan_service import (
     PlanService,
 )
 
-from app.services.router_account_service import (
-    RouterAccountService,
+from app.services.router_provisioning_service import (
+    RouterProvisioningService,
 )
 
 
@@ -50,7 +50,7 @@ class SubscriptionMaintenanceService:
             subscription,
         )
 
-        RouterAccountService.synchronize_customer_access(
+        RouterProvisioningService.synchronize_customer_access(
 
             db,
 

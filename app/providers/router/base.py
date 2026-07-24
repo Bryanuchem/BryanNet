@@ -8,12 +8,21 @@ from app.domain import (
 
 from app.models.router import Router
 
+from typing import Any
+
+
 
 class RouterProvider(ABC):
 
     # ==========================================================
     # Customer Synchronization
     # ==========================================================
+
+    connection: Any
+
+    hotspot: Any
+
+    sessions: Any
 
     @abstractmethod
     def synchronize_customer(
@@ -38,6 +47,21 @@ class RouterProvider(ABC):
         session without modifying their subscription.
         """
         pass
+
+    # ==========================================================
+    # Bootstrap
+    # ==========================================================
+
+    def ensure_router_bootstrap(
+        self,
+        db,
+        router,
+    ):
+
+        raise NotImplementedError(
+            "Router bootstrap "
+            "not implemented."
+        )
 
     # ==========================================================
     # Router Health

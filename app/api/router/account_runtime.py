@@ -16,6 +16,26 @@ from app.services.router_account_service import (
     RouterAccountService,
 )
 
+from app.services.router_service import (
+    RouterService
+)
+
+from app.services.router_provisioning_service import (
+    RouterProvisioningService,
+)
+
+from app.services.router_context_service import (
+    RouterContextService,
+)
+
+from app.services.router_session_service import (
+    RouterSessionService,
+)
+
+from app.services.session_lifecycle_service import (
+    SessionLifecycleService,
+)
+
 router = APIRouter(
 
     prefix="/router-accounts",
@@ -26,6 +46,81 @@ router = APIRouter(
 
 )
 
+# ==========================================================
+# Provisioning
+# ==========================================================
+
+@router.post(
+
+    "/provision",
+
+)
+
+def provision_router_accounts(
+
+    db: Session = Depends(
+
+        get_db,
+
+    ),
+
+    _=Depends(
+
+        get_current_admin,
+
+    ),
+
+):
+
+    return (
+
+        RouterAccountService
+
+        .provision_active_accounts(
+
+            db,
+
+        )
+
+    )
+
+# ==========================================================
+# Bulk Synchronization
+# ==========================================================
+
+@router.post(
+
+    "/synchronize",
+
+)
+
+def synchronize_router_accounts(
+
+    db: Session = Depends(
+
+        get_db,
+
+    ),
+
+    _=Depends(
+
+        get_current_admin,
+
+    ),
+
+):
+
+    return (
+
+        RouterProvisioningService
+
+        .synchronize_active_accounts(
+
+            db,
+
+        )
+
+    )
 
 # ==========================================================
 # Synchronization
@@ -63,7 +158,7 @@ def synchronize_router_account(
 
     return (
 
-        RouterAccountService
+        RouterProvisioningService
 
         .synchronize_customer_access(
 
@@ -112,21 +207,49 @@ def disconnect_router_account(
 
     context = (
 
-        RouterAccountService
+        RouterContextService
 
-        .build_router_context(
+        .from_router_account(
 
             db,
 
-            account.customer_id,
+            account.router_account_id,
 
         )
 
     )
 
+    router_session = (
+
+        RouterSessionService
+
+        .get_active_session(
+
+            db,
+
+            router_account_id=(
+                account.router_account_id
+            ),
+
+        )
+
+    )
+
+    if router_session:
+
+        SessionLifecycleService.terminate_session(
+
+            db,
+
+            router_session=router_session,
+
+            reason="admin_disconnect",
+
+        )
+
     return (
 
-        RouterAccountService
+        RouterService
 
         .disconnect_customer(
 
@@ -173,7 +296,7 @@ def enable_router_account(
 
     )
 
-    RouterAccountService.synchronize_customer_access(
+    RouterProvisioningService.synchronize_customer_access(
 
         db,
 
@@ -226,7 +349,7 @@ def disable_router_account(
 
     )
 
-    RouterAccountService.synchronize_customer_access(
+    RouterProvisioningService.synchronize_customer_access(
 
         db,
 

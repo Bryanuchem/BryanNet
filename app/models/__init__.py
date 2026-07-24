@@ -6,6 +6,7 @@ from app.models.payment_transaction import PaymentTransaction
 
 from app.models.router import Router
 from app.models.router_account import RouterAccount
+from app.models.router_session import RouterSession
 from app.models.device import Device
 
 from app.models.role import Role
@@ -15,5 +16,7 @@ from app.models.role_permission import RolePermission
 from app.models.admin_user import AdminUser
 from app.models.admin_session import AdminSession
 from app.models.audit_log import AuditLog
+
+from app.models.portal_session import PortalSession
 
 from app.models.setting import Setting

@@ -78,6 +78,28 @@ class Settings(BaseSettings):
     payment_expiry_hours: int = 24
     
     # ==========================================================
+    # Router Events
+    # ==========================================================
+
+    router_event_url: str = (
+        "http://192.168.1.116:8000/api/v1/router-events"
+    )
+    
+    portal_login_url: str = (
+        "http://192.168.1.116:8000/api/v1/portal/login"
+    )
+        
+    portal_backend_host: str = (
+        "192.168.1.116"
+    )
+
+    portal_backend_port: int = 8000
+    
+    portal_base_url: str = (
+        "http://192.168.1.116:8000"
+    )
+    
+    # ==========================================================
     # Flutterwave
     # ==========================================================
     flutterwave_secret_key: str = ""
@@ -102,6 +124,56 @@ class Settings(BaseSettings):
     )
 
 
+    # ==========================================================
+    # Company
+    # ==========================================================
+
+    company_name: str = "BryanNet"
+
+    company_tagline: str = (
+        "Fast • Reliable • Unlimited Internet"
+    )
+
+    company_logo_url: str = "/static/logo.svg"
+
+    company_favicon_url: str = "/static/favicon.ico"
+
+    support_phone: str = ""
+
+    support_email: str = ""
+
+    support_whatsapp: str = ""
+
+    support_telegram: str = ""
+
+
+    @property
+    def portal_connected_url(self) -> str:
+
+        return (
+            
+            f"http://{self.portal_backend_host}:"
+        
+            f"{self.portal_backend_port}"
+        
+            "/api/v1/portal/connected"
+    
+        )
+
+    @property
+    def portal_logout_url(self) -> str:
+
+        return (
+            
+            f"http://{self.portal_backend_host}:"
+            
+            f"{self.portal_backend_port}"
+            
+            "/api/v1/portal/logout"
+            
+        )
+    
+        
 @lru_cache
 def get_settings():
 

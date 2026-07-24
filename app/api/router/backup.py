@@ -12,12 +12,6 @@ from app.database.dependencies import (
     get_db,
 )
 
-from app.schemas.router import (
-    RouterCreate,
-    RouterRead,
-    RouterUpdate,
-)
-
 from app.services.router_service import (
     RouterService,
 )
@@ -27,55 +21,23 @@ router = APIRouter(
     prefix="/routers",
 
     tags=[
-        "Routers",
+        "Router Backup",
     ],
 
 )
 
 
 # ==========================================================
-# Query
+# Router Files
 # ==========================================================
 
 @router.get(
 
-    "",
-
-    response_model=list[
-        RouterRead,
-    ],
+    "/{router_id}/files",
 
 )
 
-def get_routers(
-    db: Session = Depends(
-        get_db,
-    ),
-    _=Depends(
-        get_current_admin,
-    ),
-):
-
-    return (
-
-        RouterService.get_all_routers(
-
-            db,
-
-        )
-
-    )
-
-
-@router.get(
-
-    "/{router_id}",
-
-    response_model=RouterRead,
-
-)
-
-def get_router(
+def list_router_files(
     router_id: int,
     db: Session = Depends(
         get_db,
@@ -87,11 +49,108 @@ def get_router(
 
     return (
 
-        RouterService.get_router(
+        RouterService.list_router_files(
 
             db,
 
             router_id,
+
+        )
+
+    )
+
+
+@router.get(
+
+    "/{router_id}/files/{file_id}",
+
+)
+
+def get_router_file(
+    router_id: int,
+    file_id: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    _=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+
+        RouterService.get_router_file(
+
+            db,
+
+            router_id,
+
+            file_id,
+
+        )
+
+    )
+
+
+# ==========================================================
+# Backup Schedules
+# ==========================================================
+
+@router.get(
+
+    "/{router_id}/backup/schedules",
+
+)
+
+def list_backup_schedules(
+    router_id: int,
+    db: Session = Depends(
+        get_db,
+    ),
+    _=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+
+        RouterService.list_backup_schedules(
+
+            db,
+
+            router_id,
+
+        )
+
+    )
+
+
+@router.get(
+
+    "/{router_id}/backup/schedules/{schedule_id}",
+
+)
+
+def get_backup_schedule(
+    router_id: int,
+    schedule_id: str,
+    db: Session = Depends(
+        get_db,
+    ),
+    _=Depends(
+        get_current_admin,
+    ),
+):
+
+    return (
+
+        RouterService.get_backup_schedule(
+
+            db,
+
+            router_id,
+
+            schedule_id,
 
         )
 
@@ -104,14 +163,13 @@ def get_router(
 
 @router.post(
 
-    "",
-
-    response_model=RouterRead,
+    "/{router_id}/backup/create",
 
 )
 
-def create_router(
-    request: RouterCreate,
+def create_backup(
+    router_id: int,
+    name: str,
     db: Session = Depends(
         get_db,
     ),
@@ -122,28 +180,28 @@ def create_router(
 
     return (
 
-        RouterService.register_router(
+        RouterService.create_backup(
 
             db,
 
-            request,
+            router_id,
+
+            name,
 
         )
 
     )
 
 
-@router.put(
+@router.post(
 
-    "/{router_id}",
-
-    response_model=RouterRead,
+    "/{router_id}/backup/export",
 
 )
 
-def update_router(
+def create_export(
     router_id: int,
-    request: RouterUpdate,
+    name: str,
     db: Session = Depends(
         get_db,
     ),
@@ -154,42 +212,13 @@ def update_router(
 
     return (
 
-        RouterService.update_router(
+        RouterService.create_export(
 
             db,
 
             router_id,
 
-            request,
-
-        )
-
-    )
-
-
-@router.delete(
-
-    "/{router_id}",
-
-)
-
-def delete_router(
-    router_id: int,
-    db: Session = Depends(
-        get_db,
-    ),
-    _=Depends(
-        get_current_admin,
-    ),
-):
-
-    return (
-
-        RouterService.delete_router(
-
-            db,
-
-            router_id,
+            name,
 
         )
 

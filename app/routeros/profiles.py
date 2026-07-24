@@ -1,0 +1,5 @@
+HOTSPOT_PROFILES = [
+
+    "BN-DEFAULT",
+
+]

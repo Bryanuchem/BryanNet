@@ -28,6 +28,46 @@ class MikroTikSessionRepository:
 
         )
 
+    @staticmethod
+    def _session(
+        session,
+    ):
+
+        return {
+
+            "id": session.get(
+                ".id",
+            ),
+
+            "username": session.get(
+                "name",
+            ),
+
+            "service": session.get(
+                "service",
+            ),
+
+            "caller_id": session.get(
+                "caller-id",
+            ),
+
+            "address": session.get(
+                "address",
+            ),
+
+            "uptime": session.get(
+                "uptime",
+            ),
+
+            "encoding": session.get(
+                "encoding",
+            ),
+
+            "radius": session.get(
+                "radius",
+            ),
+
+        }
     # ==========================================================
     # Query Methods
     # ==========================================================
@@ -71,18 +111,66 @@ class MikroTikSessionRepository:
         api,
     ):
 
-        return list(
+        return [
 
-            MikroTikSessionRepository
+            MikroTikSessionRepository._session(
 
-            ._active_sessions(
+                session,
+
+            )
+
+            for session in (
+
+                MikroTikSessionRepository._active_sessions(
+
+                    api,
+
+                )
+
+            )
+
+        ]
+        
+    @staticmethod
+    def get(
+        api,
+        username,
+    ):
+
+        session = (
+
+            MikroTikSessionRepository.find(
 
                 api,
+
+                username,
 
             )
 
         )
 
+        if session is None:
+
+            raise ValueError(
+
+                f"PPP Session "
+
+                f"'{username}' "
+
+                "was not found."
+
+            )
+
+        return (
+
+            MikroTikSessionRepository._session(
+
+                session,
+
+            )
+
+        )
+        
     # ==========================================================
     # Business Commands
     # ==========================================================

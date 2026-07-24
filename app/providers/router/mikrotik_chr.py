@@ -25,6 +25,85 @@ from app.providers.router.mikrotik_session_repository import (
     MikroTikSessionRepository,
 )
 
+from app.providers.router.mikrotik_interface_repository import (
+    MikroTikInterfaceRepository,
+)
+
+from app.providers.router.mikrotik_log_repository import (
+    MikroTikLogRepository,
+)
+
+from app.providers.router.mikrotik_address_list_repository import (
+    MikroTikAddressListRepository,
+)
+
+from app.providers.router.mikrotik_firewall_repository import (
+    MikroTikFirewallRepository,
+)
+
+from app.providers.router.mikrotik_queue_repository import (
+    MikroTikQueueRepository,
+)
+
+from app.providers.router.mikrotik_ip_pool_repository import (
+    MikroTikIPPoolRepository,
+)
+
+from app.providers.router.mikrotik_dhcp_repository import (
+    MikroTikDHCPRepository,
+)
+
+from app.providers.router.mikrotik_dhcp_lease_repository import (
+    MikroTikDHCPLeaseRepository,
+)
+
+from app.providers.router.mikrotik_hotspot_repository import (
+    MikroTikHotspotRepository,
+)
+
+from app.providers.router.mikrotik_hotspot_user_profile_repository import (
+    MikroTikHotspotUserProfileRepository,
+)
+
+from app.services.router_access_service import (
+    RouterAccessService,
+)
+
+from app.providers.router.mikrotik_backup_repository import (
+    MikroTikBackupRepository,
+)
+
+from app.providers.router.mikrotik_script_repository import (
+    MikroTikScriptRepository,
+)
+
+from app.providers.router.mikrotik_scheduler_repository import (
+    MikroTikSchedulerRepository,
+)
+
+from app.providers.router.mikrotik_hotspot_walled_garden_repository import (
+    MikroTikHotspotWalledGardenRepository,
+)
+
+from app.core.settings import (
+    settings,
+)
+
+from app.services.hotspot_desired_state_service import (
+    HotspotDesiredStateService,
+)
+
+from app.routeros import (
+    LOGIN_SCRIPT,
+    LOGOUT_SCRIPT,
+    LOGIN_ERROR_SCRIPT,
+    DAILY_CLEANUP_SCRIPT,
+    LOGIN_SCRIPT_NAME,
+    LOGOUT_SCRIPT_NAME,
+    LOGIN_ERROR_SCRIPT_NAME,
+    DAILY_CLEANUP_SCRIPT_NAME,
+    DAILY_CLEANUP_SCHEDULER,
+)
 
 class MikroTikCHRProvider(
     RouterProvider,
@@ -42,6 +121,10 @@ class MikroTikCHRProvider(
             MikroTikConnection()
         )
 
+        self.api = None
+
+        self.persistent_connection = False
+
         self.profiles = (
             MikroTikProfileRepository()
         )
@@ -54,6 +137,400 @@ class MikroTikCHRProvider(
             MikroTikSessionRepository()
         )
 
+        self.interfaces = (
+
+            MikroTikInterfaceRepository()
+
+        )
+
+        self.logs = (
+
+            MikroTikLogRepository()
+
+        )
+
+        self.address_lists = (
+
+            MikroTikAddressListRepository()
+
+        )
+        
+        self.firewall = (
+
+            MikroTikFirewallRepository()
+
+        )
+
+        self.queues = (
+
+            MikroTikQueueRepository()
+
+        )
+        
+        self.ip_pools = (
+
+            MikroTikIPPoolRepository()
+
+        )
+        
+        self.dhcp = (
+
+            MikroTikDHCPRepository()
+
+        )
+        
+        self.dhcp_leases = (
+
+            MikroTikDHCPLeaseRepository()
+
+        )
+        
+        self.hotspot = (
+
+            MikroTikHotspotRepository()
+
+        )
+
+        self.hotspot_profiles = (
+            
+            MikroTikHotspotUserProfileRepository()
+            
+        )
+
+        self.scripts = (
+            MikroTikScriptRepository()
+        )
+
+        self.schedulers = (
+            MikroTikSchedulerRepository()
+        )
+
+        self.backups = (
+
+            MikroTikBackupRepository()
+
+        )
+
+        self.hotspot_walled_garden = (
+
+            MikroTikHotspotWalledGardenRepository()
+
+        )
+        
+    # ==========================================================
+    # Bootstrap Helpers
+    # ==========================================================
+ 
+    def _ensure_hotspot_profiles(
+        self,
+        api,
+        profiles,
+    ):
+
+        for profile in profiles:
+
+            self._ensure_hotspot_profile(
+                api,
+                profile,
+            )
+ 
+    def _ensure_hotspot_profile(
+        self,
+        api,
+        profile,
+    ):
+
+        existing = (
+
+            self.hotspot_profiles
+
+            .find(
+
+                api,
+
+                profile["name"],
+
+            )
+
+        )
+
+        if not existing:
+
+            self.hotspot_profiles.create(
+
+                api,
+
+                profile,
+
+            )
+
+            return
+
+        self.hotspot_profiles.update(
+
+            api,
+
+            existing,
+
+            profile,
+
+        )
+        
+    def _ensure_script(
+        self,
+        api,
+        router,
+        name,
+        source,
+    ):
+
+        source = (
+
+            source
+
+            .replace(
+                "__BN_API_URL__",
+                settings.router_event_url,
+            )
+
+            .replace(
+                "ROUTER-001",
+                router.router_identifier,
+            )
+
+            .replace(
+                "GENERATED_SECRET",
+                router.router_secret,
+            )
+
+        )
+
+        existing = (
+
+            self.scripts
+
+            .find(
+
+                api,
+
+                name,
+
+            )
+
+        )
+
+        if not existing:
+
+            self.scripts.create(
+
+                api,
+
+                name=name,
+
+                source=source,
+
+            )
+
+            return
+
+        self.scripts.update(
+
+            api,
+
+            existing,
+
+            source=source,
+
+        )
+
+    def _ensure_scheduler(
+        self,
+        api,
+        scheduler,
+    ):
+
+        existing = (
+
+            self.schedulers
+
+            .find(
+
+                api,
+
+                scheduler["name"],
+
+            )
+
+        )
+
+        if not existing:
+
+            self.schedulers.create(
+
+                api,
+
+                scheduler,
+
+            )
+
+            return
+
+        self.schedulers.update(
+
+            api,
+
+            existing,
+
+            scheduler,
+
+        )
+
+    def _ensure_hotspot_walled_garden(
+        self,
+        api,
+    ):
+
+        self.hotspot_walled_garden.ensure(
+
+            api,
+
+            dst_host=settings.portal_backend_host,
+
+            dst_port=settings.portal_backend_port,
+
+            comment="BryanNet Portal",
+
+        )
+    
+    # ==========================================================
+    # Bootstrap
+    # ==========================================================
+
+    def ensure_router_bootstrap(
+        self,
+        db,
+        router,
+    ):
+
+        api = None
+
+        try:
+
+            api = (
+
+                self.connection.connect(
+
+                    router,
+
+                )
+
+            )
+
+            self._ensure_script(
+
+                api,
+
+                router,
+
+                LOGIN_SCRIPT_NAME,
+
+                LOGIN_SCRIPT,
+
+            )
+
+            self._ensure_script(
+
+                api,
+
+                router,
+
+                LOGOUT_SCRIPT_NAME,
+
+                LOGOUT_SCRIPT,
+
+            )
+
+            self._ensure_script(
+
+                api,
+
+                router,
+
+                LOGIN_ERROR_SCRIPT_NAME,
+
+                LOGIN_ERROR_SCRIPT,
+
+            )
+
+            self._ensure_script(
+
+                api,
+
+                router,
+
+                DAILY_CLEANUP_SCRIPT_NAME,
+
+                DAILY_CLEANUP_SCRIPT,
+
+            )
+
+            self._ensure_scheduler(
+
+                api,
+
+                DAILY_CLEANUP_SCHEDULER,
+
+            )
+
+            self._ensure_hotspot_walled_garden(
+
+                api,
+
+            )
+
+        finally:
+
+            self.connection.disconnect(
+
+                api,
+
+            )
+    
+    # ==========================================================
+    # Hotspot Desired State
+    # ==========================================================
+
+    def synchronize_hotspot(
+        self,
+        api,
+    ):
+
+        return (
+
+            HotspotDesiredStateService.synchronize(
+
+                api,
+
+            )
+
+        )
+
+
+    def verify_hotspot(
+        self,
+        api,
+    ):
+
+        return (
+
+            HotspotDesiredStateService.verify_state(
+
+                api,
+
+            )
+
+        )
+
     # ==========================================================
     # Customer Synchronization
     # ==========================================================
@@ -63,6 +540,8 @@ class MikroTikCHRProvider(
         db,
         context: RouterContext,
     ):
+
+        print("Entered MikroTik provider")
 
         api = None
 
@@ -80,47 +559,30 @@ class MikroTikCHRProvider(
 
             )
 
-            profile_name = (
+            # Customer profile synchronization binds the named
+            # on-logout hook below. Ensure the target script exists
+            # on this router in the same normal provisioning flow.
+            self._ensure_script(
 
-                self.profiles
+                api,
 
-                .ensure(
+                context.router,
 
-                    api,
+                LOGOUT_SCRIPT_NAME,
 
-                    context.plan.plan_id,
-
-                    context.plan.speed_limit_mbps,
-
-                )
-
-            )
-
-            password = (
-
-                context.plaintext_password
+                LOGOUT_SCRIPT,
 
             )
 
-            secret = (
+            user = (
 
-                self.secrets
+                RouterAccessService
 
-                .ensure(
+                .ensure_access(
 
                     api,
 
-                    username=(
-                        context.router_account.username
-                    ),
-
-                    password=password,
-
-                    profile=profile_name,
-
-                    enabled=(
-                        context.router_account.is_enabled
-                    ),
+                    context,
 
                 )
 
@@ -128,27 +590,9 @@ class MikroTikCHRProvider(
 
             if (
 
-                context.router_account.is_enabled
+                not context.router_account.is_enabled
 
             ):
-
-                self.secrets.enable(
-
-                    api,
-
-                    secret,
-
-                )
-
-            else:
-
-                self.secrets.disable(
-
-                    api,
-
-                    secret,
-
-                )
 
                 self.sessions.disconnect_username(
 
@@ -157,7 +601,7 @@ class MikroTikCHRProvider(
                     context.router_account.username,
 
                 )
-
+                
             return {
 
                 "success": True,
@@ -206,29 +650,11 @@ class MikroTikCHRProvider(
 
             )
 
-            secret = (
-
-                self.secrets
-
-                .find(
-
-                    api,
-
-                    context.router_account.username,
-
-                )
-
-            )
-
-            if secret:
-
-                self.secrets.disable(
-
-                    api,
-
-                    secret,
-
-                )
+            #
+            # Disconnect only the active runtime session.
+            #
+            # Do NOT disable the customer's credential.
+            #
 
             self.sessions.disconnect_username(
 

@@ -155,11 +155,11 @@ class DeviceService:
 
         if synchronize:
 
-            from app.services.router_account_service import (
-                RouterAccountService,
+            from app.services.router_provisioning_service import (
+                RouterProvisioningService,
             )
 
-            RouterAccountService.synchronize_customer_access(
+            RouterProvisioningService.synchronize_customer_access(
 
                 db,
 
@@ -168,6 +168,29 @@ class DeviceService:
             )
 
         return device
+    
+    @staticmethod
+    def _find_by_mac_address(
+        db,
+        mac_address,
+    ):
+
+        return (
+
+            db.query(
+                Device,
+            )
+
+            .filter(
+
+                Device.mac_address
+                == mac_address,
+
+            )
+
+            .first()
+
+        )
     
     @staticmethod
     def _apply_sort(
@@ -207,6 +230,8 @@ class DeviceService:
             mac_address=device.mac_address,
 
             device_status=device.device_status,
+            
+            online=device.online,
 
         )
         
@@ -348,7 +373,40 @@ class DeviceService:
                 synchronize=False,
             )
         )
-        
+ 
+    @staticmethod
+    def _set_online(
+        device,
+    ):
+
+        device.online = True
+
+        device.last_seen = (
+            datetime.now(UTC)
+        )
+
+        return device
+
+    @staticmethod
+    def _set_offline(
+        device,
+    ):
+
+        device.online = False
+
+        return device
+
+    @staticmethod
+    def _set_online_no_commit(
+        device,
+    ):
+
+        DeviceService._set_online(
+            device,
+        )
+
+        return device
+               
     # ==========================================================
     # Business Commands
     # ==========================================================
@@ -358,7 +416,7 @@ class DeviceService:
         db,
         customer_id,
         mac_address,
-        admin_id,
+        admin_id=None,
         device_name=None,
         approved_by_customer=True,
     ):
@@ -415,6 +473,8 @@ class DeviceService:
             approved_by_customer=approved_by_customer,
 
             device_status=DeviceStatus.ACTIVE,
+            
+            online=False,
 
             first_seen=datetime.now(UTC),
 
@@ -1048,10 +1108,158 @@ class DeviceService:
             )
         )
 
+    @staticmethod
+    def set_online(
+        db,
+        mac_address,
+    ):
+
+        device = (
+
+            DeviceService
+
+            ._find_device_by_mac(
+
+                db,
+
+                mac_address,
+
+            )
+
+        )
+
+        if not device:
+
+            return None
+
+        DeviceService._set_online(
+            device,
+        )
+
+        db.commit()
+
+        db.refresh(
+            device,
+        )
+
+        return device
+
+
+    @staticmethod
+    def set_offline(
+        db,
+        mac_address,
+    ):
+
+        device = (
+
+            DeviceService
+
+            ._find_device_by_mac(
+
+                db,
+
+                mac_address,
+
+            )
+
+        )
+
+        if not device:
+
+            return None
+
+        DeviceService._set_offline(
+            device,
+        )
+
+        db.commit()
+
+        db.refresh(
+            device,
+        )
+
+        return device
+        
     # ==========================================================
     # Query Methods
     # ==========================================================
+    
+    @staticmethod
+    def find_by_mac_address(
+        db,
+        mac_address,
+    ):
 
+        return (
+
+            DeviceService
+
+            ._find_by_mac_address(
+
+                db,
+
+                mac_address,
+
+            )
+
+        )
+
+    @staticmethod
+    def count_online_devices(
+        db,
+        customer_id,
+    ):
+
+        return (
+
+            db.query(
+
+                Device,
+
+            )
+
+            .filter(
+
+                Device.customer_id
+                == customer_id,
+
+                Device.online.is_(True),
+
+            )
+
+            .count()
+
+        )
+
+    @staticmethod
+    def count_registered_devices(
+        db,
+        customer_id,
+    ):
+
+        return (
+
+            db.query(
+
+                Device,
+
+            )
+
+            .filter(
+
+                Device.customer_id
+                == customer_id,
+
+                Device.device_status
+                != DeviceStatus.BLOCKED,
+
+            )
+
+            .count()
+
+        )
+        
     @staticmethod
     def get_device(
         db,
@@ -1229,6 +1437,8 @@ class DeviceService:
 
                 device_status=device.device_status,
 
+                online=device.online,
+                
                 approved_by_customer=device.approved_by_customer,
 
                 first_seen=device.first_seen,

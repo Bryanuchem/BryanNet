@@ -113,3 +113,18 @@ class RouterAccount(Base):
         "Router",
         back_populates="router_accounts",
     )
+    
+    router_sessions = relationship(
+        "RouterSession",
+        back_populates="router_account",
+    )
+    
+    portal_sessions = relationship(
+        "PortalSession",
+        back_populates="router_account",
+    )
+    
+    pending_logins = relationship(
+        "PendingLogin",
+        back_populates="router_account",
+    )

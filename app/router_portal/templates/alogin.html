@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}
+
+    BryanNet | Connected
+
+{% endblock %}
+
+{% block description %}
+
+    Your BryanNet internet connection is active.
+
+{% endblock %}
+
+{% block head %}
+
+<meta
+    http-equiv="pragma"
+    content="no-cache"
+>
+
+<meta
+    http-equiv="expires"
+    content="-1"
+>
+
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card redirect-card">
+
+            <div class="success-banner">
+
+                <h1>
+
+                    ✓ Connected to BryanNet
+
+                </h1>
+
+                <p>
+
+                    Your internet connection has been established successfully.
+
+                </p>
+
+            </div>
+
+            {% include "partials/_session_summary.html" %}
+
+            <div class="redirect-info">
+
+                <p>
+
+                    Redirecting in
+
+                    <strong id="countdown">
+
+                        {{ settings.redirect_delay }}
+
+                    </strong>
+
+                    seconds...
+
+                </p>
+
+            </div>
+
+            <div class="redirect-actions">
+
+                <a
+                    class="connect-button"
+                    id="continue-button"
+                    href="{{ hotspot.link_orig or hotspot.link_redirect or settings.default_redirect_url }}"
+                >
+
+                    Continue Browsing
+
+                </a>
+
+                <a
+                    class="connect-button connect-button-secondary"
+                    href="{{ hotspot.link_status }}"
+                >
+
+                    View Connection Status
+
+                </a>
+
+                <a
+                    class="connect-button connect-button-danger"
+                    href="{{ hotspot.link_logout }}"
+                >
+
+                    Logout
+
+                </a>
+
+            </div>
+
+            <div class="support-section">
+
+                <h3>
+
+                    {{ settings.support_title }}
+
+                </h3>
+
+                <p>
+
+                    Need assistance?
+                    Please contact BryanNet Support if you experience any connection issues.
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+(function () {
+
+    const redirectDelay = Number(
+        "{{ settings.redirect_delay }}"
+    );
+
+    let remaining = redirectDelay;
+
+    const redirectUrl =
+        "{{ hotspot.link_orig or hotspot.link_redirect or settings.default_redirect_url }}";
+
+    function openStatusWindow() {
+
+        if ("{{ hotspot.popup }}" === "true") {
+
+            window.open(
+
+                "{{ hotspot.link_status }}",
+
+                "hotspot_status",
+
+                "toolbar=0,location=0,directories=0,status=0,menubar=0,resizable=1,width=320,height=240"
+
+            );
+
+        }
+
+    }
+
+    function tick() {
+
+        const countdown = document.getElementById(
+            "countdown"
+        );
+
+        countdown.textContent = remaining;
+
+        if (remaining <= 0) {
+
+            window.location.href = redirectUrl;
+
+            return;
+
+        }
+
+        remaining--;
+
+        setTimeout(
+
+            tick,
+
+            1000,
+
+        );
+
+    }
+
+    openStatusWindow();
+
+    tick();
+
+})();
+
+</script>
+
+{% endblock %}

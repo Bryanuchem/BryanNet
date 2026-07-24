@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Current Session
+{% endblock %}
+
+{% block description %}
+    View your active BryanNet Internet session.
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card">
+
+            {% include "partials/_header.html" %}
+
+            <section class="login-container">
+
+                <!-- ======================================================
+                     Connected Banner
+                     ====================================================== -->
+
+                <div class="status-icon success">
+
+                    ✓
+
+                </div>
+
+                <h2 class="session-title">
+
+                    You're Connected
+
+                </h2>
+
+                {% if hotspot.customer_name %}
+
+                <p class="session-description">
+
+                    Welcome,
+                    <strong>{{ hotspot.customer_name }}</strong>.
+
+                    Your device is currently connected to the BryanNet network.
+
+                </p>
+
+                {% else %}
+
+                <p class="session-description">
+
+                    Your device is currently connected to the BryanNet network.
+
+                </p>
+
+                {% endif %}
+
+                <!-- ======================================================
+                     Connection Summary
+                     ====================================================== -->
+
+                {% include "partials/_session_summary.html" %}
+
+                <!-- ======================================================
+                     Actions
+                     ====================================================== -->
+
+                <div class="redirect-actions">
+
+                    <a
+                        href="{{ hotspot.link_orig or hotspot.link_redirect or settings.default_redirect_url }}"
+                        class="connect-button"
+                    >
+
+                        Continue Browsing
+
+                    </a>
+
+                    <a
+                        href="{{ hotspot.link_status }}"
+                        class="connect-button connect-button-secondary"
+                    >
+
+                        Refresh Status
+
+                    </a>
+
+                    <a
+                        href="{{ hotspot.link_logout }}"
+                        class="connect-button connect-button-danger"
+                    >
+
+                        Logout
+
+                    </a>
+
+                </div>
+
+            </section>
+
+            {% include "partials/_support.html" %}
+
+            {% include "partials/_footer.html" %}
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}

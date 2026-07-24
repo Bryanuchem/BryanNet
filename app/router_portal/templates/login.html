@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ settings.login_title }}
+{% endblock %}
+
+{% block description %}
+    {{ settings.login_description }}
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card">
+
+            {% include "partials/_header.html" %}
+
+            <section class="login-container">
+
+                <h2 class="login-title">
+
+                    {{ settings.login_title }}
+
+                </h2>
+
+                <p class="login-description">
+
+                    {{ settings.login_description }}
+
+                </p>
+
+                {% include "partials/_router_form.html" %}
+
+            </section>
+
+            {% include "partials/_support.html" %}
+
+            {% include "partials/_footer.html" %}
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}

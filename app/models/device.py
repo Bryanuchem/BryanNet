@@ -72,6 +72,12 @@ class Device(Base):
         default=DeviceStatus.ACTIVE,
     )
 
+    online = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
     approved_by_customer = Column(
         Boolean,
         nullable=False,
@@ -104,4 +110,19 @@ class Device(Base):
     customer = relationship(
         "Customer",
         back_populates="devices",
+    )
+    
+    router_sessions = relationship(
+        "RouterSession",
+        back_populates="device",
+    )
+    
+    portal_sessions = relationship(
+        "PortalSession",
+        back_populates="device",
+    )
+    
+    pending_logins = relationship(
+        "PendingLogin",
+        back_populates="device",
     )

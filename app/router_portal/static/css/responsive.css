@@ -1,0 +1,341 @@
+/* ==========================================================
+   BryanNet Router Portal
+   Responsive Styles
+   ========================================================== */
+
+/* ==========================================================
+   Tablet Landscape
+   <= 992px
+   ========================================================== */
+
+@media (max-width: 992px) {
+
+    .portal {
+
+        padding: var(--space-5);
+
+    }
+
+}
+
+/* ==========================================================
+   Tablet Portrait
+   <= 768px
+   ========================================================== */
+
+@media (max-width: 768px) {
+
+    .portal {
+
+        padding: var(--space-4);
+
+    }
+
+    .login-card {
+
+        max-width: 100%;
+
+        padding: var(--space-6);
+
+        border-radius: var(--radius-lg);
+
+        gap: var(--space-5);
+
+    }
+
+    .portal-logo {
+
+        width: 72px;
+
+        height: 72px;
+
+    }
+
+    .portal-title {
+
+        font-size: 2rem;
+
+    }
+
+    .portal-subtitle {
+
+        text-align: center;
+
+    }
+
+    .login-title {
+
+        font-size: 1.6rem;
+
+    }
+
+    .login-container {
+
+        gap: var(--space-4);
+
+    }
+
+}
+
+/* ==========================================================
+   Mobile
+   <= 576px
+   ========================================================== */
+
+@media (max-width: 576px) {
+
+    html {
+
+        font-size: 15px;
+
+    }
+
+    body {
+
+        overflow-x: hidden;
+
+    }
+
+    .portal {
+
+        padding: var(--space-3);
+
+    }
+
+    .login-card {
+
+        width: 100%;
+
+        padding: var(--space-4);
+
+        border-radius: var(--radius-lg);
+
+        gap: var(--space-3);
+
+    }
+
+    .portal-header {
+
+        gap: var(--space-2);
+
+    }
+
+    .portal-logo {
+
+        width: 72px;
+
+        height: 72px;
+
+    }
+
+    .portal-title {
+
+        font-size: 1.85rem;
+
+    }
+
+    .portal-subtitle {
+
+        font-size: var(--font-size-xs);
+
+    }
+
+    .login-title {
+
+        font-size: 1.5rem;
+
+    }
+
+    .login-description {
+
+        font-size: var(--font-size-xs);
+
+    }
+
+    .login-form {
+
+        gap: var(--space-3);
+
+    }
+
+    .form-group label {
+
+        font-size: var(--font-size-xs);
+
+    }
+
+    .form-group input {
+
+        height: 3.15rem;
+
+    }
+
+    .remember-device {
+
+        align-items: center;
+
+        font-size: var(--font-size-xs);
+
+    }
+
+    .connect-button {
+
+        height: 3.25rem;
+
+    }
+
+    .support-links {
+
+        width: 100%;
+
+        display: flex;
+
+        justify-content: space-evenly;
+
+        align-items: center;
+
+        flex-wrap: nowrap;
+
+        gap: 0;
+
+    }
+
+    .support-links a {
+
+        min-width: 44px;
+
+        min-height: 44px;
+
+        display: flex;
+
+        justify-content: center;
+
+        align-items: center;
+
+    }
+
+    .support-icon {
+
+        width: 28px;
+
+        height: 28px;
+
+    }
+
+    .portal-footer {
+
+        gap: var(--space-1);
+
+    }
+
+    .status-message {
+
+        padding: var(--space-2);
+
+        font-size: var(--font-size-xs);
+
+    }
+
+}
+
+/* ==========================================================
+   Small Phones
+   <= 400px
+   ========================================================== */
+
+@media (max-width: 400px) {
+
+    .portal {
+
+        padding: var(--space-2);
+
+    }
+
+    .login-card {
+
+        padding: var(--space-4);
+
+    }
+
+    .portal-logo {
+
+        width: 64px;
+
+        height: 64px;
+
+    }
+
+    .portal-title {
+
+        font-size: 1.65rem;
+
+    }
+
+    .login-title {
+
+        font-size: 1.35rem;
+
+    }
+
+    .portal-subtitle,
+
+    .login-description {
+
+        line-height: 1.5;
+
+    }
+
+    .support-icon {
+
+        width: 24px;
+
+        height: 24px;
+
+    }
+
+}
+
+/* ==========================================================
+   Landscape Phones
+   ========================================================== */
+
+@media (max-height: 650px) and (orientation: landscape) {
+
+    .portal {
+
+        padding-top: var(--space-5);
+
+        padding-bottom: var(--space-5);
+
+        align-items: flex-start;
+
+    }
+
+    .login-card {
+
+        margin: auto;
+
+    }
+
+}
+
+/* ==========================================================
+   Large Screens
+   >= 1400px
+   ========================================================== */
+
+@media (min-width: 1400px) {
+
+    .portal {
+
+        padding: var(--space-8);
+
+    }
+
+    .login-card {
+
+        max-width: 460px;
+
+    }
+
+}

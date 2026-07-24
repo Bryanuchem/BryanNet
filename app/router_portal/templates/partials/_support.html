@@ -1,0 +1,97 @@
+<!-- ==========================================================
+     Support Information
+     ========================================================== -->
+
+{% if settings.show_support_links %}
+
+<section class="portal-footer">
+
+    <h3 class="support-title">
+
+        {{ settings.support_title }}
+
+    </h3>
+
+    <div class="support-links">
+
+        {% if settings.support_phone %}
+
+            <a
+                href="tel:{{ settings.support_phone }}"
+                title="Call Support"
+            >
+
+                <img
+                    src="{{ static_url }}/icons/support/phone.svg"
+                    class="support-icon"
+                    alt=""
+                    aria-hidden="true"
+                >
+
+            </a>
+
+        {% endif %}
+
+        {% if settings.support_email %}
+
+            <a
+                href="mailto:{{ settings.support_email }}"
+                title="Email Support"
+            >
+
+                <img
+                    src="{{ static_url }}/icons/support/mail.svg"
+                    class="support-icon"
+                    alt=""
+                    aria-hidden="true"
+                >
+
+            </a>
+
+        {% endif %}
+
+        {% if settings.support_whatsapp %}
+
+            <a
+                href="{{ settings.support_whatsapp }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="WhatsApp Support"
+            >
+
+                <img
+                    src="{{ static_url }}/icons/support/whatsapp.svg"
+                    class="support-icon support-icon-large"
+                    alt=""
+                    aria-hidden="true"
+                >
+
+            </a>
+
+        {% endif %}
+
+        {% if settings.support_telegram %}
+
+            <a
+                href="{{ settings.support_telegram }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Telegram Support"
+            >
+
+                <img
+                    src="{{ static_url }}/icons/support/telegram.svg"
+                    class="support-icon support-icon-large"
+                    alt=""
+                    aria-hidden="true"
+                >
+
+            </a>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endif %}

@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+)
 
 from datetime import datetime
 
@@ -93,6 +95,10 @@ class RouterRead(BaseModel):
 # ==========================================================
 # Response Schemas
 # ==========================================================
+
+class RouterHostnameUpdate(BaseModel):
+
+    hostname: IPv4Address
 
 class RouterResponse(BaseModel):
 

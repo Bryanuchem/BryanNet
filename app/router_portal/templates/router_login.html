@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Connecting...
+{% endblock %}
+
+{% block description %}
+    Completing your connection to the Internet.
+{% endblock %}
+
+{% block content %}
+
+<main class="portal">
+
+    <section class="login-section">
+
+        <div class="login-card">
+
+            {% include "partials/_header.html" %}
+
+            <section class="login-container">
+
+                <h2 class="login-title">
+
+                    Connecting...
+
+                </h2>
+
+                <p class="login-description">
+
+                    Please wait while we securely connect your device to the Internet.
+
+                </p>
+
+                <div
+                    id="statusMessage"
+                    class="status-message info"
+                    role="status"
+                >
+
+                    Establishing secure RouterOS session...
+
+                </div>
+
+                <!-- ======================================================
+                     Hidden RouterOS Login Form
+
+                     This mirrors the stock MikroTik sendin form.
+                     ====================================================== -->
+
+                <form
+                    id="router-login-form"
+                    name="sendin"
+                    action="{{ hotspot.link_login_only }}"
+                    method="post"
+                    style="display:none;"
+                >
+
+                    <input
+                        type="hidden"
+                        name="username"
+                        value="{{ username }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        id="router-password"
+                        name="password"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="dst"
+                        value="{{ connected_url }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="popup"
+                        value="{{ hotspot.popup | lower }}"
+                    >
+
+                    <!-- ======================================================
+                        BryanNet Pending Login Token
+
+                        Exposed to the handoff page for Phase 5C.
+                        RouterOS behaviour regarding custom fields will be
+                        determined in the next integration step.
+                        ====================================================== -->
+
+                    <input
+                        type="hidden"
+                        name="link-orig"
+                        value="{{ hotspot.link_orig or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="link-orig-esc"
+                        value="{{ hotspot.link_orig_esc or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="link-login"
+                        value="{{ hotspot.link_login or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="link-login-only"
+                        value="{{ hotspot.link_login_only or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="link-status"
+                        value="{{ hotspot.link_status or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="link-logout"
+                        value="{{ hotspot.link_logout or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="ip"
+                        value="{{ hotspot.ip_address or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="mac"
+                        value="{{ hotspot.mac_address or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="chap-id"
+                        value="{{ hotspot.chap_id or '' }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="chap-challenge"
+                        value="{{ hotspot.chap_challenge or '' }}"
+                    >
+
+                </form>
+
+            </section>
+
+            {% include "partials/_support.html" %}
+
+            {% include "partials/_footer.html" %}
+
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+
+{{ super() }}
+
+<script
+    src="{{ static_url }}/md5.js"
+></script>
+
+<script>
+
+document.addEventListener(
+
+    "DOMContentLoaded",
+
+    function () {
+
+        const form = document.getElementById(
+
+            "router-login-form"
+
+        );
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const passwordField = document.getElementById(
+
+            "router-password"
+
+        );
+
+        const password = {{ password|tojson }};
+
+        /*
+        ==========================================================
+        RouterOS CHAP Login
+
+        Mirrors the official MikroTik implementation.
+
+        If CHAP is enabled:
+
+            MD5(
+                chap-id +
+                password +
+                chap-challenge
+            )
+
+        Otherwise:
+
+            Plaintext password
+        ==========================================================
+        */
+
+        {% if hotspot.chap_id and hotspot.chap_challenge %}
+
+        passwordField.value = hexMD5(
+
+            "{{ hotspot.chap_id }}" +
+
+            password +
+
+            "{{ hotspot.chap_challenge }}"
+
+        );
+
+        {% else %}
+
+        passwordField.value = password;
+
+        {% endif %}
+
+        const action = form.getAttribute(
+
+            "action"
+
+        );
+
+        if (
+
+            !action ||
+
+            action === "None" ||
+
+            action.trim() === ""
+
+        ) {
+
+            document.getElementById(
+
+                "statusMessage"
+
+            ).textContent =
+
+                "RouterOS login session has expired. Please return to the BryanNet login page.";
+
+            return;
+
+        }
+
+        form.submit();
+
+        console.log(form);
+
+    }
+
+);
+
+</script>
+
+{% endblock %}

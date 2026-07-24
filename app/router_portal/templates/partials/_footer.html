@@ -1,0 +1,27 @@
+<!-- ==========================================================
+     Portal Footer
+     ========================================================== -->
+
+{% if settings.show_footer %}
+
+<footer class="portal-footer">
+
+    {% if settings.footer_text %}
+
+        <p>
+
+            {{ settings.footer_text }}
+
+        </p>
+
+    {% endif %}
+
+    <p>
+
+        &copy; {{ settings.company_name }}
+
+    </p>
+
+</footer>
+
+{% endif %}

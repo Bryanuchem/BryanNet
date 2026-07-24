@@ -118,29 +118,8 @@ from app.core.settings import (
 from app.portal import (
     router as portal_router,
 )
-
 from app.api.router import (
-    router as router_router,
-)
-
-from app.api.router_runtime import (
-    router as router_runtime_router,
-)
-
-from app.api.router_account_runtime import (
-    router as router_account_runtime_router,
-)
-
-from app.api.router_profile import (
-    router as router_profile_router,
-)
-
-from app.api.router_secret import (
-    router as router_secret_router,
-)
-
-from app.api.router_session import (
-    router as router_session_router,
+    register as register_router_api,
 )
 
 app = FastAPI(
@@ -163,6 +142,17 @@ app.add_exception_handler(
     ),
 )
 
+from fastapi.staticfiles import (
+    StaticFiles,
+)
+
+from app.router_portal.preview_controller import (
+    router as router_portal_preview_router,
+)
+
+from app.router_portal.controller import (
+    router as router_portal_router,
+)
 
 # ==========================================================
 # Middleware
@@ -254,39 +244,12 @@ app.include_router(
     subscription_router,
     prefix=API_PREFIX,
 )
-
 # ----------------------------------------------------------
 # Router Management
 # ----------------------------------------------------------
 
-app.include_router(
-    router_router,
-    prefix=API_PREFIX,
-)
-
-app.include_router(
-    router_runtime_router,
-    prefix=API_PREFIX,
-)
-
-app.include_router(
-    router_account_runtime_router,
-    prefix=API_PREFIX,
-)
-
-app.include_router(
-    router_profile_router,
-    prefix=API_PREFIX,
-)
-
-app.include_router(
-    router_secret_router,
-    prefix=API_PREFIX,
-)
-
-app.include_router(
-    router_session_router,
-    prefix=API_PREFIX,
+register_router_api(
+    app,
 )
 
 # ----------------------------------------------------------
@@ -383,13 +346,41 @@ app.include_router(
 )
 
 # ==========================================================
+# Router Portal Static Files
+# ==========================================================
+
+app.mount(
+    "/router_portal/static",
+    StaticFiles(
+        directory="app/router_portal/static",
+    ),
+    name="router_portal.static",
+)
+
+# ==========================================================
+# Router Portal
+# ==========================================================
+
+app.include_router(
+    router_portal_router,
+    prefix=API_PREFIX,
+)
+
+# ==========================================================
+# Router Portal Preview
+# ==========================================================
+
+app.include_router(
+    router_portal_preview_router,
+)
+
+# ==========================================================
 # Exception Handlers
 # ==========================================================
 
 register_exception_handlers(
     app,
 )
-
 
 # ==========================================================
 # Root

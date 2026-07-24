@@ -1,0 +1,33 @@
+<!-- ==========================================================
+     Portal Header
+     ========================================================== -->
+
+<header class="portal-header">
+
+    {% if settings.logo_url %}
+
+        <img
+            class="portal-logo"
+            src="{{ logo_url }}"
+            alt="{{ settings.company_name }}"
+        >
+
+    {% endif %}
+
+    <h1 class="portal-title">
+
+        {{ settings.company_name }}
+
+    </h1>
+
+    {% if settings.show_company_tagline and settings.company_tagline %}
+
+        <p class="portal-subtitle">
+
+            {{ settings.company_tagline }}
+
+        </p>
+
+    {% endif %}
+
+</header>

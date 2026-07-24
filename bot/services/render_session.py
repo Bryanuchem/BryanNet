@@ -124,7 +124,7 @@ async def render_session(
     # ======================================================
 
     if next_action == NextAction.SHOW_MAIN_MENU.value:
-        print(">>> SHOW_MAIN_MENU")
+
         first_name = (
             session.get(
                 "full_name",

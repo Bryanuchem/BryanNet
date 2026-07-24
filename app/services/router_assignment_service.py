@@ -1,6 +1,9 @@
 from fastapi import HTTPException
 
-from app.enums import RouterStatus
+from app.enums import (
+    RouterProviderType,
+    RouterStatus,
+)
 
 from app.models.router import Router
 from app.models.router_account import RouterAccount
@@ -20,20 +23,83 @@ class RouterAssignmentService:
         return (
 
             db.query(
+
                 Router,
+
             )
 
             .filter(
+
                 Router.status == RouterStatus.ONLINE,
+
             )
 
             .order_by(
+
                 Router.router_id,
+
             )
 
             .all()
 
         )
+
+    @staticmethod
+    def select_router(
+        db,
+    ):
+
+        routers = (
+
+            RouterAssignmentService
+
+            ._get_online_routers(
+
+                db,
+
+            )
+
+        )
+
+        if not routers:
+
+            raise HTTPException(
+
+                status_code=503,
+
+                detail=(
+
+                    "No online routers are available."
+
+                ),
+
+            )
+
+        for router in routers:
+
+            if (
+
+                router.router_type
+
+                == RouterProviderType.MIKROTIK_CHR
+
+            ):
+
+                return router
+
+        for router in routers:
+
+            if (
+
+                router.router_type
+
+                == RouterProviderType.MIKROTIK_PHYSICAL
+
+            ):
+
+                return router
+
+        return routers[0]
 
     # ==========================================================
     # Query Methods
@@ -112,25 +178,14 @@ class RouterAssignmentService:
         # Version 1 strategy.
         #
 
-        routers = (
+        return (
 
             RouterAssignmentService
-            ._get_online_routers(
+
+            .select_router(
+
                 db,
+
             )
 
         )
-
-        if not routers:
-
-            raise HTTPException(
-
-                status_code=503,
-
-                detail=(
-                    "No online routers are available."
-                ),
-
-            )
-
-        return routers[0]

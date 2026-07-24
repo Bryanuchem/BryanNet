@@ -1,0 +1,205 @@
+<div class="session-summary">
+
+    <h3>
+
+        Connection Summary
+
+    </h3>
+
+    {% if hotspot.customer_name %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Customer
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.customer_name }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Username
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.username }}
+
+        </span>
+
+    </div>
+
+    {% if hotspot.plan_name %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Plan
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.plan_name }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.plan_speed %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Speed
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.plan_speed }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.device_name %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Device
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.device_name }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.session_duration %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Session Duration
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.session_duration }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.upload_usage %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Upload
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.upload_usage }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.download_usage %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            Download
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.download_usage }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.ip_address %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            IP Address
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.ip_address }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+    {% if hotspot.mac_address %}
+
+    <div class="summary-row">
+
+        <span class="summary-label">
+
+            MAC Address
+
+        </span>
+
+        <span class="summary-value">
+
+            {{ hotspot.mac_address }}
+
+        </span>
+
+    </div>
+
+    {% endif %}
+
+</div>

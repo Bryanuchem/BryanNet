@@ -99,3 +99,8 @@ class Subscription(Base):
         back_populates="subscription",
         cascade="all, delete-orphan",
     )
+    
+    pending_logins = relationship(
+        "PendingLogin",
+        back_populates="subscription",
+    )

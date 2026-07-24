@@ -14,3 +14,5 @@ from app.enums.login_source import LoginSource
 from app.enums.logout_reason import LogoutReason
 from app.enums.audit_result import AuditResult
 from .transaction_status import TransactionStatus
+from app.enums.pending_login_status import PendingLoginStatus
+from app.enums.portal_authentication_error import PortalAuthenticationError

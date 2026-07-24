@@ -1,0 +1,188 @@
+<!-- ==========================================================
+     Router Login Form
+     ========================================================== -->
+
+<form
+    id="router-login-form"
+    class="login-form"
+    method="post"
+    action="{{ settings.portal_login_url }}"
+    novalidate
+>
+
+    <div class="form-group">
+
+        <label for="username">
+
+            Username
+
+        </label>
+
+        <input
+            id="username"
+            type="text"
+            name="username"
+            value="{{ hotspot.username or '' }}"
+            placeholder="{{ settings.username_placeholder }}"
+            autocomplete="username"
+            required
+        >
+
+    </div>
+
+    <div class="form-group">
+
+        <label for="password">
+
+            Password
+
+        </label>
+
+        <input
+            id="password"
+            type="password"
+            name="password"
+            placeholder="{{ settings.password_placeholder }}"
+            autocomplete="current-password"
+            required
+        >
+
+    </div>
+
+    {% if settings.remember_device_enabled %}
+
+        <label class="remember-device">
+
+            <input
+                type="checkbox"
+                id="remember-device"
+                name="remember_device"
+                {% if hotspot.remember_device %}
+                checked
+                {% endif %}
+            >
+
+            <span>
+
+                {{ settings.remember_device_text }}
+
+            </span>
+
+        </label>
+
+    {% endif %}
+
+    <input
+        type="hidden"
+        id="dst"
+        name="link_orig"
+        value="{{ hotspot.link_orig }}"
+    >
+
+    <input
+        type="hidden"
+        id="popup"
+        name="popup"
+        value="{{ hotspot.popup | lower }}"
+    >
+
+    {% if hotspot.mac_address %}
+
+        <input
+            type="hidden"
+            id="mac"
+            name="mac"
+            value="{{ hotspot.mac_address }}"
+        >
+
+    {% endif %}
+
+    <!-- ======================================================
+         RouterOS Context
+         Preserve the original RouterOS placeholders exactly.
+         These values are posted back to BryanNet and later
+         forwarded to RouterOS unchanged.
+         ====================================================== -->
+
+    <input
+        type="hidden"
+        name="link_login"
+        value="{{ hotspot.link_login or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_login_only"
+        value="{{ hotspot.link_login_only or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_logout"
+        value="{{ hotspot.link_logout or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_status"
+        value="{{ hotspot.link_status or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_orig"
+        value="{{ hotspot.link_orig or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_orig_esc"
+        value="{{ hotspot.link_orig_esc or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_redirect"
+        value="{{ hotspot.link_redirect or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="link_redirect_esc"
+        value="{{ hotspot.link_redirect_esc or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="chap_id"
+        value="{{ hotspot.chap_id or '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="chap_challenge"
+        value="{{ hotspot.chap_challenge or '' }}"
+    >
+
+    <div
+        id="statusMessage"
+        class="status-message {% if hotspot.error_message %}error{% else %}hidden{% endif %}"
+        aria-live="polite"
+    >
+
+        {% if hotspot.error_message %}
+            {{ hotspot.error_message }}
+        {% endif %}
+
+    </div>
+
+    <button
+        type="submit"
+        class="connect-button"
+    >
+
+        {{ settings.login_button_text }}
+
+    </button>
+
+</form>

@@ -49,6 +49,8 @@ class DeviceResponse(BaseModel):
     mac_address: str
 
     device_status: DeviceStatus
+    
+    online: bool
 
     class Config:
 
@@ -67,6 +69,8 @@ class DeviceListItem(BaseModel):
     mac_address: str
 
     device_status: DeviceStatus
+    
+    online: bool
 
     approved_by_customer: bool
 

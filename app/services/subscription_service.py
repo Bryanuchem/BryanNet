@@ -737,6 +737,36 @@ class SubscriptionService:
         )
 
     @staticmethod
+    def get_all_active_subscriptions(
+        db,
+    ):
+
+        return (
+
+            db.query(
+
+                Subscription,
+
+            )
+
+            .filter(
+
+                Subscription.status
+                == SubscriptionStatus.ACTIVE,
+
+            )
+
+            .order_by(
+
+                Subscription.subscription_id,
+
+            )
+
+            .all()
+
+        )
+
+    @staticmethod
     def get_active_subscription(
         db,
         customer_id,
